@@ -1,0 +1,7 @@
+how to set up:
+npx create-react-app frontend
+then cd .\frontend\
+then npm install
+
+Library
+npm install tailwindcss @tailwindcss/vite
