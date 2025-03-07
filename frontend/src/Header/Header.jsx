@@ -52,7 +52,7 @@ const Header = () => {
                         </div>
 
                         {/* This is for Desktop yo */}
-                        <ul className={`nav-links ${isScrolled ? 'scrolled' : ''}`}>
+                        <ul className={`nav-links desktop-menu  ${isScrolled ? 'scrolled' : ''}`}>
                             {nav_links.map((item, index) => (
                                 <li className='nav__item' key={index}>
                                     <NavLink 
@@ -66,13 +66,51 @@ const Header = () => {
                                 </li>
                             ))}
                         </ul>
-                        <div className="auth-buttons">
+
+                        {/* Menu icon for mobile */}
+                        <div className="mobile-menu-toggle" onClick={toggleMobileMenu}>
+                            {isMobileMenuOpen ? <X size={24}/> : <Menu size={24}/>}
+                        </div>
+
+                        <div className={`auth-buttons ${isScrolled ? 'scrolled-button' : ''}`}>
                             <button className="btn btn-outline">
-                                <Link to="/login" className="no-underline">Log In</Link>
+                                <Link to="/login">Log In</Link>
                             </button>
                             <button className="btn btn-primary">
-                                <Link to="/register" className="no-underline">Sign Up</Link>
+                                <Link to="/register">Sign Up</Link>
                             </button>
+                        </div>
+
+                        {/* This is for mobile header aka menu */}
+                        <div className={`mobile-menu ${isMobileMenuOpen ? 'open' : ''}`}>
+                            <ul className='mobile-nav-links'>
+                                {nav_links.map((item, index) => (
+                                    <li className='nav__item' key={index}>
+                                        <NavLink 
+                                        to={item.path}
+                                        className={({ isActive }) => 
+                                            `mobile-nav-link ${isActive ? 'active-mobile-link' : ''}`}
+                                        onClick={()=>setMobileMenuOpen(false)}
+                                        >
+                                            {item.display}
+                                        </NavLink>
+                                    </li>
+                                ))}
+                                <div className="mobile-auth-buttons">
+                                    <button 
+                                    className="btn btn-outline"
+                                    onClick={()=>setMobileMenuOpen(false)}
+                                    >
+                                        Log In
+                                    </button>
+                                    <button 
+                                    className="btn btn-primary"
+                                    onClick={()=>setMobileMenuOpen(false)}
+                                    >
+                                        Sign Up
+                                    </button>
+                                </div>
+                            </ul>
                         </div>
                     </nav>
                 </Row>
