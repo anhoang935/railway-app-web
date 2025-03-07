@@ -30,10 +30,14 @@ const Header = () => {
           window.removeEventListener('scroll', handleScroll);
         };
     }, []);
+
+    const toggleMobileMenu = ( )=> {
+        setMobileMenuOpen(!isMobileMenuOpen);
+    }
     
     return(
         <header
-        className={` ${isScrolled
+        className={`w-full sticky top-0 z-50 transition-all duration-300 ${isScrolled
             ? 'bg-white/30 backdrop-blur-sm shadow-lg'
             : 'bg-transparent'
             }`}
@@ -41,17 +45,20 @@ const Header = () => {
             <Container>
                 <Row>
                     <nav className="navbar">
-                        <a href="#" className="logo">
-                            <img src={logo} alt="" />
-                        </a>
-                        <ul className="nav-links ">
+                        <div className='logo-container'>
+                            <a href="#" className="logo">
+                                <img src={logo} alt="" />
+                            </a>
+                        </div>
+
+                        {/* This is for Desktop yo */}
+                        <ul className={`nav-links ${isScrolled ? 'scrolled' : ''}`}>
                             {nav_links.map((item, index) => (
                                 <li className='nav__item' key={index}>
                                     <NavLink 
                                     to={item.path}
                                     className={({ isActive }) => 
-                                        `${isScrolled ? 'text-gray-700' : 'text-gray-700'} 
-                                        hover:text-blue-600 transition-colors duration-200 font-medium 
+                                        `nav-link ${isScrolled ? 'scrolled-link' : ''} 
                                         ${isActive ? 'active-nav-link' : ''}`}
                                     >
                                         {item.display}

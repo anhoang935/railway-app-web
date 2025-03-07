@@ -3,9 +3,7 @@ header{
     width: 100%;
     height: auto;
     background-color: transparent;
-    padding: .4rem 0;
-    padding-left: 40px;
-    line-height: 50px;
+    padding: .5rem 0;
     position: sticky;
     top: 0;
     z-index: 1000;
@@ -16,53 +14,74 @@ header{
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 0 1rem;
+    height: 70px;
+}
+
+.logo-container{
+    flex: 0 0 auto;
 }
 
 .logo{
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: var(--primary-color);
     display: flex;
     align-items: center;
 }
 
 .logo img{
-    width: 45%;
+    width: 200px;
+    height: auto;
+    transition: all 0.3s;
 }
 
 .nav-links{
     display: flex;
     list-style: none;
-    gap: 2rem;
+    gap: 2.5rem;
     padding: 0;
     margin: 0;
+    transition: all 0.3s;
 }
 
-.nav-links a{
-    color: #333;
+.nav-links.scrolled{
+    gap: 2rem;
+}
+
+.nav-link{
     text-decoration: none;
-    font-weight: 700;
+    font-weight: 600;
     position: relative;
     transition: color 0.3s;
+    padding-bottom: 0.3rem;
+    font-size: 1rem;
+
 }
 
-.nav-links a:hover{
+.scrolled-link{
+    font-size: 0.95rem;
+}
+
+.nav-link:hover{
     color: var(--primary-color);
 }
 
-.nav-links a::after{
+.nav-link::after{
     content: '';
     position: absolute;
     width: 0;
-    height: 4px;
-    bottom: -4px;
+    height: 0.125rem;
+    bottom: 0;
     left: 0;
-    background-color: var(--primary-color);
+    background-color: var(--secondary-color);
     transition: width 0.3s;
+    border-radius: 4px;
 }
 
-.nav-links a:hover::after {
+.active-nav-link::after{
     width: 100%;
+}
+
+.active-nav-link{
+    color: var(--secondary-color);
 }
 
 .auth-buttons{
@@ -87,7 +106,7 @@ header{
 }
 
 .btn-outline:hover {
-    background-color: var(--primary-color);
+    background-color: var(--secondary-color);
     color: white;
 }
 
@@ -101,3 +120,4 @@ header{
     transform: translateY(-2px);
     box-shadow: 0 4px 16px rgba(0,0,0,0.1);
 }
+
