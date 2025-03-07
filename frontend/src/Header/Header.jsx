@@ -67,8 +67,12 @@ const Header = () => {
                             ))}
                         </ul>
                         <div className="auth-buttons">
-                            <button className="btn btn-outline">Log In</button>
-                            <button className="btn btn-primary">Sign Up</button>
+                            <button className="btn btn-outline">
+                                <Link to="/login" className="no-underline">Log In</Link>
+                            </button>
+                            <button className="btn btn-primary">
+                                <Link to="/register" className="no-underline">Sign Up</Link>
+                            </button>
                         </div>
                     </nav>
                 </Row>
