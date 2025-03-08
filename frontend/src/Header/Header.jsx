@@ -9,6 +9,7 @@ import './header.css';
 const nav_links = [
     { path: '/home', display: 'Home' },
     { path: '/about', display: 'About' },
+    { path: '/timetable', display: 'Timetable'},
     { path: '/buy-ticket', display: 'Buy Ticket' },
     { path: '/check-ticket', display: 'Check Ticket' },
     { path: '/return-ticket', display: 'Return Ticket' },
