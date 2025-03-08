@@ -102,13 +102,13 @@ const Header = () => {
                                     className="btn btn-outline"
                                     onClick={()=>setMobileMenuOpen(false)}
                                     >
-                                        Log In
+                                        <Link to="/login">Log In</Link>
                                     </button>
                                     <button 
                                     className="btn btn-primary"
                                     onClick={()=>setMobileMenuOpen(false)}
                                     >
-                                        Sign Up
+                                        <Link to="/register">Sign Up</Link>
                                     </button>
                                 </div>
                             </ul>
