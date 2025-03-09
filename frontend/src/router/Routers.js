@@ -8,6 +8,8 @@ import About from '../Page/About'
 import Login from '../Page/Login'
 import Register from '../Page/Register'
 import Timetable from '../Page/Timetable'
+import Forgot_Password from '../Page/Forgot_Password'
+
 const Routers = () => {
   return (
     <Routes>
@@ -20,6 +22,7 @@ const Routers = () => {
         <Route path='/return-ticket' element={<Return_Ticket />} />
         <Route path='/login' element={<Login />} />
         <Route path='/register' element={<Register />} />
+        <Route path='/forgot-password' element={<Forgot_Password />} />
     </Routes>
   )
 }

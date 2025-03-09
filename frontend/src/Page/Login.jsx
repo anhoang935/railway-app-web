@@ -1,3 +1,4 @@
+import 'tailwindcss/tailwind.css'
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Form, Alert } from "reactstrap";
