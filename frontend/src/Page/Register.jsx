@@ -1,21 +1,142 @@
-import 'tailwindcss/tailwind.css'
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Container, Row, Col, Form, FormGroup, Button, Alert } from "reactstrap";
 import { Link, useNavigate } from 'react-router-dom';
 import { Gift, User, Lock, Mail, Eye, EyeOff, Phone } from 'lucide-react';
+// import { authService } from '../data/Service/authService';
+// import { useUsers } from "./admin/UsersContext";
 import '../styles/register.css';
 
 const Register = () => {
+  // const { addUser } = useUsers();
+
+  const genderOptions = [
+    { value: 'Male', label: 'Male' },
+    { value: 'Female', label: 'Female' },
+    { value: 'Other', label: 'Other' },
+  ];
+
+  const [formData, setFormData] = useState({
+    name: '',
+    gender: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    phone: '',
+  });
+
+  const [isVisible, setIsVisible] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setIsVisible(true);
+    setError(null);
+    setSuccess(null);
+  }, []);
+
+  const handleChange = (e) => {
+    setFormData(prev => ({ ...prev, [e.target.id]: e.target.value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+  
+    // Validation checks
+    const validationErrors = [];
+  
+    // Name validation
+    if (formData.name.length < 2) {
+      validationErrors.push("Name must be at least 2 characters long");
+    }
+  
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      validationErrors.push("Please enter a valid email address");
+    }
+  
+    // Phone validation
+    const phoneRegex = /^[0-9]{10}$/; // Assumes 10-digit phone number
+    if (!phoneRegex.test(formData.phone)) {
+      validationErrors.push("Phone number must be 10 digits long");
+    }
+  
+    if (formData.password.length < 8) {
+      validationErrors.push("Password must be at least 8 characters long");
+    }
+  
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(formData.password)) {
+      validationErrors.push("Password must include uppercase, lowercase, number, and special character");
+    }
+  
+    if (formData.password !== formData.confirmPassword) {
+      validationErrors.push("Passwords do not match");
+    }
+  
+    if (!formData.gender) {
+      validationErrors.push("Please select a gender");
+    }
+  
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join(". "));
+      return;
+    }
+  
+    try {
+      // const response = await authService.register(formData)
+      // setSuccess(response.message || 'Registration successful');
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+      setFormData({
+        name: '',
+        gender: '',
+        email: '',
+        phone: '',
+        password: '',
+        confirmPassword: '',
+      });
+    } catch (error) {
+      console.error('Error registering user:', error);
+
+      if (error.response) {
+        switch (error.response.status) {
+          case 400:
+            setError(error.response.data.message || 'Invalid registration details');
+            break;
+          case 409:
+            setError('Email already exists. Please use a different email.');
+            break;
+          case 500:
+            setError('Server error. Please try again later.');
+            break;
+          default:
+            setError('Registration failed. Please try again.');
+        }
+      } else if (error.request) {
+        setError('No response from server. Please check your internet connection.');
+      } else {
+        setError('An unexpected error occurred during registration.');
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 to-white flex items-center justify-center p-4 relative overflow-hidden">
 
       {/* Main Register Card */}
       <motion.div
-        // initial={{ opacity: 0, y: 20 }}
-        // animate={{ opacity: isVisible ? 1 : 0, y: 0 }}
-        // transition={{ duration: 0.8 }}
-        className="bg-white bg-opacity-80 backdrop-blur-lg rounded-2xl shadow-2xl p-8 w-full max-w-md z-10 border-4 border-blue-300 mt-14"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: isVisible ? 1 : 0, y: 0 }}
+        transition={{ duration: 0.8 }}
+        className="bg-white bg-opacity-80 backdrop-blur-lg rounded-2xl shadow-2xl p-8 w-full max-w-md z-10 border-4 border-blue-300 mt-14 mb-14"
       >
         <div className="text-center mb-6">
           <div className="flex justify-center items-center mb-4">
@@ -26,7 +147,7 @@ const Register = () => {
         </div>
 
         {/* Error and Success Alerts */}
-        {/* {error && (
+        {error && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -41,9 +162,9 @@ const Register = () => {
           >
             <Alert color="success" className="mb-4">{success}</Alert>
           </motion.div>
-        )} */}
+        )}
 
-        {/* <Form onSubmit={handleSubmit}> */}
+        <Form onSubmit={handleSubmit}>
           <div className="space-y-4">
             {/* Name Input */}
             <div className="relative">
@@ -54,8 +175,8 @@ const Register = () => {
                 type="text"
                 id="name"
                 placeholder="Full Name"
-                // value={formData.name}
-                // onChange={handleChange}
+                value={formData.name}
+                onChange={handleChange}
                 required
                 className="w-full pl-10 pr-3 py-2 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300"
               />
@@ -65,17 +186,17 @@ const Register = () => {
             <div className="relative">
               <select
                 id="gender"
-                // value={formData.gender}
-                // onChange={handleChange}
+                value={formData.gender}
+                onChange={handleChange}
                 required
                 className="w-full px-3 py-2 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300 text-gray-700"
               >
                 <option value="">Select Gender</option>
-                {/* {genderOptions.map((option) => (
+                {genderOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
-                ))} */}
+                ))}
               </select>
             </div>
 
@@ -88,8 +209,8 @@ const Register = () => {
                 type="email"
                 id="email"
                 placeholder="Email Address"
-                // value={formData.email}
-                // onChange={handleChange}
+                value={formData.email}
+                onChange={handleChange}
                 required
                 className="w-full pl-10 pr-3 py-2 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300"
               />
@@ -104,8 +225,8 @@ const Register = () => {
                 type="tel"
                 id="phone"
                 placeholder="Phone Number"
-                // value={formData.phone}
-                // onChange={handleChange}
+                value={formData.phone}
+                onChange={handleChange}
                 required
                 className="w-full pl-10 pr-3 py-2 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300"
               />
@@ -117,20 +238,20 @@ const Register = () => {
                 <Lock className="text-blue-500" size={20} />
               </div>
               <input
-                // type={showPassword ? "text" : "password"}
+                type={showPassword ? "text" : "password"}
                 id="password"
                 placeholder="Password"
-                // value={formData.password}
-                // onChange={handleChange}
+                value={formData.password}
+                onChange={handleChange}
                 required
                 className="w-full pl-10 pr-10 py-2 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300"
               />
               <button
                 type="button"
-                // onClick={() => setShowPassword(!showPassword)}
+                onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-blue-500"
               >
-                {/* {showPassword ? <EyeOff size={20} /> : <Eye size={20} />} */}
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
 
@@ -140,20 +261,20 @@ const Register = () => {
                 <Lock className="text-blue-500" size={20} />
               </div>
               <input
-                // type={showConfirmPassword ? "text" : "password"}
+                type={showConfirmPassword ? "text" : "password"}
                 id="confirmPassword"
                 placeholder="Confirm Password"
-                // value={formData.confirmPassword}
-                // onChange={handleChange}
+                value={formData.confirmPassword}
+                onChange={handleChange}
                 required
                 className="w-full pl-10 pr-10 py-2 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300"
               />
               <button
                 type="button"
-                // onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-blue-500"
               >
-                {/* {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />} */}
+                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
 
@@ -168,7 +289,7 @@ const Register = () => {
               Create Account
             </motion.button>
           </div>
-        {/* </Form> */}
+        </Form>
 
         {/* Login Link */}
         <div className="text-center mt-4">
@@ -185,6 +306,6 @@ const Register = () => {
       </motion.div>
     </div>
   );
-}
+};
 
-export default Register
+export default Register;
