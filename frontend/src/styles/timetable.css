@@ -1,0 +1,200 @@
+.timetable-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 20px;
+  gap: 20px;
+  background-color: #f0f7ff;
+}
+
+.route-selection {
+  background: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
+}
+
+.route-selection:hover {
+  box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+}
+
+.route-selection h2 {
+  margin-bottom: 24px;
+  color: #009cff;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.route-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 24px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: #006bb3;
+  font-size: 0.9rem;
+}
+
+.form-group select,
+.form-group input {
+  padding: 10px 14px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  background-color: white;
+}
+
+.form-group select:hover,
+.form-group input:hover {
+  border-color: #cbd5e0;
+}
+
+.form-group select:focus,
+.form-group input:focus {
+  border-color: #009cff;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 156, 255, 0.15);
+}
+
+.content-section {
+  display: flex;
+  gap: 24px;
+  flex: 1;
+}
+
+.map-section {
+  flex: 0.65;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  padding: 24px;
+  transition: all 0.3s ease;
+}
+
+.map-section:hover {
+  box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+}
+
+.info-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.timetable,
+.coach-types {
+  background: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
+}
+
+.timetable:hover,
+.coach-types:hover {
+  box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+}
+
+.timetable h3,
+.coach-types h3 {
+  color: #009cff;
+  margin-bottom: 16px;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.timetable table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.timetable th,
+.timetable td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.timetable th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #4a5568;
+  position: sticky;
+  top: 0;
+}
+
+.timetable tr:hover {
+  background: #f8fafc;
+}
+
+.timetable .highlighted-row {
+  background-color: #ebf8ff;
+}
+
+.timetable .highlighted-row:hover {
+  background-color: #e6fffa;
+}
+
+.coach-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.coach-option {
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.coach-option:hover {
+  border-color: #4299e1;
+  transform: translateY(-2px);
+  background: rgba(0, 156, 255, 0.02);
+}
+
+.coach-option.selected {
+  border-color: #4299e1;
+  background: rgba(0, 156, 255, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 156, 255, 0.1);
+}
+
+.coach-option h4 {
+  margin: 0 0 8px 0;
+  color: #2d3748;
+  font-size: 1rem;
+}
+
+.coach-option p {
+  margin: 0;
+  color: #4a5568;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 1024px) {
+  .content-section {
+    flex-direction: column;
+  }
+  
+  .map-section,
+  .info-section {
+    flex: none;
+  }
+}
