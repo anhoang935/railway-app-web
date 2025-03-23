@@ -1,328 +1,674 @@
-import React, { useState } from 'react';
-import { Sofa, Armchair, BedSingle, BedDouble, ChevronLeft, ChevronRight } from 'lucide-react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import Seat from '../ui/models/Seat';
+import Bed from '../ui/models/Bed';;
 
-// Coach types
-const COACH_TYPES = {
-  DOUBLE_SEAT: 'DOUBLE_SEAT',
-  SINGLE_SEAT: 'SINGLE_SEAT',
-  SINGLE_BED: 'SINGLE_BED',
-  DOUBLE_BED: 'DOUBLE_BED',
-};
+document.documentElement.style.setProperty('--primary-color', '#2563eb');
 
-// Sample data for coaches
-const coachesData = [
-  {
-    id: 'A1',
-    type: COACH_TYPES.DOUBLE_SEAT,
-    seats: Array(40).fill().map((_, i) => ({
-      id: `A1-${i + 1}`,
-      isBooked: Math.random() > 0.7,
-    })),
-  },
-  {
-    id: 'B1',
-    type: COACH_TYPES.SINGLE_SEAT,
-    seats: Array(48).fill().map((_, i) => ({
-      id: `B1-${i + 1}`,
-      isBooked: Math.random() > 0.7,
-    })),
-  },
-  {
-    id: 'S1',
-    type: COACH_TYPES.SINGLE_BED,
-    seats: Array(30).fill().map((_, i) => ({
-      id: `S1-${i + 1}`,
-      isBooked: Math.random() > 0.7,
-    })),
-  },
-  {
-    id: 'D1',
-    type: COACH_TYPES.DOUBLE_BED,
-    seats: Array(20).fill().map((_, i) => ({
-      id: `D1-${i + 1}`,
-      isBooked: Math.random() > 0.7,
-    })),
-  },
-];
+const TrainBookingApp = () => {
+  const [formData, setFormData] = useState({
+    from: '',
+    to: '',
+    departureDate: '',
+    returnDate: '',
+    departureTime: '',
+    trainType: '',
+    tripType: 'one-way'
+  });
 
-const Buy_Ticket = () => {
-  const [currentCoachIndex, setCurrentCoachIndex] = useState(0);
-  const [selectedSeat, setSelectedSeat] = useState(null);
+  const [availableTrains, setAvailableTrains] = useState([]);
   
-  const currentCoach = coachesData[currentCoachIndex];
+  const [selectedTrain, setSelectedTrain] = useState(null);
   
-  const handlePrevCoach = () => {
-    setCurrentCoachIndex((prev) => (prev > 0 ? prev - 1 : prev));
-  };
+  const [selectedCoach, setSelectedCoach] = useState(null);
+
+  const [showSelectionPanel, setShowSelectionPanel] = useState(false);
   
-  const handleNextCoach = () => {
-    setCurrentCoachIndex((prev) => (prev < coachesData.length - 1 ? prev + 1 : prev));
-  };
+  const [hoveredItem, setHoveredItem] = useState(null);
   
-  const handleCoachSelect = (index) => {
-    setCurrentCoachIndex(index);
-  };
-  
-  const handleSeatSelect = (seatId) => {
-    setSelectedSeat(seatId);
-  };
-  
-  const renderSeatIcon = (seat, type) => {
-    const isSelected = selectedSeat === seat.id;
-    const color = seat.isBooked ? '#ff3b30' : isSelected ? '#1e32c5' : '#4cd964';
-    const size = 24;
-    const props = { size, color, onClick: seat.isBooked ? null : () => handleSeatSelect(seat.id) };
+  const [selectedItems, setSelectedItems] = useState([]);
+
+  const majorStations = [
+    { id: 'hanoi', name: 'Hà Nội',},
+    { id: 'vinh', name: 'Vinh',},
+    { id: 'hue', name: 'Huế',},
+    { id: 'danang', name: 'Đà Nẵng',},
+    { id: 'nhatrang', name: 'Nha Trang',},
+    { id: 'saigon', name: 'Sài Gòn',},
     
-    switch (type) {
-      case COACH_TYPES.DOUBLE_SEAT:
-        return <Sofa {...props} />;
-      case COACH_TYPES.SINGLE_SEAT:
-        return <Armchair {...props} />;
-      case COACH_TYPES.SINGLE_BED:
-        return <BedSingle {...props} />;
-      case COACH_TYPES.DOUBLE_BED:
-        return <BedDouble {...props} />;
-      default:
-        return <Armchair {...props} />;
+  ]
+
+  const trainTypes = [
+    { id: 'SE1', direction: 'Bắc-Nam', startTime: '12:00', endTime: '04:00', duration: 16 },
+    { id: 'SE2', direction: 'Nam-Bắc', startTime: '13:00', endTime: '05:00', duration: 16 },
+    { id: 'SE3', direction: 'Bắc-Nam', startTime: '18:00', endTime: '10:00', duration: 16 },
+    { id: 'SE4', direction: 'Nam-Bắc', startTime: '19:00', endTime: '11:00', duration: 16 },
+    { id: 'SE5', direction: 'Bắc-Nam', startTime: '10:30', endTime: '02:30', duration: 16 },
+    { id: 'SE6', direction: 'Nam-Bắc', startTime: '11:30', endTime: '03:30', duration: 16 },
+    { id: 'SE7', direction: 'Bắc-Nam', startTime: '17:15', endTime: '09:15', duration: 16 },
+    { id: 'SE8', direction: 'Nam-Bắc', startTime: '18:15', endTime: '10:15', duration: 16 }
+  ]
+
+  const coachTypes = [
+    { id: 'room-4-bed', name: 'Room 4 beds, Air-Con', price: 1200000, type: 'bed', rows: 2, cols: 14 },
+    { id: 'room-6-bed', name: 'Room 6 beds, Air-Con', price: 900000, type: 'bed', rows: 3, cols: 14 },
+    { id: 'soft-seat', name: 'Soft seat, Air-Con', price: 700000, type: 'seat', rows: 4, cols: 14 },
+    { id: 'hard-seat', name: 'Hard seat, Air-Con', price: 500000, type: 'seat', rows: 4, cols: 14 }
+  ]
+
+  const calculateDistance = (from, to) => {
+    const stationIndices = {};
+    majorStations.forEach((station, index) => {
+      stationIndices[station.id] = index;
+    })
+    if(stationIndices[from] === stationIndices[to]) return 0;
+    return Math.abs(stationIndices[from] - stationIndices[to]) * 200; 
+  }
+
+  // Function to calculate return date based on distance
+  const calculateReturnDate = (departureDate, distance) => {
+    const date = new Date(departureDate);
+    const days = Math.ceil((distance / 500)*5) // 1 day per 500km (testing)
+    date.setDate(date.getDate() + days)
+    return date.toISOString().split('T')[0]
+  }
+
+  const searchTrains = () => {
+    const { from, to, departureTime } = formData
+    
+    if (!from || !to || from === to) return;
+    
+    const fromStation = majorStations.find(s => s.id === from)
+    const toStation = majorStations.find(s => s.id === to)
+    
+    let direction;
+    if (fromStation && toStation) {
+      const fromIndex = majorStations.findIndex(s => s.id === from)
+      const toIndex = majorStations.findIndex(s => s.id === to)
+      direction = fromIndex < toIndex ? 'Bắc-Nam' : 'Nam-Bắc'
     }
-  };
-  
-  const getCoachTypeLabel = (type) => {
-    switch (type) {
-      case COACH_TYPES.DOUBLE_SEAT:
-        return 'Double Seat';
-      case COACH_TYPES.SINGLE_SEAT:
-        return 'Single Seat';
-      case COACH_TYPES.SINGLE_BED:
-        return 'Single Bed';
-      case COACH_TYPES.DOUBLE_BED:
-        return 'Double Bed';
-      default:
-        return 'Unknown';
+    
+    let filtered = trainTypes.filter(train => train.direction === direction);
+    
+    if (departureTime) {
+      const selectedTime = new Date(`2000-01-01T${departureTime}`);
+      filtered = filtered.filter(train => {
+        const trainTime = new Date(`2000-01-01T${train.startTime}`);
+        // Allow 3 hours before and after the selected time
+        const diffHours = Math.abs(trainTime - selectedTime) / 36e5;
+        return diffHours <= 3;
+      })
     }
+
+    const distance = calculateDistance(from, to);
+    const trains = filtered.map(train => ({
+      ...train,
+      distance,
+      returnDate: calculateReturnDate(formData.departureDate, distance)
+    }))
+    
+    setAvailableTrains(trains)
+    setSelectedTrain(null)
+    setSelectedCoach(null)
+    setSelectedItems([])
   };
-  
-  return (
-    <div className="train-booking-container" style={{ maxWidth: '1000px', margin: '0 auto', padding: '20px' }}>
-      {/* Coach selector */}
-      <div className="coach-selector" style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px', gap: '10px' }}>
-        {coachesData.map((coach, index) => (
-          <motion.div
-            key={coach.id}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => handleCoachSelect(index)}
-            style={{
-              padding: '10px 15px',
-              borderRadius: '8px',
-              backgroundColor: currentCoachIndex === index ? '#009cff' : '#f0f0f0',
-              color: currentCoachIndex === index ? 'white' : '#333',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              boxShadow: currentCoachIndex === index ? '0 4px 8px rgba(0, 156, 255, 0.3)' : 'none',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            {coach.id}
-          </motion.div>
-        ))}
-      </div>
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target
+    setFormData(prev => {
+      const newData = { ...prev, [name]: value }
+
+      if ((name === 'from' || name === 'to') && newData.from && newData.to && newData.from !== newData.to) {
+        const distance = calculateDistance(newData.from, newData.to)
+        if (newData.departureDate) {
+          newData.returnDate = calculateReturnDate(newData.departureDate, distance)
+        }
+      }
       
-      {/* Coach info */}
-      <div className="coach-info" style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: '20px',
-        backgroundColor: '#f8f9fa',
-        padding: '15px',
-        borderRadius: '10px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
-      }}>
-        <div>
-          <h2 style={{ margin: 0, color: '#1e32c5' }}>Coach {currentCoach.id}</h2>
-          <p style={{ margin: '5px 0 0', color: '#666' }}>{getCoachTypeLabel(currentCoach.type)}</p>
-        </div>
-        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <div style={{ width: '12px', height: '12px', backgroundColor: '#4cd964', borderRadius: '50%' }}></div>
-            <span>Available</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <div style={{ width: '12px', height: '12px', backgroundColor: '#ff3b30', borderRadius: '50%' }}></div>
-            <span>Booked</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <div style={{ width: '12px', height: '12px', backgroundColor: '#1e32c5', borderRadius: '50%' }}></div>
-            <span>Selected</span>
-          </div>
-        </div>
-      </div>
+      // If changing departure date, recalculate return date
+      if (name === 'departureDate' && newData.from && newData.to) {
+        const distance = calculateDistance(newData.from, newData.to)
+        newData.returnDate = calculateReturnDate(value, distance)
+      }
       
-      {/* Coach layout */}
-      <div className="coach-layout-container" style={{ position: 'relative', marginBottom: '30px' }}>
-        <button 
-          onClick={handlePrevCoach} 
-          disabled={currentCoachIndex === 0}
-          style={{
-            position: 'absolute',
-            left: '-20px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            backgroundColor: currentCoachIndex === 0 ? '#e0e0e0' : '#009cff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '50%',
-            width: '40px',
-            height: '40px',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            cursor: currentCoachIndex === 0 ? 'not-allowed' : 'pointer',
-            zIndex: 2,
-            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-          }}
-        >
-          <ChevronLeft size={24} />
-        </button>
+      return newData
+    })
+  }
+
+  const handleSelectTrain = (train) => {
+    setSelectedTrain(train)
+    setSelectedCoach(null)
+    setSelectedItems([])
+  }
+
+  const handleSelectCoach = (coach) => {
+    setSelectedCoach(coach)
+    setSelectedItems([])
+  };
+
+  // Handle seat/bed selection
+  const handleSelectItem = (row, col) => {
+    const key = `${row}-${col}`
+    const isBooked = Math.random() > 0.7
+    
+    if (isBooked) return;
+    
+    setSelectedItems(prev => {
+      const exists = prev.find(item => item.key === key);
+      if (exists) {
+        return prev.filter(item => item.key !== key);
+      } else {
+        setShowSelectionPanel(true);
+        return [...prev, { key, row, col, price: selectedCoach.price }];
+      }
+    })
+  }
+
+  const removeSelectedItem = (key) => {
+    setSelectedItems(prev => prev.filter(item => item.key !== key))
+
+    if (selectedItems.length <= 1){
+      setShowSelectionPanel(false);
+    }
+  }
+
+  const renderSeatsOrBeds = () => {
+    if(!selectedCoach) return null;
+
+    const {row, col, type} = selectedCoach;
+
+    if(type === 'seat'){
+      return renderRegularCoach(selectedCoach);
+    }
+      return renderSleeperCoach(selectedCoach);
+  }
+
+  const renderRegularCoach = (coach) => {
+    const columns = [];
+    const {rows, cols} = coach;
+
+    for(let c = 0; c < cols; c++){
+      const columnSeats = [];
+      const isAfterSeparator = c  >= cols/2;
+
+      for(let r = 0; r < rows; r++){
+        const seatIndex = c * rows + r;
+        const seatNumber = seatIndex + 1;
+        const key = `${r}-${c}`;
+        const booked =  isItemBooked(r, c);
+        const selected = selectedItems.some(item => item.key === key);
+        const hovered = hoveredItem === key;
+
+        if(r === 2 && rows >= 4){
+          columnSeats.push(
+            <div key={`aisle-${c}-${r}`} className='h-[20px] w-full'></div>
+          )
+        }
+        columnSeats.push(
+          <div key={key} onClick={() => !booked && handleSelectItem(r, c)}>
+            <Seat
+            seatNumber={seatNumber}
+            price={formatCurrency(coach.price)}
+            isBooked={booked}
+            isSelected={selected}
+            isHovered={hovered}
+            isReversed={isAfterSeparator}
+            onMouseEnter={() => setHoveredItem(key)}
+            onMouseLeave={() => setHoveredItem(null)}
+            />
+          </div>
+        )
+      }
+      if (c === Math.floor(cols / 2) - 1) {
+        columns.push(
+          <div key={`column-${c}`} className="flex flex-col mx-1">
+            {columnSeats}
+          </div>
+        );
         
-        <motion.div 
-          key={currentCoach.id}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.3 }}
-          className="coach-layout"
-          style={{
-            backgroundColor: 'white',
-            borderRadius: '15px',
-            padding: '25px',
-            boxShadow: '0 5px 20px rgba(0,0,0,0.1)',
-            border: '2px solid #eaeaea',
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
-          <div className="coach-shape" style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: '8px',
-            backgroundColor: '#009cff',
-            borderTopLeftRadius: '13px',
-            borderTopRightRadius: '13px',
-          }}></div>
-          
-          <div className="coach-windows" style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            marginBottom: '15px',
-          }}>
-            <div style={{ color: '#1e32c5', fontWeight: 'bold' }}>Left Window Side</div>
-            <div style={{ color: '#1e32c5', fontWeight: 'bold' }}>Right Window Side</div>
+        columns.push(
+          <div key={`separator-${c}`} className="flex flex-col items-center gap-2">
+            <div className="flex w-4 h-20 bg-gray-300 rounded-sm"></div> 
+            <div className="flex-1"></div>
+            <div className="flex w-4 h-20 bg-gray-300 rounded-sm"></div> 
           </div>
-          
-          <div className="seats-container" style={{
-            display: 'grid',
-            gridTemplateColumns: currentCoach.type === COACH_TYPES.SINGLE_SEAT ? 'repeat(12, 1fr)' : 
-                               currentCoach.type === COACH_TYPES.DOUBLE_SEAT ? 'repeat(10, 1fr)' :
-                               currentCoach.type === COACH_TYPES.SINGLE_BED ? 'repeat(10, 1fr)' : 'repeat(5, 1fr)',
-            gap: '10px',
-            padding: '10px',
-          }}>
-            {currentCoach.seats.map((seat) => (
-              <div 
-                key={seat.id} 
-                style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  cursor: seat.isBooked ? 'not-allowed' : 'pointer',
-                  opacity: seat.isBooked ? 0.7 : 1,
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                {renderSeatIcon(seat, currentCoach.type)}
-                <span style={{ 
-                  fontSize: '10px', 
-                  position: 'absolute', 
-                  marginTop: '25px',
-                  color: seat.isBooked ? '#999' : '#333'
-                }}>
-                  {seat.id.split('-')[1]}
-                </span>
+        );
+      } 
+      else {
+        columns.push(
+          <div key={`column-${c}`} className="flex flex-col mx-1">
+            {columnSeats}
+          </div>
+        );
+      }
+    }
+    return (
+      <div className="flex flex-row justify-center">
+        {columns}
+      </div>
+    );
+  }
+
+  const renderSleeperCoach = (coach) => {
+    const { rows, cols } = coach;
+    const cabins = Math.ceil(cols / 2);
+
+    const tiers = [];
+    for (let row = 0; row < rows; row++) {
+      const tierNumber = rows - row;
+      tiers.push(
+        <div key={`tier-label-${tierNumber}`} className="h-10 pb-3 flex items-center justify-center font-bold">
+          T{tierNumber}
+        </div>
+      );
+    }
+
+    const cabinsLayout = [];
+
+    for(let cabinIdx = 0; cabinIdx < cabins; cabinIdx++){
+      const cabinBeds = [];
+
+      for(let col = 0; col < 2; col++){
+        const columnBeds = [];
+
+        for(let row = 0; row < rows; row++){
+          const actualCol = cabinIdx * 2 + col;
+          const key = `${row}-${actualCol}`;
+          const bedNumber = row * cols + actualCol + 1;
+          const booked = isItemBooked(row, actualCol);
+          const selected = selectedItems.some(item => item.key === key);
+          const hovered = hoveredItem === key;
+          const tierNumber = rows - row;
+
+          columnBeds.push(
+            <div key={key} className="h-10 flex items-center justify-center">
+              <div onClick={() => !booked && handleSelectItem(row, actualCol)}>
+                <Bed
+                  bedNumber={bedNumber}
+                  tierNumber={tierNumber}
+                  price={formatCurrency(coach.price)}
+                  isBooked={booked}
+                  isSelected={selected}
+                  isHovered={hovered}
+                  onMouseEnter={() => setHoveredItem(key)}
+                  onMouseLeave={() => setHoveredItem(null)}
+                />
               </div>
-            ))}
+            </div>
+          )
+        }
+
+        cabinBeds.push(
+          <div key={`cabin-${cabinIdx}-column-${col}`} className="flex flex-col">
+            {columnBeds}
+          </div>
+        );
+      }
+
+      cabinsLayout.push(
+        <div key={`cabin-${cabinIdx}`} className="mb-4">
+          <div className="text-center font-medium text-sm mb-1">
+            Cabin {cabinIdx + 1}
+          </div>
+          <div className="flex flex-row justify-center border border-blue-800 rounded-md p-1">
+            {cabinBeds}
+          </div>
+        </div>
+      )
+    }
+    return (
+      <div className="flex flex-col items-center">
+        <div className="flex flex-row">
+          <div className="flex flex-col justify-center mr-2 mt-6">
+            {tiers}
           </div>
           
-          <div className="aisle" style={{
-            height: '8px',
-            backgroundColor: '#f0f0f0',
-            margin: '15px 0',
-            borderRadius: '4px',
-          }}></div>
-        </motion.div>
-        
-        <button 
-          onClick={handleNextCoach} 
-          disabled={currentCoachIndex === coachesData.length - 1}
-          style={{
-            position: 'absolute',
-            right: '-20px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            backgroundColor: currentCoachIndex === coachesData.length - 1 ? '#e0e0e0' : '#009cff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '50%',
-            width: '40px',
-            height: '40px',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            cursor: currentCoachIndex === coachesData.length - 1 ? 'not-allowed' : 'pointer',
-            zIndex: 2,
-            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-          }}
-        >
-          <ChevronRight size={24} />
-        </button>
-      </div>
-      
-      {/* Selected seat info */}
-      {selectedSeat && (
-        <div style={{
-          backgroundColor: '#f8f9fa',
-          padding: '15px',
-          borderRadius: '10px',
-          marginTop: '20px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
-          <div>
-            <h3 style={{ margin: 0, color: '#1e32c5' }}>Selected Seat: {selectedSeat}</h3>
-            <p style={{ margin: '5px 0 0', color: '#666' }}>Coach: {currentCoach.id} ({getCoachTypeLabel(currentCoach.type)})</p>
+          <div className="flex flex-row flex-wrap gap-4 justify-center">
+            {cabinsLayout}
           </div>
-          <button style={{
-            backgroundColor: '#009cff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '10px 20px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            boxShadow: '0 2px 10px rgba(0, 156, 255, 0.3)',
-          }}>
-            Confirm Selection
+        </div>
+      </div>
+    );
+  }
+  const calculateTotalPrice = () => {
+    const itemsPrice = selectedItems.reduce((sum, item) => sum + item.price, 0);
+    return formData.tripType === 'round-trip' ? itemsPrice * 2 : itemsPrice;
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+  };
+
+  const formatTime = (timeStr) => {
+    return timeStr.replace(':', 'h');
+  };
+
+  // Generate today's date for min attribute
+  const today = new Date().toISOString().split('T')[0];
+
+  // Generate random booked status for seats/beds (testing)
+  const isItemBooked = (row, col) => {
+    // Simulate random booked status based on row and col (testing)
+    return ((row * 31 + col * 17) % 10) < 3;
+  };
+
+  useEffect(() => {
+    if (formData.from && formData.to && formData.departureDate) {
+      searchTrains();
+    }
+  }, [formData.from, formData.to, formData.departureDate, formData.departureTime]);
+
+  const renderSelectionPanel = () => {
+    if (!showSelectionPanel || selectedItems.length === 0) return null;
+    
+    return (
+      <div className="fixed right-6 top-1/4 w-64 bg-white shadow-lg rounded-lg p-4 border border-gray-200">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="font-semibold">Selected Seats/Beds</h3>
+          <button 
+            className="text-gray-500 hover:text-gray-700"
+            onClick={() => setShowSelectionPanel(false)}
+          >
+            ✕
           </button>
         </div>
-      )}
+        
+        <div className="divide-y">
+          {selectedItems.map(item => {
+            const itemNumber = item.row * selectedCoach.cols + item.col + 1;
+            return (
+              <div key={item.key} className="py-2 flex justify-between items-center">
+                <div>
+                  <div className="font-medium">
+                    {selectedCoach.type === 'seat' ? 'Seat' : 'Bed'} #{itemNumber}
+                  </div>
+                  <div className="text-sm text-gray-600">{formatCurrency(item.price)}</div>
+                </div>
+                <button
+                  onClick={() => removeSelectedItem(item.key)}
+                  className="text-red-500 hover:text-red-700"
+                  aria-label="Remove item"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18"></path>
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                  </svg>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        
+        <div className="mt-4 pt-2 border-t">
+          <div className="flex justify-between">
+            <span>Total:</span>
+            <span className="font-semibold">{formatCurrency(calculateTotalPrice())}</span>
+          </div>
+          <button
+            className="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto p-6 bg-slate-50 min-h-screen">
+      <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+        {/* Search Form */}
+        <div className="p-6 bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+          <h1 className="text-2xl font-bold mb-4">Book North-South Railway Tickets</h1>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Trip Type */}
+            <div className="col-span-1 md:col-span-2 lg:col-span-3">
+              <div className="flex gap-4">
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    name="tripType"
+                    value="one-way"
+                    checked={formData.tripType === 'one-way'}
+                    onChange={handleInputChange}
+                    className="form-radio h-5 w-5"
+                  />
+                  <span className="ml-2">One-trip</span>
+                </label>
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    name="tripType"
+                    value="round-trip"
+                    checked={formData.tripType === 'round-trip'}
+                    onChange={handleInputChange}
+                    className="form-radio h-5 w-5"
+                  />
+                  <span className="ml-2">Round-trip</span>
+                </label>
+              </div>
+            </div>
+            
+            {/* From Station */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Departure Station</label>
+              <select
+                name="from"
+                value={formData.from}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 rounded-md bg-white text-gray-800 border-0"
+              >
+                <option value="">Select departure station</option>
+                {majorStations.map(station => (
+                  <option key={station.id} value={station.id}>{station.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            {/* To Station */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Arrival Station</label>
+              <select
+                name="to"
+                value={formData.to}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 rounded-md bg-white text-gray-800 border-0"
+              >
+                <option value="">Select arrival station</option>
+                {majorStations.map(station => (
+                  <option key={station.id} value={station.id}>{station.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Departure Date */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Departure Date</label>
+              <input
+                type="date"
+                name="departureDate"
+                value={formData.departureDate}
+                onChange={handleInputChange}
+                min={today}
+                className="w-full px-4 py-2 rounded-md bg-white text-gray-800 border-0"
+              />
+            </div>
+            
+            {/* Return Date (for round trip) */}
+            {formData.tripType === 'round-trip' && (
+              <div>
+                <label className="block text-sm font-medium mb-1">Return Date</label>
+                <input
+                  type="date"
+                  name="returnDate"
+                  value={formData.returnDate}
+                  disabled
+                  className="w-full px-4 py-2 rounded-md bg-white text-gray-800 border-0 opacity-70"
+                />
+                <p className="text-xs mt-1">The return date is automatically calculated based on the distance</p>
+              </div>
+            )}
+            
+            {/* Departure Time */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Time (Optional)</label>
+              <input
+                type="time"
+                name="departureTime"
+                value={formData.departureTime}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 rounded-md bg-white text-gray-800 border-0"
+              />
+            </div>
+            
+            {/* Search Button */}
+            <div className="flex items-end">
+              <button
+                onClick={searchTrains}
+                className="px-6 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-md transition-colors"
+                disabled={!formData.from || !formData.to || !formData.departureDate}
+              >
+                Find Train
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Available Trains */}
+        {availableTrains.length > 0 && (
+          <div className="p-6 border-t border-gray-200">
+            <h2 className="text-xl font-semibold mb-4">Available Trains</h2>
+            
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {availableTrains.map(train => (
+                <div
+                  key={train.id}
+                  className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
+                    selectedTrain?.id === train.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                  }`}
+                  onClick={() => handleSelectTrain(train)}
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-bold text-lg">{train.id}</h3>
+                    <span className="text-sm bg-blue-100 text-blue-800 py-1 px-2 rounded-full">
+                      {train.direction}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between text-sm mb-2">
+                    <div>
+                      <div className="font-semibold text-lg">{formatTime(train.startTime)}</div>
+                      <div className="text-gray-500">{formData.from && majorStations.find(s => s.id === formData.from)?.name}</div>
+                    </div>
+                    <div className="flex flex-col items-center justify-center px-4">
+                      <div className="text-gray-500 text-xs">{train.duration}h</div>
+                      <div className="w-20 h-px bg-gray-300 my-1"></div>
+                      <div className="text-gray-500 text-xs">{train.distance}km</div>
+                    </div>
+                    <div>
+                      <div className="font-semibold text-lg">{formatTime(train.endTime)}</div>
+                      <div className="text-gray-500">{formData.to && majorStations.find(s => s.id === formData.to)?.name}</div>
+                    </div>
+                  </div>
+                  
+                  {formData.tripType === 'round-trip' && (
+                    <div className="mt-2 pt-2 border-t border-dashed">
+                      <div className="text-sm text-gray-600">
+                        Return Date: {new Date(train.returnDate).toLocaleDateString('vi-VN')}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Select Coach */}
+        {selectedTrain && (
+          <div className="p-6 border-t border-gray-200">
+            <h2 className="text-xl font-semibold mb-4">Select Coach</h2>
+            
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+              {coachTypes.map(coach => (
+                <div
+                  key={coach.id}
+                  className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${
+                    selectedCoach?.id === coach.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                  }`}
+                  onClick={() => handleSelectCoach(coach)}
+                >
+                  <h3 className="font-medium">{coach.name}</h3>
+                  <div className="mt-2 font-semibold text-blue-600">{formatCurrency(coach.price)}</div>
+                  <div className="mt-1 text-sm text-gray-500">
+                    {coach.type === 'seat' ? 'Seater' : 'Sleeper'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Seat/Bed Selection */}
+        {selectedCoach && (
+          <div className="p-6 border-t border-gray-200">
+            <h2 className="text-xl font-semibold mb-4">Choose Your Seat</h2>
+            
+            <div className="bg-gray-100 rounded-lg p-4">
+              {renderSeatsOrBeds()}
+            </div>
+            
+            {/* Selected Items Summary */}
+            {selectedItems.length > 0 && (
+              <div className="mt-6 p-4 border border-gray-200 rounded-lg">
+                <h3 className="font-semibold text-lg mb-2">Booking Information</h3>
+                
+                <div className="grid gap-2 grid-cols-1 md:grid-cols-2">
+                  <div>
+                    <p className="text-sm text-gray-600">Train: {selectedTrain.id}</p>
+                    <p className="text-sm text-gray-600">Coach: {selectedCoach.name}</p>
+                    <p className="text-sm text-gray-600">
+                      Journey: {majorStations.find(s => s.id === formData.from)?.name} → {majorStations.find(s => s.id === formData.to)?.name}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Departure Date: {new Date(formData.departureDate).toLocaleDateString('vi-VN')}
+                    </p>
+                    {formData.tripType === 'round-trip' && (
+                      <p className="text-sm text-gray-600">
+                        Arrival Date: {new Date(selectedTrain.returnDate).toLocaleDateString('vi-VN')}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm text-gray-600">
+                    Quantity: {selectedItems.length} {selectedCoach.type === 'seat' ? 'ghế' : 'giường'}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                    Number: {selectedItems.map(item => item.row * selectedCoach.cols + item.col + 1).join(', ')}
+                    </p>
+                    <p className="font-semibold mt-2">
+                      Total: {formatCurrency(calculateTotalPrice())}
+                      {formData.tripType === 'round-trip' && ' (Round-trip)'}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="mt-4 flex justify-end">
+                  <button className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors">
+                    Continue
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {renderSelectionPanel()}
     </div>
   );
 };
 
-export default Buy_Ticket;
+export default TrainBookingApp;
