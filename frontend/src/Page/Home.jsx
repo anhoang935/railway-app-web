@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { Map, Plane, Compass, Sun, Star, Wind, Globe2, Calendar, Users, CreditCard,  Award, Section, SnowflakeIcon } from 'lucide-react';
+import { Map, Plane, Compass, Sun, Star, Wind, Globe2, Calendar, Users, CreditCard,  Award, Section, SnowflakeIcon, Clock, Ticket, ShieldCheck, Train} from 'lucide-react';
 import FloatingElement from './../ui/FloatingElement'; 
 // import AnimatedSearchBar from '../ui/SearchBar/AnimatedSearchBar'; 
 import DestinationCard from '../ui/Card/DestinationCard'; 
@@ -8,6 +8,9 @@ import ImageDisplay from '../ui/ImageDisplay/ImageDisplay';
 import '../styles/home.css'
 import testimonials from '../data/testimonials';
 import NewsLetter from '../ui/NewsLetter/NewsLetter';
+// import imgTrain from '../images/TestTrain.png';  
+import imgTrain from '../images/destination.png';
+import TrainFooter from '../ui/AnimatedTrain/TrainFooter';
 //mb is margin-bottom, px is horizontal padding
 
 const Home = () => {
@@ -56,7 +59,7 @@ const Home = () => {
               
             >
               <h1 className="custom-heading text-2xl sm:text-3xl md:text-5xl lg:text-6xl leading-tight mb-4">
-                Travel Everywhere With
+                Travel Comfortably with
                 <div className="relative inline-block ml-2 sm:ml-3 md:ml-4">
                   <span className="text-gradient">
                     TAB
@@ -74,7 +77,7 @@ const Home = () => {
                 </div>
               </h1>
               <p className="text-lg md:text-xl text-gray-600 mb-6 md:mb-8">
-                Embark on a journey of discovery. Let us guide you through the world's most breathtaking destinations.
+                Your journey made seamless. Explore destinations with speed, safety, and convenience.
               </p>
               
             </motion.div>
@@ -127,15 +130,15 @@ const Home = () => {
             className="text-center mb-12"
           >
             <h2 className="text-3xl md:text-4xl font-bold mb-4 md:mb-4 text-gray-800">Why Choose Us</h2>
-            <p className="text-gray-600">Experience the difference with our premium travel services</p>
+            <p className="text-gray-600">Experience the future of railway travel with top-tier services.</p>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+          {/* <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
             {[
-              { icon: Calendar, title: "Easy Booking", description: "Simple and secure booking process" },
-              { icon: Users, title: "Expert Guides", description: "Professional local guides worldwide" },
-              { icon: CreditCard, title: "Best Prices", description: "Guaranteed best rates and offers" },
-              { icon: Award, title: "24/7 Support", description: "Round-the-clock customer service" }
+              { icon: Clock, title: "On-Time Service", description: "Reliable schedules for stress-free travel." },
+              { icon: Ticket, title: "Easy Ticketing", description: "Book and manage tickets effortlessly." },
+              { icon: ShieldCheck, title: "Safety First", description: "Ensuring a secure journey for all passengers." },
+              { icon: Users, title: "Customer Support", description: "24/7 assistance for a smooth travel experience." }
             ].map((feature, index) => (
               <motion.div
                 key={index}
@@ -149,6 +152,39 @@ const Home = () => {
                 <p className="text-gray-600 text-sm md:text-base">{feature.description}</p>
               </motion.div>
             ))}
+          </div> */}
+          <div className="flex flex-col-reverse md:flex-row items-center gap-8">
+            {/* Features Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 w-full md:w-1/2">
+              {[
+                { icon: Clock, title: "On-Time Service", description: "Reliable schedules for stress-free travel." },
+                { icon: Ticket, title: "Easy Ticketing", description: "Book and manage tickets effortlessly." },
+                { icon: ShieldCheck, title: "Safety First", description: "Ensuring a secure journey for all passengers." },
+                { icon: Users, title: "Customer Support", description: "24/7 assistance for a smooth travel experience." }
+              ].map((feature, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  className="text-center p-4 bg-white rounded-lg shadow-sm"
+                >
+                  <feature.icon className="w-10 h-10 md:w-12 md:h-12 mx-auto mb-3 md:mb-4 text-blue-600" />
+                  <h3 className="text-lg md:text-xl font-semibold mb-2">{feature.title}</h3>
+                  <p className="text-gray-600 text-sm md:text-base">{feature.description}</p>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Animated Image */}
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+              className="w-full md:w-1/2 flex justify-center"
+            >
+              <img src={imgTrain} alt="Animated Train" className="w-[100%] md:w-[100%] lg:w-[100%] max-w-none" />
+            </motion.div>
           </div>
         </div>
       </section>
@@ -164,31 +200,31 @@ const Home = () => {
             className="text-center mb-10 md:mb-16" 
           >
             <h2 className="text-3xl md:text-4xl font-bold mb-3 md:mb-4 text-gray-800">
-              Unforgettable Experiences Await
+              Explore Our Top Routes
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto px-2"> 
-              Choose your perfect adventure from our carefully curated experiences
+              Discover the best railway journeys across the country.
             </p>
           </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-12 mt-8 md:mt-20">
             <DestinationCard
-              title="Exotic Tours"
-              description="Discover hidden paradises and untouched natural wonders"
+              title="Scenic Rail Journeys"
+              description="Experience breathtaking landscapes on our top scenic routes."
               icon={Map}
               delay={0.2}
               destinationUrl="/exotic_tours"
             />
             <DestinationCard
-              title="Luxury Travel"
-              description="Experience world-class comfort and exceptional service"
-              icon={Plane}
+              title="High-Speed Connections"
+              description="Travel faster with our advanced high-speed trains."
+              icon={Train}
               delay={0.4}
             />
             <DestinationCard
-              title="Adventure Tours"
-              description="Push your limits with thrilling outdoor experiences"
-              icon={Compass}
+              title="Luxury Rail Travel"
+              description="Indulge in premium railway experiences with comfort and style."
+              icon={Award}
               delay={0.6}
             />
           </div>
@@ -240,9 +276,11 @@ const Home = () => {
           </div>
         </div>
       </section>
-      {/*Testimonials Section End*/}      
+      {/*Testimonials Section End*/}    
+      <TrainFooter/>  
       <NewsLetter />
     </div>
+    
   );
 };
 
