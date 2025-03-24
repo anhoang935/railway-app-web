@@ -416,7 +416,7 @@ const Buy_Ticket = () => {
     <div className="booking-container bg-slate-50">
       <div className="bg-white shadow-lg booking-content">
         {/* Search Form */}
-        <div className="p-6 bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+        <div className="p-6 bg-gradient-to-r bg-white text-blue-600">
           <h1 className="page-title mb-4">Book North-South Railway Tickets</h1>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
