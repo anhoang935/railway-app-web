@@ -13,7 +13,7 @@ header{
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 1rem;
+    padding: 0 2rem;
     height: 70px;
 }
 
@@ -32,6 +32,9 @@ header{
     transition: all 0.3s;
 }
 
+.desktop-menu{
+    margin-right: 1.5rem;
+}
 .nav-links{
     display: flex;
     list-style: none;
@@ -86,8 +89,8 @@ header{
 .auth-buttons{
     display: flex;
     gap: 1rem;
-    margin-left: 50px;
     transition: all 0.3s;
+    margin-left: 1.5rem;
 }
 
 .scrolled-buttons{
@@ -132,6 +135,7 @@ header{
     cursor: pointer;
     color: var(--primary-color);
     transition: color 0.3s;
+    margin-left: 250px;
 }
 
 .mobile-menu-toggle:hover{
@@ -143,8 +147,8 @@ header{
     position: fixed;
     top: 70px;
     right: -100%;
-    width: 80%;
-    height: calc(100vh - 70px);
+    width: 50%;
+    height: calc(100vh - 60px);
     background-color: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
     transition: right 0.4s ease;
@@ -186,7 +190,7 @@ header{
 }
 
 .mobile-auth-buttons .btn {
-    width: 100%;
+    width: 70%;
     text-align: center;
 }
 
@@ -222,13 +226,14 @@ header{
 
 @media (max-width: 768px){
     .logo img{
-        width: 100px;
-        margin-left: 300px;
+        width: 150px;
+        margin-left: 0;
     }
     
     .navbar{
         height: 60px;
-        padding: 0 0.5rem;
+        padding: 0 1rem;
+        justify-content: space-between;
     }
     
     .mobile-menu{

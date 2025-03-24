@@ -3,7 +3,6 @@ import { Container, Row } from 'reactstrap';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, Heart, Settings, TicketsPlane } from 'lucide-react';
 import logo from '../images/TAB.gif';
-import { motion } from 'framer-motion';
 import './header.css';
 
 const nav_links = [

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import Seat from '../ui/models/Seat';
-import Bed from '../ui/models/Bed';;
+import Bed from '../ui/models/Bed';
+import '../styles/buy_ticket.css';
+import { Trash } from 'lucide-react';
 
 document.documentElement.style.setProperty('--primary-color', '#2563eb');
 
-const TrainBookingApp = () => {
+const Buy_Ticket = () => {
   const [formData, setFormData] = useState({
     from: '',
     to: '',
@@ -220,13 +222,13 @@ const TrainBookingApp = () => {
       }
       if (c === Math.floor(cols / 2) - 1) {
         columns.push(
-          <div key={`column-${c}`} className="flex flex-col mx-1">
+          <div key={`column-${c}`} className="seat-column">
             {columnSeats}
           </div>
         );
         
         columns.push(
-          <div key={`separator-${c}`} className="flex flex-col items-center gap-2">
+          <div key={`separator-${c}`} className="column-separator">
             <div className="flex w-4 h-20 bg-gray-300 rounded-sm"></div> 
             <div className="flex-1"></div>
             <div className="flex w-4 h-20 bg-gray-300 rounded-sm"></div> 
@@ -235,14 +237,14 @@ const TrainBookingApp = () => {
       } 
       else {
         columns.push(
-          <div key={`column-${c}`} className="flex flex-col mx-1">
+          <div key={`column-${c}`} className="seat-column">
             {columnSeats}
           </div>
         );
       }
     }
     return (
-      <div className="flex flex-row justify-center">
+      <div className="coach-layout">
         {columns}
       </div>
     );
@@ -256,7 +258,7 @@ const TrainBookingApp = () => {
     for (let row = 0; row < rows; row++) {
       const tierNumber = rows - row;
       tiers.push(
-        <div key={`tier-label-${tierNumber}`} className="h-10 pb-3 flex items-center justify-center font-bold">
+        <div key={`tier-label-${tierNumber}`} className="tier-label">
           T{tierNumber}
         </div>
       );
@@ -280,7 +282,7 @@ const TrainBookingApp = () => {
           const tierNumber = rows - row;
 
           columnBeds.push(
-            <div key={key} className="h-10 flex items-center justify-center">
+            <div key={key} className="bed-container">
               <div onClick={() => !booked && handleSelectItem(row, actualCol)}>
                 <Bed
                   bedNumber={bedNumber}
@@ -298,7 +300,7 @@ const TrainBookingApp = () => {
         }
 
         cabinBeds.push(
-          <div key={`cabin-${cabinIdx}-column-${col}`} className="flex flex-col">
+          <div key={`cabin-${cabinIdx}-column-${col}`} className="cabin-column">
             {columnBeds}
           </div>
         );
@@ -306,10 +308,10 @@ const TrainBookingApp = () => {
 
       cabinsLayout.push(
         <div key={`cabin-${cabinIdx}`} className="mb-4">
-          <div className="text-center font-medium text-sm mb-1">
+          <div className="cabin-title">
             Cabin {cabinIdx + 1}
           </div>
-          <div className="flex flex-row justify-center border border-blue-800 rounded-md p-1">
+          <div className="cabin-container border-blue-800">
             {cabinBeds}
           </div>
         </div>
@@ -318,11 +320,11 @@ const TrainBookingApp = () => {
     return (
       <div className="flex flex-col items-center">
         <div className="flex flex-row">
-          <div className="flex flex-col justify-center mr-2 mt-6">
+          <div className="tier-labels">
             {tiers}
           </div>
           
-          <div className="flex flex-row flex-wrap gap-4 justify-center">
+          <div className="cabins-grid">
             {cabinsLayout}
           </div>
         </div>
@@ -361,8 +363,8 @@ const TrainBookingApp = () => {
     if (!showSelectionPanel || selectedItems.length === 0) return null;
     
     return (
-      <div className="fixed right-6 top-1/4 w-64 bg-white shadow-lg rounded-lg p-4 border border-gray-200">
-        <div className="flex justify-between items-center mb-2">
+      <div className="selection-panel bg-white shadow-lg rounded-lg border-gray-200">
+        <div className="panel-header">
           <h3 className="font-semibold">Selected Seats/Beds</h3>
           <button 
             className="text-gray-500 hover:text-gray-700"
@@ -376,7 +378,7 @@ const TrainBookingApp = () => {
           {selectedItems.map(item => {
             const itemNumber = item.row * selectedCoach.cols + item.col + 1;
             return (
-              <div key={item.key} className="py-2 flex justify-between items-center">
+              <div key={item.key} className="selected-item">
                 <div>
                   <div className="font-medium">
                     {selectedCoach.type === 'seat' ? 'Seat' : 'Bed'} #{itemNumber}
@@ -388,11 +390,7 @@ const TrainBookingApp = () => {
                   className="text-red-500 hover:text-red-700"
                   aria-label="Remove item"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 6h18"></path>
-                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                  </svg>
+                  <Trash/>
                 </button>
               </div>
             );
@@ -400,7 +398,7 @@ const TrainBookingApp = () => {
         </div>
         
         <div className="mt-4 pt-2 border-t">
-          <div className="flex justify-between">
+          <div className="total-section">
             <span>Total:</span>
             <span className="font-semibold">{formatCurrency(calculateTotalPrice())}</span>
           </div>
@@ -415,11 +413,11 @@ const TrainBookingApp = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 bg-slate-50 min-h-screen">
-      <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+    <div className="booking-container bg-slate-50">
+      <div className="bg-white shadow-lg booking-content">
         {/* Search Form */}
         <div className="p-6 bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-          <h1 className="text-2xl font-bold mb-4">Book North-South Railway Tickets</h1>
+          <h1 className="page-title mb-4">Book North-South Railway Tickets</h1>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Trip Type */}
@@ -432,7 +430,7 @@ const TrainBookingApp = () => {
                     value="one-way"
                     checked={formData.tripType === 'one-way'}
                     onChange={handleInputChange}
-                    className="form-radio h-5 w-5"
+                    className="radio-input"
                   />
                   <span className="ml-2">One-trip</span>
                 </label>
@@ -443,7 +441,7 @@ const TrainBookingApp = () => {
                     value="round-trip"
                     checked={formData.tripType === 'round-trip'}
                     onChange={handleInputChange}
-                    className="form-radio h-5 w-5"
+                    className="radio-input"
                   />
                   <span className="ml-2">Round-trip</span>
                 </label>
@@ -452,12 +450,12 @@ const TrainBookingApp = () => {
             
             {/* From Station */}
             <div>
-              <label className="block text-sm font-medium mb-1">Departure Station</label>
+              <label className="form-field">Departure Station</label>
               <select
                 name="from"
                 value={formData.from}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 rounded-md bg-white text-gray-800 border-0"
+                className="field-select"
               >
                 <option value="">Select departure station</option>
                 {majorStations.map(station => (
@@ -468,12 +466,12 @@ const TrainBookingApp = () => {
             
             {/* To Station */}
             <div>
-              <label className="block text-sm font-medium mb-1">Arrival Station</label>
+              <label className="form-field">Arrival Station</label>
               <select
                 name="to"
                 value={formData.to}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 rounded-md bg-white text-gray-800 border-0"
+                className="field-select"
               >
                 <option value="">Select arrival station</option>
                 {majorStations.map(station => (
@@ -484,27 +482,27 @@ const TrainBookingApp = () => {
             
             {/* Departure Date */}
             <div>
-              <label className="block text-sm font-medium mb-1">Departure Date</label>
+              <label className="form-field">Departure Date</label>
               <input
                 type="date"
                 name="departureDate"
                 value={formData.departureDate}
                 onChange={handleInputChange}
                 min={today}
-                className="w-full px-4 py-2 rounded-md bg-white text-gray-800 border-0"
+                className="field-input"
               />
             </div>
             
             {/* Return Date (for round trip) */}
             {formData.tripType === 'round-trip' && (
               <div>
-                <label className="block text-sm font-medium mb-1">Return Date</label>
+                <label className="form-field">Return Date</label>
                 <input
                   type="date"
                   name="returnDate"
                   value={formData.returnDate}
                   disabled
-                  className="w-full px-4 py-2 rounded-md bg-white text-gray-800 border-0 opacity-70"
+                  className="field-input disabled"
                 />
                 <p className="text-xs mt-1">The return date is automatically calculated based on the distance</p>
               </div>
@@ -512,13 +510,13 @@ const TrainBookingApp = () => {
             
             {/* Departure Time */}
             <div>
-              <label className="block text-sm font-medium mb-1">Time (Optional)</label>
+              <label className="form-field">Time (Optional)</label>
               <input
                 type="time"
                 name="departureTime"
                 value={formData.departureTime}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 rounded-md bg-white text-gray-800 border-0"
+                className="field-input"
               />
             </div>
             
@@ -526,7 +524,7 @@ const TrainBookingApp = () => {
             <div className="flex items-end">
               <button
                 onClick={searchTrains}
-                className="px-6 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-md transition-colors"
+                className="search-button"
                 disabled={!formData.from || !formData.to || !formData.departureDate}
               >
                 Find Train
@@ -671,4 +669,4 @@ const TrainBookingApp = () => {
   );
 };
 
-export default TrainBookingApp;
+export default Buy_Ticket;
