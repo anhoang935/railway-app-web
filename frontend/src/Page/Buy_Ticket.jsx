@@ -29,6 +29,8 @@ const Buy_Ticket = () => {
   
   const [selectedItems, setSelectedItems] = useState([]);
 
+  const [showSearchResults, setShowSearchResults] = useState(false);
+
   const majorStations = [
     { id: 'hanoi', name: 'Hà Nội',},
     { id: 'vinh', name: 'Vinh',},
@@ -112,6 +114,7 @@ const Buy_Ticket = () => {
     setSelectedTrain(null)
     setSelectedCoach(null)
     setSelectedItems([])
+    setShowSearchResults(true)
   };
 
   const handleInputChange = (e) => {
@@ -353,11 +356,11 @@ const Buy_Ticket = () => {
     return ((row * 31 + col * 17) % 10) < 3;
   };
 
-  useEffect(() => {
-    if (formData.from && formData.to && formData.departureDate) {
-      searchTrains();
-    }
-  }, [formData.from, formData.to, formData.departureDate, formData.departureTime]);
+  // useEffect(() => {
+  //   if (formData.from && formData.to && formData.departureDate) {
+  //     searchTrains();
+  //   }
+  // }, [formData.from, formData.to, formData.departureDate, formData.departureTime]);
 
   const renderSelectionPanel = () => {
     if (!showSelectionPanel || selectedItems.length === 0) return null;
@@ -413,7 +416,7 @@ const Buy_Ticket = () => {
   };
 
   return (
-    <div className="booking-container bg-slate-50">
+    <div className="booking-container bg-[#f0f7ff]">
       <div className="bg-white shadow-lg booking-content">
         {/* Search Form */}
         <div className="p-6 bg-gradient-to-r bg-white text-blue-600">
@@ -534,7 +537,7 @@ const Buy_Ticket = () => {
         </div>
         
         {/* Available Trains */}
-        {availableTrains.length > 0 && (
+        {showSearchResults && availableTrains.length > 0 && (
           <div className="p-6 border-t border-gray-200">
             <h2 className="text-xl font-semibold mb-4">Available Trains</h2>
             
