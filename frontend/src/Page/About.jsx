@@ -17,25 +17,25 @@ const About = () => {
   const teamMembers = [
     {
       name: "Tran Thanh Binh",
-      role: "Project Manager",
+      role: "Project Manager & Developer",
       image: teamMemberImage,
       description: "Oversees the integration of advanced railway management solutions to ensure safe, timely, and efficient operations."
     },
     {
       name: "Hoang Thien An",
-      role: "Data Analyst & Developer",
+      role: "Project Developer",
       image: teamMemberImage,
       description: "Specializes in real-time train scheduling and performance analytics to optimize our rail network operations."
     },
     {
       name: "Nguyen Minh Thuan",
-      role: "System Architect",
+      role: "Project Developer",
       image: teamMemberImage,
       description: "Develops robust and scalable solutions for managing complex railway operations and control systems."
     },
     {
       name: "Pham Vu Hoang Bao",
-      role: "R&D Specialist",
+      role: "Project Developer",
       image: teamMemberImage,
       description: "Dedicated to researching innovative technologies for ticketing, scheduling, and overall system efficiency."
     },
