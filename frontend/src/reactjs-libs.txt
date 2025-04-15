@@ -12,4 +12,3 @@ npm install bootstrap remixicon slick-carousel react-router-dom
 npm i reactstrap
 npm i framer-motion
 npm i react-svg
-npm install --save react-simple-map --legacy-peer-deps
