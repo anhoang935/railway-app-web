@@ -2,7 +2,6 @@
     max-width: 3xl;
     margin: 0 auto;
     padding: 1rem;
-
   }
 
   .space-y-6 > *:not(:last-child) {

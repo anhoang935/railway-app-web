@@ -4,7 +4,6 @@ import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, Heart, Settings, TicketsPlane } from 'lucide-react';
 import logo from '../images/TAB.gif';
 import './header.css';
-
 import '../Page/Settings/button.css';
 
 const nav_links = [
@@ -83,7 +82,8 @@ const Header = () => {
                             </button>
                             <button
                                 className="setting-btn"
-                                title="Settings"
+                                // Tooltip (this will show when users hover mouse onto the button)
+                                // title="Settings"
                                 onClick={() => navigate('/settings')}
                             >
                                 <span className="bar bar1"></span>
