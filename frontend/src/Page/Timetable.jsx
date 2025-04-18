@@ -141,7 +141,11 @@ const Timetable = () => {
       {renderRouteSelection()}
       <div className="content-section">
         <div className="map-section">
-          <Map stations={stations}/>
+          <Map 
+            stations={stations} 
+            fromStation={fromStation} 
+            toStation={toStation}
+          />
         </div>
         <div className="info-section">
           {renderTimetable()}

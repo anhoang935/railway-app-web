@@ -9,20 +9,24 @@ import Login from '../Page/Login'
 import Register from '../Page/Register'
 import Timetable from '../Page/Timetable'
 import Forgot_Password from '../Page/Forgot_Password'
+import Settings from "../Page/Settings/Settings"
+import Admin from "../Page/Admin/Admin"
 
 const Routers = () => {
   return (
     <Routes>
-        <Route path='/' element={<Navigate to='/home' />} />
-        <Route path='/home' element={<Home />} />
-        <Route path='/about' element={<About />} />
-        <Route path='/timetable' element={<Timetable />} />
-        <Route path='/buy-ticket' element={<Buy_Ticket />} />
-        <Route path='/check-ticket' element={<Check_Ticket />} />
-        <Route path='/return-ticket' element={<Return_Ticket />} />
-        <Route path='/login' element={<Login />} />
-        <Route path='/register' element={<Register />} />
-        <Route path='/forgot-password' element={<Forgot_Password />} />
+      <Route path='/' element={<Navigate to='/home' />} />
+      <Route path='/home' element={<Home />} />
+      <Route path='/about' element={<About />} />
+      <Route path='/timetable' element={<Timetable />} />
+      <Route path='/buy-ticket' element={<Buy_Ticket />} />
+      <Route path='/check-ticket' element={<Check_Ticket />} />
+      <Route path='/return-ticket' element={<Return_Ticket />} />
+      <Route path='/login' element={<Login />} />
+      <Route path='/register' element={<Register />} />
+      <Route path='/forgot-password' element={<Forgot_Password />} />
+      <Route path="/settings" element={<Settings />} />
+      <Route path="/admin" element={<Admin />} />
     </Routes>
   )
 }
