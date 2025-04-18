@@ -4,7 +4,8 @@ import {
     BarChart3, Train, Users, Calendar, Settings, Bell, Search,
     Menu, X, ChevronDown, MapPin, RefreshCw, PlusCircle,
     AlertTriangle, TrendingUp, Clock, Filter, CheckCircle,
-    Save, SlidersHorizontal, User, Mail, Phone, LogOut
+    Save, SlidersHorizontal, User, Mail, Phone, LogOut,
+    ArrowLeftToLine
 } from 'lucide-react';
 import "./admin.css"
 
@@ -113,7 +114,7 @@ export default function AdminPanel() {
                         onClick={() => setSidebarOpen(!sidebarOpen)}
                         className="p-1 rounded-md hover:bg-blue-700"
                     >
-                        {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+                        {sidebarOpen ? <ArrowLeftToLine size={20} /> : <Menu size={20} />}
                     </button>
                 </div>
                 <nav className="mt-6 space-y-1 flex-1">
@@ -139,13 +140,15 @@ export default function AdminPanel() {
                             )}
                         </div>
                         <div className="flex items-center space-x-4">
-                            <button
-                                title="Return to the Home page"
-                                onClick={handleLogout}
-                                className="p-2 rounded-md hover:bg-blue-700"
-                            >
-                                <LogOut size={20} />
-                            </button>
+                            {sidebarOpen && (
+                                <button
+                                    title="Return to the Home page"
+                                    onClick={handleLogout}
+                                    className="p-2 rounded-md hover:bg-blue-700"
+                                >
+                                    <LogOut size={20} />
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -309,7 +312,7 @@ function NavItem({ icon, label, active = false, expanded, onClick }) {
             <div className={`flex items-center ${expanded ? 'justify-start' : 'justify-center w-full'}`}>
                 {icon}
             </div>
-            {expanded && <span className="ml-3">{label}</span>}
+            {expanded && <span className={`ml-3 ${active ? 'font-bold' : ''}`}>{label}</span>}
         </div>
     );
 }
