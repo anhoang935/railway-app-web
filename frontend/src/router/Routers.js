@@ -10,6 +10,7 @@ import Register from '../Page/Register'
 import Timetable from '../Page/Timetable'
 import Forgot_Password from '../Page/Forgot_Password'
 import Settings from "../Page/Settings/Settings"
+import Admin from "../Page/Admin/Admin"
 
 const Routers = () => {
   return (
@@ -25,6 +26,7 @@ const Routers = () => {
       <Route path='/register' element={<Register />} />
       <Route path='/forgot-password' element={<Forgot_Password />} />
       <Route path="/settings" element={<Settings />} />
+      <Route path="/admin" element={<Admin />} />
     </Routes>
   )
 }

@@ -93,7 +93,7 @@ export default function Settings() {
                 ))}
             </div>
 
-            <form onSubmit={handleSubmit} className="bg-white shadow rounded-lg p-6 space-y-6">
+            <form onSubmit={handleSubmit} className="bg-white shadow rounded-xl p-6 space-y-6 border border-gray-200">
                 {activeTab === "profile" && (
                     <>
                         <h2 className="text-xl font-bold flex items-center gap-2"><User /> Personal Information</h2>
@@ -108,7 +108,7 @@ export default function Settings() {
                                     value={formData.fullName}
                                     onChange={handleChange}
                                     disabled={!isEditing}
-                                    className="w-full border rounded px-3 py-2"
+                                    className="w-full border rounded-lg px-3 py-2"
                                 />
                             </div>
                             <div>
@@ -121,7 +121,7 @@ export default function Settings() {
                                     value={formData.gender}
                                     onChange={handleChange}
                                     disabled={!isEditing}
-                                    className="w-full border rounded px-3 py-2"
+                                    className="w-full border rounded-lg px-3 py-2"
                                 >
                                     <option value="male">Male</option>
                                     <option value="female">Female</option>
@@ -136,7 +136,7 @@ export default function Settings() {
                                     value={formData.dob}
                                     onChange={handleChange}
                                     disabled={!isEditing}
-                                    className="w-full border rounded px-3 py-2"
+                                    className="w-full border rounded-lg px-3 py-2"
                                 />
                             </div>
                             <div>
@@ -147,7 +147,7 @@ export default function Settings() {
                                     value={formData.email}
                                     onChange={handleChange}
                                     disabled={!isEditing}
-                                    className="w-full border rounded px-3 py-2"
+                                    className="w-full border rounded-lg px-3 py-2"
                                 />
                             </div>
                             <div>
@@ -158,7 +158,7 @@ export default function Settings() {
                                     value={formData.phone}
                                     onChange={handleChange}
                                     disabled={!isEditing}
-                                    className="w-full border rounded px-3 py-2"
+                                    className="w-full border rounded-lg px-3 py-2"
                                 />
                             </div>
                             <div>
@@ -168,7 +168,7 @@ export default function Settings() {
                                     value={formData.address}
                                     onChange={handleChange}
                                     disabled={!isEditing}
-                                    className="w-full border rounded px-3 py-2"
+                                    className="w-full border rounded-lg px-3 py-2"
                                 />
                             </div>
                         </div>
@@ -189,7 +189,7 @@ export default function Settings() {
                                     value={formData.preferredClass}
                                     onChange={handleChange}
                                     disabled={!isEditing}
-                                    className="w-full border rounded px-3 py-2"
+                                    className="w-full border rounded-lg px-3 py-2"
                                 >
                                     <option value="first">First Class</option>
                                     <option value="second">Second Class</option>
@@ -203,7 +203,7 @@ export default function Settings() {
                                     value={formData.mealPreference}
                                     onChange={handleChange}
                                     disabled={!isEditing}
-                                    className="w-full border rounded px-3 py-2"
+                                    className="w-full border rounded-lg px-3 py-2"
                                 >
                                     <option value="veg">Vegetarian</option>
                                     <option value="non-veg">Non-Vegetarian</option>
@@ -236,7 +236,7 @@ export default function Settings() {
                                     value={formData.password}
                                     onChange={handleChange}
                                     disabled={!isEditing}
-                                    className="w-full border rounded px-3 py-2"
+                                    className="w-full border rounded-lg px-3 py-2"
                                 />
                             </div>
                             <div>
@@ -247,7 +247,7 @@ export default function Settings() {
                                     value={formData.confirmPassword}
                                     onChange={handleChange}
                                     disabled={!isEditing}
-                                    className="w-full border rounded px-3 py-2"
+                                    className="w-full border rounded-lg px-3 py-2"
                                 />
                             </div>
                         </div>
@@ -257,14 +257,14 @@ export default function Settings() {
                 <div className="flex justify-end pt-4">
                     {isEditing && (
                         <button type="submit"
-                            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2">
+                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2">
                             <Save className="w-4 h-4" /> Save Changes
                         </button>
                     )}
                     {!isEditing && (
                         <button type="button"
                             onClick={handleEditToggle}
-                            className="ml-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2">
+                            className="ml-4 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2">
                             <CheckCircle className="w-4 h-4" /> Change Information
                         </button>
                     )}
@@ -274,7 +274,7 @@ export default function Settings() {
                     <div
                         className={`mt-4 transition-all duration-700 ease-in-out 
                                     ${showNotification ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-95'} 
-                                bg-green-100 text-green-800 px-4 py-3 rounded shadow text-center`}
+                                bg-green-100 text-green-800 px-4 py-3 rounded-lg shadow text-center`}
                     >
                         Changes have been saved successfully ✅
                     </div>

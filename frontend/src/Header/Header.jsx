@@ -4,7 +4,8 @@ import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, Heart, Settings, TicketsPlane } from 'lucide-react';
 import logo from '../images/TAB.gif';
 import './header.css';
-import '../Page/Settings/button.css';
+import '../ui/CustomButtons/settingsbutton.css';
+import LongButton from "../ui/CustomButtons/LongButton";
 
 const nav_links = [
     { path: '/home', display: 'Home' },
@@ -90,7 +91,8 @@ const Header = () => {
                                 <span className="bar bar2"></span>
                                 <span className="bar bar1"></span>
                             </button>
-                            <Link to="/settings"></Link>
+                            {/* <Link to="/settings"></Link> */}
+                            <LongButton onClick={() => navigate('/admin')} />
                         </div>
 
                         {/* This is for mobile header aka menu */}
