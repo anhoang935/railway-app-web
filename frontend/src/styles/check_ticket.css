@@ -1,0 +1,36 @@
+.ticketContentElement {
+    display: flex;
+    flex-direction: row;
+    gap: 0.25rem;
+}
+  
+.ticketContentElementDetail {
+    margin-left: auto;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ticketContents1,
+.ticketContents2{
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+}
+@media (max-width: 767px) {
+    .ticketDetails{
+        width: 440px;
+        gap: 0.5rem;
+    }
+    
+    .ticketContentElement{
+        flex-direction: column;
+        gap: 0;
+    }
+    .ticketContentElementDetail {
+        flex-direction: column;
+        margin-left: 0;
+        gap: 0.25rem;
+        max-width: 150px;
+    }
+}
