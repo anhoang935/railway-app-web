@@ -121,6 +121,7 @@ export default function AdminPanel() {
                     <NavItem icon={<BarChart3 size={20} />} label="Dashboard" active={activeTab === "dashboard"} expanded={sidebarOpen} onClick={() => setActiveTab("dashboard")} />
                     <NavItem icon={<Train size={20} />} label="Train Management" active={activeTab === "trains"} expanded={sidebarOpen} onClick={() => setActiveTab("trains")} />
                     <NavItem icon={<MapPin size={20} />} label="Stations" active={activeTab === "stations"} expanded={sidebarOpen} onClick={() => setActiveTab("stations")} />
+                    <NavItem icon={<MapPin size={20} />} label="Journeys" active={activeTab === "journeys"} expanded={sidebarOpen} onClick={() => setActiveTab("journeys")} />
                     <NavItem icon={<Users size={20} />} label="Users Management" active={activeTab === "users"} expanded={sidebarOpen} onClick={() => setActiveTab("users")} />
                     <NavItem icon={<Calendar size={20} />} label="Scheduling" active={activeTab === "scheduling"} expanded={sidebarOpen} onClick={() => setActiveTab("scheduling")} />
                     <NavItem icon={<Settings size={20} />} label="Settings" active={activeTab === "settings"} expanded={sidebarOpen} onClick={() => setActiveTab("settings")} />
@@ -283,6 +284,7 @@ export default function AdminPanel() {
                             <h2 className="text-2xl font-bold text-gray-800 mb-4">
                                 {activeTab === "trains" && "Train Management"}
                                 {activeTab === "stations" && "Station Management"}
+                                {activeTab === "journeys" && "Journey Management"}
                                 {activeTab === "users" && "Users Management"}
                                 {activeTab === "scheduling" && "Train Scheduling"}
                                 {activeTab === "settings" && "Admin Settings"}
