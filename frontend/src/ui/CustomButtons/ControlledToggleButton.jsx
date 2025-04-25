@@ -3,9 +3,7 @@ import styled from 'styled-components';
 
 const ControlledToggleButton = ({ checked = false, onChange = () => { }, style = {} }) => {
     const handleClick = (e) => {
-        // Prevent default behavior to avoid unexpected event handling
         e.preventDefault();
-        // Call the onChange handler provided by the parent component
         onChange();
     };
 
@@ -14,7 +12,7 @@ const ControlledToggleButton = ({ checked = false, onChange = () => { }, style =
             <label className="switch" onClick={handleClick}>
                 <input
                     checked={checked}
-                    onChange={() => { }} // Empty function to avoid React warning about controlled component
+                    onChange={() => { }} 
                     type="checkbox"
                 />
                 <span className="slider">
