@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import coach1 from '../images/coach1.png';
 import '../styles/check_ticket.css';
+import axios from 'axios';
 
 const Check_Ticket = () => {
   const [formData, setFormData] = useState({
@@ -11,13 +12,47 @@ const Check_Ticket = () => {
     ticketId: ''
   })
 
-  const ticketDatas = [
-    { id: 1, bookId: 1, passengerId: 1, trainId: 1, coachId: 1, seatNumber: 1, departureStationId: 1, arrivalStationId: 2, departureTime: '08:00', departureDate: '2023-10-01', arrivalDate: '2023-10-01', status: 'pending' },
-    { id: 2, bookId: 2, passengerId: 2, trainId: 2, coachId: 2, seatNumber: 5, departureStationId: 3, arrivalStationId: 4, departureTime: '10:30', departureDate: '2023-10-02', arrivalDate: '2023-10-02', status: 'confirmed' },
-    { id: 3, bookId: 3, passengerId: 3, trainId: 3, coachId: 3, seatNumber: 10, departureStationId: 5, arrivalStationId: 6, departureTime: '14:15', departureDate: '2023-10-03', arrivalDate: '2023-10-03', status: 'cancelled' },
-    { id: 4, bookId: 4, passengerId: 4, trainId: 4, coachId: 4, seatNumber: 20, departureStationId: 7, arrivalStationId: 8, departureTime: '16:45', departureDate: '2023-10-04', arrivalDate: '2023-10-04', status: 'pending' },
-    { id: 5, bookId: 5, passengerId: 5, trainId: 5, coachId: 5, seatNumber: 25, departureStationId: 9, arrivalStationId: 10, departureTime: '18:00', departureDate: '2023-10-05', arrivalDate: '2023-10-05', status: 'confirmed' }
-  ];
+  // const ticketDatas = [
+  //   { id: 1, bookId: 1, passengerId: 1, trainId: 1, coachId: 1, seatNumber: 1, departureStationId: 1, arrivalStationId: 2, departureTime: '08:00', departureDate: '2023-10-01', arrivalDate: '2023-10-01', status: 'pending' },
+  //   { id: 2, bookId: 2, passengerId: 2, trainId: 2, coachId: 2, seatNumber: 5, departureStationId: 3, arrivalStationId: 4, departureTime: '10:30', departureDate: '2023-10-02', arrivalDate: '2023-10-02', status: 'confirmed' },
+  //   { id: 3, bookId: 3, passengerId: 3, trainId: 3, coachId: 3, seatNumber: 10, departureStationId: 5, arrivalStationId: 6, departureTime: '14:15', departureDate: '2023-10-03', arrivalDate: '2023-10-03', status: 'cancelled' },
+  //   { id: 4, bookId: 4, passengerId: 4, trainId: 4, coachId: 4, seatNumber: 20, departureStationId: 7, arrivalStationId: 8, departureTime: '16:45', departureDate: '2023-10-04', arrivalDate: '2023-10-04', status: 'pending' },
+  //   { id: 5, bookId: 5, passengerId: 5, trainId: 5, coachId: 5, seatNumber: 25, departureStationId: 9, arrivalStationId: 10, departureTime: '18:00', departureDate: '2023-10-05', arrivalDate: '2023-10-05', status: 'confirmed' }
+  // ];
+
+  const [filteredTickets, setFilteredtickets] = useState([]);
+
+  const handleFindTickets = async () => {
+    try {
+      const response = await axios.get('http://localhost:3001/api/tickets', {
+        params: {
+          ticketId: formData.ticketId || undefined,
+          depatureStationName: formData.from || undefined,
+          arrivalStationName: formData.to || undefined,
+          departureDate: formData.departureDate || undefined,
+          trainType: formData.type || undefined
+        }
+      });
+      setFilteredtickets(response.data);
+    } catch (error) {
+      console.error('Error fetching tickets:', error);
+    }
+  }
+
+  let userID = 1;
+  const handleFindUserTickets = async () => {
+    try {
+      const response = await axios.get('http://localhost:3001/api/tickets', {
+        params: {
+          userId: userID || undefined 
+        }
+      });
+
+      setFilteredtickets(response.data);
+    } catch (error) {
+      console.error('Error fetchin tickets:', error);
+    }
+  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -28,7 +63,57 @@ const Check_Ticket = () => {
   }
 
   const renderTickets = () => {
-    
+    return filteredTickets.map((ticket) => (
+      <div className='ticketDetails bg-white shadow-lg p-4 text-blue-600 rounded-xl border-4 border-blue-400 flex flex-col md:flex-row md:gap-6 md:p-6 md:w-[750px] mx-auto mt-4'>
+        <div className='leftTicket flex gap-3 md:flex-col justify-items-center place-self-center md:place-self-start'>
+          <h1 className='font-bold text-lg text-blue-600'>Train Ticket</h1>
+          <img src={coach1} alt="" className='hidden md:block' />
+          <h1 className='font-bold text-lg text-yellow-400'>{ticket.coachType} Coach</h1>
+        </div>
+        <div className='rightTicket flex flex-col flex-1 '>
+          <h1 className='font-bold text-lg text-blue-600 place-self-center'>Ticket Details</h1>
+          <div className='ticketContents flex flex-row px-4 md:p-3 md:gap-6'>
+            <div className='ticketContents1 md:w-[50%]'>
+              <div className='ticketContentElement'> 
+                <p>Ticket ID: </p>
+                <p className='ticketContentElementDetail'>{ticket.ticketId}</p>
+              </div>
+              <div className='ticketContentElement'> 
+                <p>Passenger Name: </p>
+                <p className='ticketContentElementDetail' >{ticket.passengerName}</p>
+              </div>
+              <div className='ticketContentElement'> 
+                <p>Train Name: </p>
+                <p className='ticketContentElementDetail'>{ticket.trainName}</p>
+              </div>
+              <div className='ticketContentElement'> 
+                <p>Seat Number: </p>
+                <p className='ticketContentElementDetail'>{ticket.seatNumber}</p>
+              </div>
+            </div>
+            <div className='ticketContents2 ml-auto md:w-[50%]'>
+              <div className='ticketContentElement'>
+                <p>Departure Station:</p>
+                <p className='ticketContentElementDetail'>{ticket.departureStation}</p>
+              </div>
+              <div className='ticketContentElement'>
+                <p>Arrival Station:</p>
+                <p className='ticketContentElementDetail'>{ticket.arrivalStation}</p>
+              </div>
+              <div className='ticketContentElement'>
+                <p>Departure Date:</p>
+                <p className='ticketContentElementDetail'>{ticket.departureDate}</p>
+              </div>
+              <div className='ticketContentElement'>
+                <p>Departure Time:</p>
+                <p className='ticketContentElementDetail'>{ticket.departureTime}</p>
+              </div>
+              <p>Status: <span className='text-green-600'>Confirmed</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    ));
   }
 
   
@@ -107,58 +192,11 @@ const Check_Ticket = () => {
 
         </div>
         <div className="flex flex-col md:flex-row flex-wrap gap-4 pt-5">
-          <button className="search-button ">Find Ticket</button>
-          <button className="search-button ">Find My Tickets</button>
+          <button className="search-button" onClick={handleFindTickets}>Find Ticket</button>
+          <button className="search-button" onClick={handleFindUserTickets}>Find My Tickets</button>
         </div>
       </div>
       {renderTickets()}
-      <div className='ticketDetails bg-white shadow-lg p-4 text-blue-600 rounded-xl border-4 border-blue-400 flex flex-col md:flex-row md:gap-6 md:p-6 md:w-[750px] mx-auto mt-4'>
-        <div className='leftTicket flex gap-3 md:flex-col justify-items-center place-self-center md:place-self-start'>
-          <h1 className='font-bold text-lg text-blue-600'>Train Ticket</h1>
-          <img src={coach1} alt="" className='hidden md:block' />
-          <h1 className='font-bold text-lg text-yellow-400'>Luxury Coach</h1>
-        </div>
-        <div className='rightTicket flex flex-col flex-1 '>
-          <h1 className='font-bold text-lg text-blue-600 place-self-center'>Ticket Details</h1>
-          <div className='ticketContents flex flex-row px-4 md:p-3 md:gap-6'>
-            <div className='ticketContents1 md:w-[50%]'>
-              <div className='ticketContentElement'> 
-                <p>Ticket ID: </p>
-                <p className='ticketContentElementDetail'> 123456</p>
-              </div>
-              <div className='ticketContentElement'> 
-                <p>Passenger Name: </p>
-                <p className='ticketContentElementDetail' > John Doesasdfasd</p>
-              </div>
-              <div className='ticketContentElement'> 
-                <p>Train Number: </p>
-                <p className='ticketContentElementDetail'> 12345</p>
-              </div>
-            </div>
-            <div className='ticketContents2 ml-auto md:w-[50%]'>
-              <div className='ticketContentElement'>
-                <p>Departure Station:</p>
-                <p className='ticketContentElementDetail'>City A</p>
-              </div>
-              <div className='ticketContentElement'>
-                <p>Arrival Station:</p>
-                <p className='ticketContentElementDetail'>City Basdasdsadsadasdsads</p>
-              </div>
-              <div className='ticketContentElement'>
-                <p>Departure Date:</p>
-                <p className='ticketContentElementDetail'>2023-10-01</p>
-              </div>
-              <div className='ticketContentElement'>
-                <p>Departure Time:</p>
-                <p className='ticketContentElementDetail'>08:00 AM</p>
-              </div>
-              <p>Status: <span className='text-green-600'>Confirmed</span></p>
-            </div>
-          </div>
-        </div>
-        
-
-      </div>
     </div>
   )
 }

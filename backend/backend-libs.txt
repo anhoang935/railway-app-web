@@ -1,0 +1,8 @@
+In order to set up open terminal and follow these steps
+cd backend
+npm init -y
+npm install express mysql2 dotenv cors
+npm install -D nodemon
+
+backend libs:
+axios: cd frontend -> npm install axios
