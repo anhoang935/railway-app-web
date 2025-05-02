@@ -13,3 +13,4 @@ npm i reactstrap
 npm i framer-motion
 npm i react-svg
 npm install axios
+npm i styled-components
