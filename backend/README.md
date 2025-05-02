@@ -1,6 +1,6 @@
 How to set up:
 - Follow every steps inside backend-libs.txt
-- Create .env file setting as below
+- Create .env file inside backend folder setting as below
 DB_HOST=localhost
 DB_USER=root
 DB_PASSWORD=root
