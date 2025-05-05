@@ -4,7 +4,7 @@ class Station {
   // Get all stations
   static async findAll() {
     try {
-      const [rows] = await pool.query('SELECT * FROM station');
+      const [rows] = await pool.query('select * from station');
       return rows;
     } catch (error) {
       throw error;
@@ -15,7 +15,7 @@ class Station {
   static async findById(stationID) {
     try {
       const [rows] = await pool.query(
-        'SELECT * FROM station WHERE stationID = ?',
+        'select * FROM station where stationID = ?',
         [stationID]
       );
       return rows[0];
@@ -31,10 +31,10 @@ class Station {
         'INSERT INTO station (stationName) VALUES (?)',
         [stationName]
       );
-
+  
       return {
-        stationID: result.insertId,
-        stationName
+        stationID: result.insertId, 
+        stationName,
       };
     } catch (error) {
       console.error('Error inserting station:', error);
@@ -49,7 +49,7 @@ class Station {
     try {
       const { stationName } = stationData;
       const [result] = await pool.query(
-        'UPDATE station SET stationName = ? WHERE stationID = ?',
+        'update station set stationName = ? where stationID = ?',
         [stationName, stationID]
       );
       
@@ -67,7 +67,7 @@ class Station {
   static async delete(stationID) {
     try {
       const [result] = await pool.query(
-        'DELETE FROM station WHERE stationID = ?',
+        'delete from station where stationID = ?',
         [stationID]
       );
       return result.affectedRows > 0;
