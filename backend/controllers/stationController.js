@@ -45,33 +45,48 @@ export const getStation = async (req, res) => {
 
 // Create a new station
 export const createStation = async (req, res) => {
-    console.log('Request body type:', typeof req.body);
-    console.log('Raw request body:', req.body);
-    try {
-      const { stationName } = req.body;
-  
-      if (!stationName) {
+  try {
+    let stationData;
+    
+    // If content type is text/plain, try to parse it as JSON
+    if (req.headers['content-type'] === 'text/plain') {
+      try {
+        stationData = JSON.parse(req.body);
+      } catch (e) {
         return res.status(400).json({
           success: false,
-          message: 'Please provide stationName'
+          message: 'Invalid JSON in text/plain body'
         });
       }
-  
-      const station = await Station.create({ stationName });
-  
-      res.status(201).json({
-        success: true,
-        message: 'Station created successfully',
-        data: station
-      });
-    } catch (error) {
-      console.error('Controller error:', error);
-      res.status(500).json({
+    } else {
+      // Otherwise use the parsed body directly
+      stationData = req.body;
+    }
+    
+    const { stationName } = stationData;
+    
+    if (!stationName) {
+      return res.status(400).json({
         success: false,
-        message: error.message
+        message: 'Please provide stationName'
       });
     }
-  };
+
+    const station = await Station.create({ stationName });
+
+    res.status(201).json({
+      success: true,
+      message: 'Station created successfully',
+      data: station
+    });
+  } catch (error) {
+    console.error('Controller error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
   
   
   
