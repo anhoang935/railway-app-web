@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import stationRoutes from './routes/station.js';
+import trainRoutes from './routes/train.js';
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ app.use(cookieParser());
 
 // Routes
 app.use('/api/v1/stations', stationRoutes);
+app.use('/api/v1/trains', trainRoutes); 
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -1,11 +1,21 @@
-const express = require('express');
-const mysql = require('mysql2');
-const cors = require('cors');
-require('dotenv').config();
+// const express = require('express');
+// const mysql = require('mysql2');
+// const cors = require('cors');
+import express from 'express';
+import mysql from 'mysql2';
+import cors from 'cors';
+import dotenv from 'dotenv';
+
+dotenv.config();
+// require('dotenv').config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+import trainRoutes from './routes/train.js';
+
+app.use('/api/v1/trains', trainRoutes);
 
 const db = mysql.createConnection({
     host: process.env.DB_HOST,
