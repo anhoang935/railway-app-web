@@ -24,10 +24,10 @@ const Check_Ticket = () => {
 
   const handleFindTickets = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/tickets', {
+      const response = await axios.get('https://mysql-production-0a41.up.railway.app/api/tickets', {
         params: {
           ticketId: formData.ticketId || undefined,
-          depatureStationName: formData.from || undefined,
+          departureStationName: formData.from || undefined,
           arrivalStationName: formData.to || undefined,
           departureDate: formData.departureDate || undefined,
           trainType: formData.type || undefined
@@ -42,7 +42,7 @@ const Check_Ticket = () => {
   let userID = 1;
   const handleFindUserTickets = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/tickets', {
+      const response = await axios.get('https://mysql-production-0a41.up.railway.app/api/tickets', {
         params: {
           userId: userID || undefined 
         }
