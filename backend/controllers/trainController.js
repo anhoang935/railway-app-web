@@ -65,7 +65,7 @@ export const createTrain = async (req, res) => {
     
     const { trainID, trainName, trainType, coachTotal } = trainData;
     
-    if (!trainID || !trainName || !trainType || !coachTotal) {
+    if (!trainName || !trainType || !coachTotal) {
       return res.status(400).json({
         success: false,
         message: 'Please provide trainID, trainName, trainType, and coachTotal'

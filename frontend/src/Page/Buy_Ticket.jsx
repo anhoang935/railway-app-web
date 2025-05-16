@@ -379,7 +379,15 @@ const Buy_Ticket = () => {
         
         <div className="divide-y">
           {selectedItems.map(item => {
-            const itemNumber = item.row * selectedCoach.cols + item.col + 1;
+            let itemNumber;
+            if (selectedCoach.type === 'seat') {
+              itemNumber = item.col * selectedCoach.rows + item.row + 1;
+            }
+            else {
+              itemNumber = item.row * selectedCoach.cols + item.col + 1;
+            }
+            
+            
             return (
               <div key={item.key} className="selected-item">
                 <div>
@@ -644,10 +652,15 @@ const Buy_Ticket = () => {
                   
                   <div>
                     <p className="text-sm text-gray-600">
-                    Quantity: {selectedItems.length} {selectedCoach.type === 'seat' ? 'ghế' : 'giường'}
+                    Quantity: {selectedItems.length} {selectedCoach.type === 'seat' ? 'seats' : 'beds'}
                     </p>
                     <p className="text-sm text-gray-600">
-                    Number: {selectedItems.map(item => item.row * selectedCoach.cols + item.col + 1).join(', ')}
+                    Number: {selectedItems.map(
+                              item => 
+                                selectedCoach.type === 'seat' 
+                                  ? `${item.col * selectedCoach.rows + item.row + 1}` 
+                                  : `${item.row * selectedCoach.cols + item.col + 1}`
+                              ).join(', ')}
                     </p>
                     <p className="font-semibold mt-2">
                       Total: {formatCurrency(calculateTotalPrice())}

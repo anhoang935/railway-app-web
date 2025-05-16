@@ -25,15 +25,15 @@ class Trains {
   }
 
   // Create new train
-  static async create({ trainID, trainName, trainType, coachTotal }) {
+  static async create({trainName, trainType, coachTotal }) {
     try {
       const [result] = await pool.query(
-        'INSERT INTO train (trainID, trainName, trainType, coachTotal) VALUES (?, ?, ?, ?)',
-        [trainID, trainName, trainType, coachTotal]
+        'INSERT INTO train (trainName, trainType, coachTotal) VALUES (?, ?, ?)',
+        [trainName, trainType, coachTotal]
       );
   
       return {
-        trainID,
+        trainID: result.insertId, // Auto-incremented ID
         trainName,
         trainType,
         coachTotal
