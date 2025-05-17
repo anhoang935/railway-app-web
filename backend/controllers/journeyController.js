@@ -80,12 +80,12 @@ export const createJourney = async (req, res) => {
             journeyData = req.body;
         }
 
-        const { journeyID, scheduleID, stationID, arrivalTime, departureTime, trainID } = journeyData;
+        const { journeyID, scheduleID, stationID, arrivalTime, departureTime } = journeyData;
 
-        if (!journeyID || !scheduleID || !stationID || !arrivalTime || !departureTime || !trainID) {
+        if (!journeyID || !scheduleID || !stationID || !arrivalTime || !departureTime) {
             return res.status(400).json({
                 success: false,
-                message: 'Please provide journeyID, scheduleID, stationID, arrivalTime, departureTime, and trainID'
+                message: 'Please provide journeyID, scheduleID, stationID, arrivalTime, and departureTime'
             });
         }
 
@@ -94,8 +94,7 @@ export const createJourney = async (req, res) => {
             scheduleID,
             stationID,
             arrivalTime,
-            departureTime,
-            trainID
+            departureTime
         });
 
         res.status(201).json({
@@ -116,12 +115,12 @@ export const createJourney = async (req, res) => {
 export const updateJourney = async (req, res) => {
     try {
         const { id } = req.params;
-        const { scheduleID, stationID, arrivalTime, departureTime, trainID } = req.body;
+        const { scheduleID, stationID, arrivalTime, departureTime } = req.body;
 
-        if (!scheduleID || !stationID || !arrivalTime || !departureTime || !trainID) {
+        if (!scheduleID || !stationID || !arrivalTime || !departureTime) {
             return res.status(400).json({
                 success: false,
-                message: 'Please provide scheduleID, stationID, arrivalTime, departureTime, and trainID'
+                message: 'Please provide scheduleID, stationID, arrivalTime, and departureTime'
             });
         }
 
@@ -129,8 +128,7 @@ export const updateJourney = async (req, res) => {
             scheduleID,
             stationID,
             arrivalTime,
-            departureTime,
-            trainID
+            departureTime
         });
 
         if (!updatedJourney) {

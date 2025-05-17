@@ -25,7 +25,9 @@ class Journey {
     static async findByTrainId(trainID) {
         try {
             const [rows] = await pool.query(
-                'SELECT * FROM journey WHERE trainID = ?',
+                `SELECT journey.* FROM journey 
+                 JOIN schedule ON journey.scheduleID = schedule.scheduleID 
+                 WHERE schedule.trainID = ?`,
                 [trainID]
             );
             return rows;
@@ -34,11 +36,11 @@ class Journey {
         }
     }
 
-    static async create({ journeyID, scheduleID, stationID, arrivalTime, departureTime, trainID }) {
+    static async create({ journeyID, scheduleID, stationID, arrivalTime, departureTime }) {
         try {
             const [result] = await pool.query(
-                'INSERT INTO journey (journeyID, scheduleID, stationID, arrivalTime, departureTime, trainID) VALUES (?, ?, ?, ?, ?, ?)',
-                [journeyID, scheduleID, stationID, arrivalTime, departureTime, trainID]
+                'INSERT INTO journey (journeyID, scheduleID, stationID, arrivalTime, departureTime) VALUES (?, ?, ?, ?, ?)',
+                [journeyID, scheduleID, stationID, arrivalTime, departureTime]
             );
 
             return {
@@ -46,8 +48,7 @@ class Journey {
                 scheduleID,
                 stationID,
                 arrivalTime,
-                departureTime,
-                trainID
+                departureTime
             };
         } catch (error) {
             console.error('Error inserting journey:', error);
@@ -57,11 +58,11 @@ class Journey {
 
     static async update(journeyID, journeyData) {
         try {
-            const { scheduleID, stationID, arrivalTime, departureTime, trainID } = journeyData;
+            const { scheduleID, stationID, arrivalTime, departureTime } = journeyData;
 
             const [result] = await pool.query(
-                'UPDATE journey SET scheduleID = ?, stationID = ?, arrivalTime = ?, departureTime = ?, trainID = ? WHERE journeyID = ?',
-                [scheduleID, stationID, arrivalTime, departureTime, trainID, journeyID]
+                'UPDATE journey SET scheduleID = ?, stationID = ?, arrivalTime = ?, departureTime = ? WHERE journeyID = ?',
+                [scheduleID, stationID, arrivalTime, departureTime, journeyID]
             );
 
             if (result.affectedRows === 0) {
@@ -73,8 +74,7 @@ class Journey {
                 scheduleID,
                 stationID,
                 arrivalTime,
-                departureTime,
-                trainID
+                departureTime
             };
         } catch (error) {
             console.error('Error updating journey:', error);
