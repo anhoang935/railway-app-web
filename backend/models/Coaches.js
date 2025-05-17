@@ -34,15 +34,15 @@ class Coach {
         }
     }
 
-    static async create({ trainID, coach_typeID }) {
+    static async create({ coachID, trainID, coach_typeID }) {
         try {
             const [result] = await pool.query(
-                'INSERT INTO coach (trainID, coach_typeID) VALUES (?, ?)',
-                [trainID, coach_typeID]
+                'INSERT INTO coach (coachID, trainID, coach_typeID) VALUES (?, ?, ?)',
+                [coachID, trainID, coach_typeID]
             );
 
             return {
-                coachID: result.insertId,
+                coachID,
                 trainID,
                 coach_typeID
             };
@@ -54,18 +54,19 @@ class Coach {
 
     static async update(coachID, coachData) {
         try {
-            const { trainID, coach_typeID, coachNumber, seatCapacity } = coachData;
+            const { trainID, coach_typeID } = coachData;
             const [result] = await pool.query(
-                'UPDATE coach SET trainID = ?, coach_typeID = ?, coachNumber = ?, seatCapacity = ? WHERE coachID = ?',
-                [trainID, coach_typeID, coachNumber, seatCapacity, coachID]
+                'UPDATE coach SET trainID = ?, coach_typeID = ? WHERE coachID = ?',
+                [trainID, coach_typeID, coachID]
             );
 
             if (result.affectedRows === 0) {
                 return null;
             }
 
-            return { coachID, trainID, coach_typeID, coachNumber, seatCapacity };
+            return { coachID, trainID, coach_typeID };
         } catch (error) {
+            console.error('Error updating coach:', error);
             throw error;
         }
     }

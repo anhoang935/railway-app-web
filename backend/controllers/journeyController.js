@@ -67,7 +67,6 @@ export const createJourney = async (req, res) => {
     try {
         let journeyData;
 
-        // If content type is text/plain, try to parse it as JSON
         if (req.headers['content-type'] === 'text/plain') {
             try {
                 journeyData = JSON.parse(req.body);
@@ -78,27 +77,25 @@ export const createJourney = async (req, res) => {
                 });
             }
         } else {
-            // Otherwise use the parsed body directly
             journeyData = req.body;
         }
 
-        const { trainID, departureStationID, arrivalStationID, departureTime, arrivalTime, journeyDate, distance } = journeyData;
+        const { journeyID, scheduleID, stationID, arrivalTime, departureTime, trainID } = journeyData;
 
-        if (!trainID || !departureStationID || !arrivalStationID || !departureTime || !arrivalTime || !journeyDate) {
+        if (!journeyID || !scheduleID || !stationID || !arrivalTime || !departureTime || !trainID) {
             return res.status(400).json({
                 success: false,
-                message: 'Please provide trainID, departureStationID, arrivalStationID, departureTime, arrivalTime, and journeyDate'
+                message: 'Please provide journeyID, scheduleID, stationID, arrivalTime, departureTime, and trainID'
             });
         }
 
         const journey = await Journey.create({
-            trainID,
-            departureStationID,
-            arrivalStationID,
-            departureTime,
+            journeyID,
+            scheduleID,
+            stationID,
             arrivalTime,
-            journeyDate,
-            distance
+            departureTime,
+            trainID
         });
 
         res.status(201).json({
@@ -119,24 +116,21 @@ export const createJourney = async (req, res) => {
 export const updateJourney = async (req, res) => {
     try {
         const { id } = req.params;
-        const { trainID, departureStationID, arrivalStationID, departureTime, arrivalTime, journeyDate, distance } = req.body;
+        const { scheduleID, stationID, arrivalTime, departureTime, trainID } = req.body;
 
-        // Validate request
-        if (!trainID || !departureStationID || !arrivalStationID || !departureTime || !arrivalTime || !journeyDate) {
+        if (!scheduleID || !stationID || !arrivalTime || !departureTime || !trainID) {
             return res.status(400).json({
                 success: false,
-                message: 'Please provide trainID, departureStationID, arrivalStationID, departureTime, arrivalTime, and journeyDate'
+                message: 'Please provide scheduleID, stationID, arrivalTime, departureTime, and trainID'
             });
         }
 
         const updatedJourney = await Journey.update(id, {
-            trainID,
-            departureStationID,
-            arrivalStationID,
-            departureTime,
+            scheduleID,
+            stationID,
             arrivalTime,
-            journeyDate,
-            distance
+            departureTime,
+            trainID
         });
 
         if (!updatedJourney) {

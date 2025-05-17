@@ -34,22 +34,20 @@ class Journey {
         }
     }
 
-    static async create({ trainID, departureStationID, arrivalStationID, departureTime, arrivalTime, journeyDate, distance }) {
+    static async create({ journeyID, scheduleID, stationID, arrivalTime, departureTime, trainID }) {
         try {
             const [result] = await pool.query(
-                'INSERT INTO journey (trainID, departureStationID, arrivalStationID, departureTime, arrivalTime, journeyDate, distance) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [trainID, departureStationID, arrivalStationID, departureTime, arrivalTime, journeyDate, distance]
+                'INSERT INTO journey (journeyID, scheduleID, stationID, arrivalTime, departureTime, trainID) VALUES (?, ?, ?, ?, ?, ?)',
+                [journeyID, scheduleID, stationID, arrivalTime, departureTime, trainID]
             );
 
             return {
-                journeyID: result.insertId,
-                trainID,
-                departureStationID,
-                arrivalStationID,
-                departureTime,
+                journeyID,
+                scheduleID,
+                stationID,
                 arrivalTime,
-                journeyDate,
-                distance
+                departureTime,
+                trainID
             };
         } catch (error) {
             console.error('Error inserting journey:', error);
@@ -59,18 +57,27 @@ class Journey {
 
     static async update(journeyID, journeyData) {
         try {
-            const { trainID, departureStationID, arrivalStationID, departureTime, arrivalTime, journeyDate, distance } = journeyData;
+            const { scheduleID, stationID, arrivalTime, departureTime, trainID } = journeyData;
+
             const [result] = await pool.query(
-                'UPDATE journey SET trainID = ?, departureStationID = ?, arrivalStationID = ?, departureTime = ?, arrivalTime = ?, journeyDate = ?, distance = ? WHERE journeyID = ?',
-                [trainID, departureStationID, arrivalStationID, departureTime, arrivalTime, journeyDate, distance, journeyID]
+                'UPDATE journey SET scheduleID = ?, stationID = ?, arrivalTime = ?, departureTime = ?, trainID = ? WHERE journeyID = ?',
+                [scheduleID, stationID, arrivalTime, departureTime, trainID, journeyID]
             );
 
             if (result.affectedRows === 0) {
                 return null;
             }
 
-            return { journeyID, trainID, departureStationID, arrivalStationID, departureTime, arrivalTime, journeyDate, distance };
+            return {
+                journeyID,
+                scheduleID,
+                stationID,
+                arrivalTime,
+                departureTime,
+                trainID
+            };
         } catch (error) {
+            console.error('Error updating journey:', error);
             throw error;
         }
     }

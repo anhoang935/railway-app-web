@@ -76,20 +76,19 @@ export const createCoach = async (req, res) => {
             coachData = req.body;
         }
 
-        const { trainID, coach_typeID, coachNumber, seatCapacity } = coachData;
+        const { trainID, coach_typeID, coachID } = coachData;
 
-        if (!trainID || !coach_typeID || !coachNumber) {
+        if (!trainID || !coach_typeID || !coachID) {
             return res.status(400).json({
                 success: false,
-                message: 'Please provide trainID, coach_typeID, and coachNumber'
+                message: 'Please provide trainID, coach_typeID, and coachID'
             });
         }
 
         const coach = await Coach.create({
+            coachID,
             trainID,
-            coach_typeID,
-            coachNumber,
-            seatCapacity
+            coach_typeID
         });
 
         res.status(201).json({
@@ -109,20 +108,18 @@ export const createCoach = async (req, res) => {
 export const updateCoach = async (req, res) => {
     try {
         const { id } = req.params;
-        const { trainID, coach_typeID, coachNumber, seatCapacity } = req.body;
+        const { trainID, coach_typeID } = req.body;
 
-        if (!trainID || !coach_typeID || !coachNumber) {
+        if (!trainID || !coach_typeID) {
             return res.status(400).json({
                 success: false,
-                message: 'Please provide trainID, coach_typeID, and coachNumber'
+                message: 'Please provide trainID and coach_typeID'
             });
         }
 
         const updatedCoach = await Coach.update(id, {
             trainID,
-            coach_typeID,
-            coachNumber,
-            seatCapacity
+            coach_typeID
         });
 
         if (!updatedCoach) {
