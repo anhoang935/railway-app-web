@@ -5,6 +5,9 @@ import cookieParser from 'cookie-parser';
 import stationRoutes from './routes/station.js';
 import trainRoutes from './routes/train.js';
 import coachTypeRoutes from './routes/coachType.js';
+import bookingRoutes from './routes/booking.js';
+import coachRoutes from './routes/coach.js';
+import journeyRoutes from './routes/journey.js';
 
 dotenv.config();
 
@@ -18,12 +21,13 @@ app.use(express.text());
 app.use(cors());
 app.use(cookieParser());
 
-
 // Routes
 app.use('/api/v1/stations', stationRoutes);
 app.use('/api/v1/trains', trainRoutes);
 app.use('/api/v1/coach-types', coachTypeRoutes);
-
+app.use('/api/v1/bookings', bookingRoutes);
+app.use('/api/v1/coaches', coachRoutes);
+app.use('/api/v1/journeys', journeyRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
