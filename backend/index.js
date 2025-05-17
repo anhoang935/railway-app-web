@@ -8,6 +8,7 @@ import coachTypeRoutes from './routes/coachType.js';
 import bookingRoutes from './routes/booking.js';
 import coachRoutes from './routes/coach.js';
 import journeyRoutes from './routes/journey.js';
+import passengerRoutes from './routes/passenger.js';
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ app.use('/api/v1/coach-types', coachTypeRoutes);
 app.use('/api/v1/bookings', bookingRoutes);
 app.use('/api/v1/coaches', coachRoutes);
 app.use('/api/v1/journeys', journeyRoutes);
+app.use('/api/v1/passengers', passengerRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
