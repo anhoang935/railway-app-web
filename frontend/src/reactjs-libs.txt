@@ -3,7 +3,7 @@ npx create-react-app frontend
 then cd .\frontend\
 then npm install
 
-Library:
+Libraries:
 npm install -D tailwindcss@3 
 npm install -D postcss autoprefixer
 npx tailwindcss init // No need
