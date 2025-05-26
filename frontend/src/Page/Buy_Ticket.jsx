@@ -232,9 +232,9 @@ const Buy_Ticket = () => {
         
         columns.push(
           <div key={`separator-${c}`} className="column-separator">
-            <div className="flex w-4 h-20 bg-gray-300 rounded-sm"></div> 
+            <div className="flex w-3 h-12 bg-gray-300 rounded-sm sm:w-4 sm:h-20"></div> 
             <div className="flex-1"></div>
-            <div className="flex w-4 h-20 bg-gray-300 rounded-sm"></div> 
+            <div className="flex w-3 h-12 bg-gray-300 rounded-sm sm:w-4 sm:h-20"></div> 
           </div>
         );
       } 
