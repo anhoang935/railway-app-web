@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import trainService from '../../../data/Service/trainService';
 import { FaEdit, FaTrash, FaPlus, FaSave, FaTimes } from 'react-icons/fa';
 
-const TrainManagement = ({ setActiveTab }) => {
+const TrainManagement = () => {
     const [trains, setTrains] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -284,83 +284,83 @@ const TrainManagement = ({ setActiveTab }) => {
                     {trains.length > 0 ? (
                         trains.map((train) => (
                             <tr key={train.trainID} className={editingId === train.trainID ? 'bg-yellow-50' : ''}>
-                            <td className="px-4 py-2 border">
-                                {editingId === train.trainID ? (
-                                <input
-                                    type="text"
-                                    name="trainName"
-                                    value={formData.trainName}
-                                    onChange={handleChange}
-                                    className="w-full px-2 py-1 border rounded"
-                                />
-                                ) : (
-                                train.trainName
-                                )}
-                            </td>
-                            <td className="px-4 py-2 border">
-                                {editingId === train.trainID ? (
-                                <select
-                                    name="trainType"
-                                    value={formData.trainType}
-                                    onChange={handleChange}
-                                    className="w-full px-2 py-1 border rounded"
-                                >
-                                    <option value="SE">SE</option>
-                                    <option value="TN">TN</option>
-                                </select>
-                                ) : (
-                                train.trainType
-                                )}
-                            </td>
-                            <td className="px-4 py-2 border">
-                                {editingId === train.trainID ? (
-                                <input
-                                    type="number"
-                                    name="coachTotal"
-                                    value={formData.coachTotal}
-                                    onChange={handleChange}
-                                    className="w-full px-2 py-1 border rounded"
-                                    min="1"
-                                />
-                                ) : (
-                                train.coachTotal
-                                )}
-                            </td>
-                            <td className="px-4 py-2 border flex justify-around">
-                                {editingId === train.trainID ? (
-                                <>
-                                    <button 
-                                    onClick={handleUpdate}
-                                    className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded mr-2 flex items-center"
+                                <td className="px-4 py-2 border">
+                                    {editingId === train.trainID ? (
+                                    <input
+                                        type="text"
+                                        name="trainName"
+                                        value={formData.trainName}
+                                        onChange={handleChange}
+                                        className="w-full px-2 py-1 border rounded"
+                                    />
+                                    ) : (
+                                    train.trainName
+                                    )}
+                                </td>
+                                <td className="px-4 py-2 border">
+                                    {editingId === train.trainID ? (
+                                    <select
+                                        name="trainType"
+                                        value={formData.trainType}
+                                        onChange={handleChange}
+                                        className="w-full px-2 py-1 border rounded"
                                     >
-                                    <FaSave className="mr-1" /> Save
-                                    </button>
-                                    <button 
-                                    onClick={handleCancel}
-                                    className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center"
-                                    >
-                                    <FaTimes className="mr-1" /> Cancel
-                                    </button>
-                                </>
-                                ) : (
-                                <>
-                                    <button 
-                                    onClick={() => handleEdit(train)}
-                                    disabled={isAdding || editingId !== null}
-                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded mr-2 flex items-center"
-                                    >
-                                    <FaEdit className="mr-1" /> Edit
-                                    </button>
-                                    <button 
-                                    onClick={() => handleDelete(train.trainID)}
-                                    disabled={isAdding || editingId !== null}
-                                    className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded flex items-center"
-                                    >
-                                    <FaTrash className="mr-1" /> Delete
-                                    </button>
-                                </>
-                                )}
-                            </td>
+                                        <option value="SE">SE</option>
+                                        <option value="TN">TN</option>
+                                    </select>
+                                    ) : (
+                                    train.trainType
+                                    )}
+                                </td>
+                                <td className="px-4 py-2 border">
+                                    {editingId === train.trainID ? (
+                                    <input
+                                        type="number"
+                                        name="coachTotal"
+                                        value={formData.coachTotal}
+                                        onChange={handleChange}
+                                        className="w-full px-2 py-1 border rounded"
+                                        min="1"
+                                    />
+                                    ) : (
+                                    train.coachTotal
+                                    )}
+                                </td>
+                                <td className="px-4 py-2 border flex justify-around">
+                                    {editingId === train.trainID ? (
+                                    <>
+                                        <button 
+                                        onClick={handleUpdate}
+                                        className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded mr-2 flex items-center"
+                                        >
+                                        <FaSave className="mr-1" /> Save
+                                        </button>
+                                        <button 
+                                        onClick={handleCancel}
+                                        className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                        >
+                                        <FaTimes className="mr-1" /> Cancel
+                                        </button>
+                                    </>
+                                    ) : (
+                                    <>
+                                        <button 
+                                        onClick={() => handleEdit(train)}
+                                        disabled={isAdding || editingId !== null}
+                                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded mr-2 flex items-center"
+                                        >
+                                        <FaEdit className="mr-1" /> Edit
+                                        </button>
+                                        <button 
+                                        onClick={() => handleDelete(train.trainID)}
+                                        disabled={isAdding || editingId !== null}
+                                        className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                        >
+                                        <FaTrash className="mr-1" /> Delete
+                                        </button>
+                                    </>
+                                    )}
+                                </td>
                             </tr>
                         ))
                         ) : (
