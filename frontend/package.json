@@ -9,7 +9,7 @@
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.9.0",
     "bootstrap": "^5.3.3",
-    "framer-motion": "^12.4.10",
+    "framer-motion": "^12.12.2",
     "lucide-react": "^0.477.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -20,7 +20,7 @@
     "reactstrap": "^9.2.3",
     "remixicon": "^4.6.0",
     "slick-carousel": "^1.8.1",
-    "styled-components": "^6.1.17",
+    "styled-components": "^6.1.18",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
