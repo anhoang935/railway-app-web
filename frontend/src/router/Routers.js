@@ -11,7 +11,7 @@ import Timetable from '../Page/Timetable'
 import Forgot_Password from '../Page/Forgot_Password'
 import Settings from "../Page/Settings/Settings"
 import Admin from "../Page/Admin/Admin"
-
+import Checkout from '../Page/Checkout'
 const Routers = () => {
   return (
     <Routes>
@@ -27,6 +27,7 @@ const Routers = () => {
       <Route path='/forgot-password' element={<Forgot_Password />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="/admin" element={<Admin />} />
+      <Route path='/checkout' element={<Checkout />} />
     </Routes>
   )
 }
