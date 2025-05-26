@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import stationRoutes from './routes/station.js';
 import trainRoutes from './routes/train.js';
 import coachTypeRoutes from './routes/coachType.js';
+import ticketRoutes from './routes/ticket.js';
 
 dotenv.config();
 
@@ -23,7 +24,7 @@ app.use(cookieParser());
 app.use('/api/v1/stations', stationRoutes);
 app.use('/api/v1/trains', trainRoutes);
 app.use('/api/v1/coach-types', coachTypeRoutes);
-
+app.use('/api/v1/tickets', ticketRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
