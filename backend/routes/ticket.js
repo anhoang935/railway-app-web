@@ -1,29 +1,19 @@
 import express from 'express';
 import {
-  getAllTickets,
-  getTicket,
-  getTicketsByPassenger,
-  getTicketsByBooking,
-  getTicketsByTrain,
-  getAvailableSeats,
-  createTicket,
-  updateTicket,
-  deleteTicket
+    getAllTickets,
+    getFilteredTickets,
+    createTicket,
+    deleteTicket
 } from '../controllers/ticketController.js';
 
-const router = express.Router();
+const router = express.Router()
 
 // Public routes
-router.get('/', getAllTickets);
-router.get('/:id', getTicket);
-router.get('/passenger/:passengerId', getTicketsByPassenger);
-router.get('/booking/:bookingId', getTicketsByBooking);
-router.get('/train/:trainId', getTicketsByTrain);
-router.get('/seats/:trainId/:date/:coachId', getAvailableSeats);
+router.get('/',getFilteredTickets);
+router.post('/',createTicket);
+router.delete('/:id', deleteTicket);
 
 // Admin routes
-router.post('/', createTicket);
-router.put('/:id', updateTicket);
-router.delete('/:id', deleteTicket);
+router.get('/', getAllTickets);
 
 export default router;
