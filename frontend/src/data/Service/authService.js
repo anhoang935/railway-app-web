@@ -15,7 +15,9 @@ const authService = {
             const response = await axios.post(`${BASE_URL}/register`, {
                 UserName: userData.name,
                 Email: userData.email,
-                Password: userData.password
+                Password: userData.password,
+                Gender: userData.gender,
+                PhoneNumber: userData.phone
             });
             return response.data;
         } catch (error) {
@@ -30,7 +32,7 @@ const authService = {
                 email: credentials.email,
                 password: credentials.password
             });
-            
+
             // Store token in localStorage
             if (response.data.data.token) {
                 localStorage.setItem('authToken', response.data.data.token);
@@ -38,7 +40,7 @@ const authService = {
                 localStorage.setItem('userEmail', response.data.data.user.email);
                 localStorage.setItem('userName', response.data.data.user.username);
             }
-            
+
             return response.data;
         } catch (error) {
             console.error('Error logging in:', error);
@@ -104,7 +106,7 @@ const authService = {
         const userId = localStorage.getItem('userId');
         const userEmail = localStorage.getItem('userEmail');
         const userName = localStorage.getItem('userName');
-        
+
         if (token && userId) {
             return {
                 userId: parseInt(userId),

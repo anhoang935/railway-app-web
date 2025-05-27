@@ -64,7 +64,7 @@ class User {
   }
 
   // Create new user
-  static async create({ UserName, Email, Password, VerifyCode, Status }) {
+  static async create({ UserName, Email, Password, Gender, PhoneNumber, VerifyCode, Status }) {
     try {
       // Check if username already exists
       const existingUsername = await User.findByUsername(UserName);
@@ -79,15 +79,16 @@ class User {
       }
 
       const [result] = await pool.query(
-        'INSERT INTO user (UserName, Email, Password, VerifyCode, Status) VALUES (?, ?, ?, ?, ?)',
-        [UserName, Email, Password, VerifyCode || null, Status || 'pending']
+        'INSERT INTO user (UserName, Email, Password, Gender, PhoneNumber, VerifyCode, Status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [UserName, Email, Password, Gender, PhoneNumber, VerifyCode || null, Status || 'pending']
       );
 
       return {
         userID: result.insertId,
         UserName,
         Email,
-        Password, // In production, you might want to exclude this
+        Gender,
+        PhoneNumber,
         VerifyCode,
         Status: Status || 'pending'
       };

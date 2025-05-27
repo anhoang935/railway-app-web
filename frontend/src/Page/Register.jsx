@@ -3,13 +3,10 @@ import { motion } from 'framer-motion';
 import { Container, Row, Col, Form, FormGroup, Button, Alert } from "reactstrap";
 import { Link, useNavigate } from 'react-router-dom';
 import { Gift, User, Lock, Mail, Eye, EyeOff, Phone } from 'lucide-react';
-// import { authService } from '../data/Service/authService';
-// import { useUsers } from "./admin/UsersContext";
+import authService from '../data/Service/authService';
 import '../styles/register.css';
 
 const Register = () => {
-  // const { addUser } = useUsers();
-
   const genderOptions = [
     { value: 'Male', label: 'Male' },
     { value: 'Female', label: 'Female' },
@@ -46,52 +43,52 @@ const Register = () => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
-  
+
     // Validation checks
     const validationErrors = [];
-  
+
     // Name validation
     if (formData.name.length < 2) {
       validationErrors.push("Name must be at least 2 characters long");
     }
-  
+
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       validationErrors.push("Please enter a valid email address");
     }
-  
+
     // Phone validation
     const phoneRegex = /^[0-9]{10}$/; // Assumes 10-digit phone number
     if (!phoneRegex.test(formData.phone)) {
       validationErrors.push("Phone number must be 10 digits long");
     }
-  
+
     if (formData.password.length < 8) {
       validationErrors.push("Password must be at least 8 characters long");
     }
-  
+
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(formData.password)) {
       validationErrors.push("Password must include uppercase, lowercase, number, and special character");
     }
-  
+
     if (formData.password !== formData.confirmPassword) {
       validationErrors.push("Passwords do not match");
     }
-  
+
     if (!formData.gender) {
       validationErrors.push("Please select a gender");
     }
-  
+
     if (validationErrors.length > 0) {
       setError(validationErrors.join(". "));
       return;
     }
-  
+
     try {
-      // const response = await authService.register(formData)
-      // setSuccess(response.message || 'Registration successful');
+      const response = await authService.register(formData);
+      setSuccess(response.message || 'Registration successful');
       setTimeout(() => {
         navigate('/login');
       }, 2000);
@@ -129,14 +126,12 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-white flex items-center justify-center p-4 relative overflow-hidden">
-
-      {/* Main Register Card */}
+    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-white flex flex-col p-4 pt-28 relative overflow-hidden">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: isVisible ? 1 : 0, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="bg-white bg-opacity-80 backdrop-blur-lg rounded-2xl shadow-2xl p-8 w-full max-w-md z-10 border-4 border-blue-300 mt-14 mb-14"
+        className="bg-white bg-opacity-80 backdrop-blur-lg rounded-2xl shadow-2xl p-8 w-full max-w-md z-10 border-4 border-blue-300 mx-auto mt-3"
       >
         <div className="text-center mb-6">
           <div className="flex justify-center items-center mb-4">
@@ -295,8 +290,8 @@ const Register = () => {
         <div className="text-center mt-4">
           <p className="text-blue-600">
             Already have an account?{' '}
-            <Link 
-              to="/login" 
+            <Link
+              to="/login"
               className="text-blue-800 font-bold hover:underline"
             >
               Login

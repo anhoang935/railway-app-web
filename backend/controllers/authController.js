@@ -12,7 +12,46 @@ const generateToken = (userId) => {
 // Register user
 export const register = async (req, res) => {
   try {
-    const { UserName, Email, Password } = req.body;
+    const { UserName, Email, Password, Gender, PhoneNumber } = req.body;
+
+    // Validate input
+    const validationErrors = [];
+
+    // Name validation
+    if (UserName.length < 2) {
+      validationErrors.push("Name must be at least 2 characters long");
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(Email)) {
+      validationErrors.push("Please enter a valid email address");
+    }
+
+    // Phone validation (if provided)
+    if (PhoneNumber) {
+      const phoneRegex = /^[0-9]{10}$/;
+      if (!phoneRegex.test(PhoneNumber)) {
+        validationErrors.push("Phone number must be 10 digits long");
+      }
+    }
+
+    // Password validation
+    if (Password.length < 8) {
+      validationErrors.push("Password must be at least 8 characters long");
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(Password)) {
+      validationErrors.push("Password must include uppercase, lowercase, number, and special character");
+    }
+
+    if (validationErrors.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: validationErrors.join(". ")
+      });
+    }
 
     // Check if user already exists
     const existingUserByEmail = await User.findByEmail(Email);
@@ -43,6 +82,8 @@ export const register = async (req, res) => {
       UserName,
       Email,
       Password: hashedPassword,
+      Gender,
+      PhoneNumber,
       VerifyCode: verifyCode,
       Status: 'pending' // User needs email verification
     };
@@ -56,6 +97,8 @@ export const register = async (req, res) => {
         userId: newUser.userID,
         username: newUser.UserName,
         email: newUser.Email,
+        gender: newUser.Gender,
+        phone: newUser.PhoneNumber,
         status: newUser.Status
       }
     });
@@ -146,7 +189,7 @@ export const verifyEmail = async (req, res) => {
     }
 
     const result = await User.verifyEmail(userId, verifyCode);
-    
+
     if (result) {
       res.status(200).json({
         success: true,
@@ -189,7 +232,7 @@ export const forgotPassword = async (req, res) => {
 
     // Generate new verification code for password reset
     const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
-    
+
     // Update user with reset code
     await User.update(user.userID, { VerifyCode: resetCode });
 
@@ -234,9 +277,9 @@ export const resetPassword = async (req, res) => {
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
     // Update password and clear verification code
-    await User.update(user.userID, { 
-      Password: hashedPassword, 
-      VerifyCode: null 
+    await User.update(user.userID, {
+      Password: hashedPassword,
+      VerifyCode: null
     });
 
     res.status(200).json({
