@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Form, Alert } from "reactstrap";
 import { Link, useNavigate } from 'react-router-dom';
 import { Gift, User, Lock, EyeOff, Eye } from 'lucide-react';
+import authService from '../data/Service/authService';
 import '../styles/login.css';
 
 
@@ -31,25 +32,26 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [snowflakes, setSnowflakes] = useState([]);
-  const [userId, setUserId] = useState(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
     setIsVisible(true);
-    localStorage.removeItem('email');
-    localStorage.removeItem('password');
-    localStorage.removeItem('rememberMe');
+    
+    // Check if user is already logged in
+    if (authService.isAuthenticated()) {
+      navigate('/home');
+      return;
+    }
 
+    // Check for remembered credentials
     const storedEmail = localStorage.getItem('email');
     const storedPassword = localStorage.getItem('password');
     const storedRememberMe = localStorage.getItem('rememberMe') === 'true';
 
-    if (storedRememberMe) {
+    if (storedRememberMe && storedEmail && storedPassword) {
       setCredentials({
-        email: storedEmail || '',
-        password: storedPassword || ''
+        email: storedEmail,
+        password: storedPassword
       });
       setRememberMe(true);
     }
@@ -66,10 +68,12 @@ const Login = () => {
     };
 
     createSnowflakes();
-  }, []);
+  }, [navigate]);
 
   const handleChange = (e) => {
     setCredentials((prev) => ({ ...prev, [e.target.id]: e.target.value }));
+    // Clear errors when user starts typing
+    if (error) setError(null);
   };
 
   const handleClick = async (e) => {
@@ -80,34 +84,58 @@ const Login = () => {
     setLoadingMessage('Checking credentials, please wait...');
 
     try {
-
-      localStorage.setItem('userId', userId);
-
-      localStorage.removeItem('otpVerified');
-
-
-      if (rememberMe) {
-        localStorage.setItem('email', credentials.email);
-        localStorage.setItem('password', credentials.password);
-        localStorage.setItem('rememberMe', 'true');
-      } else {
-        localStorage.removeItem('email');
-        localStorage.removeItem('password');
-        localStorage.setItem('rememberMe', 'false');
+      // Validate input
+      if (!credentials.email || !credentials.password) {
+        throw new Error('Please fill in all fields');
       }
 
-      // setSuccess('Login successful! Welcome back.');
-      // setLoadingMessage('Successful! Redirecting...');
+      // Call login API
+      const response = await authService.login(credentials);
 
-      // setTimeout(() => {
-      //   setLoading(false);
-      //   navigate('/home');
-      // }, 2000);
+      if (response.success) {
+        // Handle remember me
+        if (rememberMe) {
+          localStorage.setItem('email', credentials.email);
+          localStorage.setItem('password', credentials.password);
+          localStorage.setItem('rememberMe', 'true');
+        } else {
+          localStorage.removeItem('email');
+          localStorage.removeItem('password');
+          localStorage.setItem('rememberMe', 'false');
+        }
+
+        setSuccess('Login successful! Welcome back.');
+        setLoadingMessage('Success! Redirecting...');
+
+        setTimeout(() => {
+          setLoading(false);
+          navigate('/home');
+        }, 2000);
+      }
     } catch (error) {
       console.error('Error logging in:', error);
       setLoading(false);
-      setLoadingMessage(''); // Clear loading message
+      setLoadingMessage('');
       
+      if (error.response) {
+        switch (error.response.status) {
+          case 400:
+            setError('Please fill in all required fields');
+            break;
+          case 401:
+            setError(error.response.data.message || 'Invalid email or password');
+            break;
+          case 500:
+            setError('Server error. Please try again later.');
+            break;
+          default:
+            setError('Login failed. Please try again.');
+        }
+      } else if (error.request) {
+        setError('Network error. Please check your connection.');
+      } else {
+        setError(error.message || 'Login failed. Please try again.');
+      }
     }
   };
 
@@ -117,7 +145,6 @@ const Login = () => {
       {loading ? (
         <LoadingEffect message={loadingMessage} />
       ) : (
-        // Main Login Card
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -128,16 +155,14 @@ const Login = () => {
             <div className="flex justify-center items-center mb-4">
               <h1 className="text-3xl font-bold text-blue-800">Welcome back to TAB!</h1>
             </div>
-            <p className="text-blue-600">"Placeholder"</p>
+            <p className="text-blue-600">Sign in to your account</p>
           </div>
 
-          {/* Error and Success Alerts */}
           {error && <Alert color="danger" className="mb-4">{error}</Alert>}
           {success && <Alert color="success" className="mb-4">{success}</Alert>}
 
           <Form onSubmit={handleClick}>
             <div className="space-y-4">
-              {/* Email Input */}
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <User className="text-blue-500" size={20} />
@@ -153,7 +178,6 @@ const Login = () => {
                 />
               </div>
 
-              {/* Password Input */}
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock className="text-blue-500" size={20} />
@@ -176,7 +200,6 @@ const Login = () => {
                 </button>
               </div>
 
-              {/* Remember Me and Forgot Password */}
               <div className="flex justify-between items-center">
                 <div className="flex items-center">
                   <input
@@ -193,17 +216,16 @@ const Login = () => {
                 </Link>
               </div>
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 className="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center"
+                disabled={loading}
               >
-                Log in
+                {loading ? 'Signing in...' : 'Log in'}
               </button>
             </div>
           </Form>
 
-          {/* Sign Up Link */}
           <div className="text-center mt-4">
             <p className="text-blue-600">
               Don't have an account?
@@ -215,7 +237,6 @@ const Login = () => {
         </motion.div>
       )}
 
-      {/* Custom Snowflake Animation */}
       <style jsx>{`
         @keyframes float {
           0% { transform: translateY(0) rotate(0deg); }

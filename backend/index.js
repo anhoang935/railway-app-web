@@ -12,7 +12,7 @@ import passengerRoutes from './routes/passenger.js';
 import scheduleRoutes from './routes/schedule.js';
 import ticketRoutes from './routes/ticket.js';
 import userRoutes from './routes/user.js';
-import ticketRoutes from './routes/ticket.js';
+import authRoutes from './routes/auth.js';
 
 dotenv.config();
 
@@ -30,7 +30,7 @@ app.use(cookieParser());
 app.use('/api/v1/stations', stationRoutes);
 app.use('/api/v1/trains', trainRoutes);
 app.use('/api/v1/coach-types', coachTypeRoutes);
-
+app.use('/api/v1/auth', authRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
