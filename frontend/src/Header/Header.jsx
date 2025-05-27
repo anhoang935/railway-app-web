@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row } from 'reactstrap';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, Heart, Settings, TicketsPlane } from 'lucide-react';
+import { Menu, X, Heart, Settings, TicketsPlane, LogOut } from 'lucide-react';
 import logo from '../images/TAB.gif';
+import authService from '../data/Service/authService';
 import './header.css';
 import '../ui/CustomButtons/settingsbutton.css';
 import LongButton from "../ui/CustomButtons/LongButton";
@@ -19,6 +20,8 @@ const nav_links = [
 const Header = () => {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState(false); // Add this state
+    const [currentUser, setCurrentUser] = useState(null); // Add this state
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -33,9 +36,42 @@ const Header = () => {
         };
     }, []);
 
+    // Add this useEffect to check authentication status
+    useEffect(() => {
+        const checkAuth = () => {
+            const authStatus = authService.isAuthenticated();
+            const user = authService.getCurrentUser();
+            setIsAuthenticated(authStatus);
+            setCurrentUser(user);
+        };
+
+        checkAuth();
+        
+        // Check auth status when location changes
+        checkAuth();
+    }, [location]);
+
     const toggleMobileMenu = () => {
         setMobileMenuOpen(!isMobileMenuOpen);
-    }
+    };
+
+    // Add logout handler
+    const handleLogout = () => {
+        authService.logout();
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+        navigate('/home');
+    };
+
+    // Add login handler
+    const handleLogin = () => {
+        navigate('/login');
+    };
+
+    // Add register handler
+    const handleRegister = () => {
+        navigate('/register');
+    };
 
     return (
         <header
@@ -48,13 +84,13 @@ const Header = () => {
                 <Row>
                     <nav className="navbar">
                         <div className='logo-container'>
-                            <a href="#" className="logo">
-                                <img src={logo} alt="" />
-                            </a>
+                            <Link to="/home" className="logo">
+                                <img src={logo} alt="TAB Logo" />
+                            </Link>
                         </div>
 
-                        {/* This is for Desktop yo */}
-                        <ul className={`nav-links desktop-menu  ${isScrolled ? 'scrolled' : ''}`}>
+                        {/* Desktop Navigation */}
+                        <ul className={`nav-links desktop-menu ${isScrolled ? 'scrolled' : ''}`}>
                             {nav_links.map((item, index) => (
                                 <li className='nav__item' key={index}>
                                     <NavLink
@@ -74,29 +110,56 @@ const Header = () => {
                             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                         </div>
 
+                        {/* Auth Buttons */}
                         <div className={`auth-buttons ${isScrolled ? 'scrolled-button' : ''}`}>
-                            <button className="btn btn-outline">
-                                <Link to="/login">Log In</Link>
-                            </button>
-                            <button className="btn btn-primary">
-                                <Link to="/register">Sign Up</Link>
-                            </button>
+                            {isAuthenticated ? (
+                                // Show user info and logout when authenticated
+                                <>
+                                    <div className="user-info">
+                                        <span className="welcome-text">
+                                            Welcome, {currentUser?.username || 'User'}!
+                                        </span>
+                                    </div>
+                                    <button 
+                                        className="btn btn-outline"
+                                        onClick={handleLogout}
+                                        title="Logout"
+                                    >
+                                        <LogOut size={18} />
+                                        Logout
+                                    </button>
+                                </>
+                            ) : (
+                                // Show login/register when not authenticated
+                                <>
+                                    <button 
+                                        className="btn btn-outline"
+                                        onClick={handleLogin}
+                                    >
+                                        Log In
+                                    </button>
+                                    <button 
+                                        className="btn btn-primary"
+                                        onClick={handleRegister}
+                                    >
+                                        Sign Up
+                                    </button>
+                                </>
+                            )}
+                            
                             <button
                                 className="setting-btn"
-                                // Tooltip (this will show when users hover mouse onto the button)
-                                // title="Settings"
+                                title="Settings"
                                 onClick={() => navigate('/settings')}
                             >
                                 <span className="bar bar1"></span>
                                 <span className="bar bar2"></span>
                                 <span className="bar bar1"></span>
                             </button>
-                            {/* <Link to="/settings"></Link> */}
                             <LongButton onClick={() => navigate('/admin')} />
                         </div>
 
-                        {/* This is for mobile header aka menu */}
-                        {/* Mobile thì nói là Mobile, aka cc, đấm giờ :c */}
+                        {/* Mobile Menu */}
                         <div className={`mobile-menu ${isMobileMenuOpen ? 'open' : ''}`}>
                             <ul className='mobile-nav-links'>
                                 {nav_links.map((item, index) => (
@@ -112,18 +175,43 @@ const Header = () => {
                                     </li>
                                 ))}
                                 <div className="mobile-auth-buttons">
-                                    <button
-                                        className="btn btn-outline"
-                                        onClick={() => setMobileMenuOpen(false)}
-                                    >
-                                        <Link to="/login">Log In</Link>
-                                    </button>
-                                    <button
-                                        className="btn btn-primary"
-                                        onClick={() => setMobileMenuOpen(false)}
-                                    >
-                                        <Link to="/register">Sign Up</Link>
-                                    </button>
+                                    {isAuthenticated ? (
+                                        <>
+                                            <div className="mobile-user-info">
+                                                <span>Welcome, {currentUser?.username}!</span>
+                                            </div>
+                                            <button
+                                                className="btn btn-outline"
+                                                onClick={() => {
+                                                    setMobileMenuOpen(false);
+                                                    handleLogout();
+                                                }}
+                                            >
+                                                Logout
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <button
+                                                className="btn btn-outline"
+                                                onClick={() => {
+                                                    setMobileMenuOpen(false);
+                                                    handleLogin();
+                                                }}
+                                            >
+                                                Log In
+                                            </button>
+                                            <button
+                                                className="btn btn-primary"
+                                                onClick={() => {
+                                                    setMobileMenuOpen(false);
+                                                    handleRegister();
+                                                }}
+                                            >
+                                                Sign Up
+                                            </button>
+                                        </>
+                                    )}
                                     <button
                                         className="setting-btn"
                                         onClick={() => {
