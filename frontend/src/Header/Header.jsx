@@ -166,8 +166,6 @@ const Header = () => {
                                             </div>
                                         )}
                                     </div>
-                                    
-                                    <LongButton onClick={() => navigate('/admin')} />
                                 </>
                             ) : (
                                 // Show login/register when not authenticated
@@ -186,6 +184,9 @@ const Header = () => {
                                     </button>
                                 </>
                             )}
+                            
+                            {/* Admin Panel button - moved outside the authentication conditional to show for all users */}
+                            <LongButton onClick={() => navigate('/admin')} />
                             
                             <button
                                 className="setting-btn"
