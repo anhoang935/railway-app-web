@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Form, Alert } from "reactstrap";
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Key, CheckCircle } from 'lucide-react';
+import { CheckCircle, Key } from 'lucide-react';
 import authService from "../../data/Service/authService";
 
 const EmailVerification = () => {

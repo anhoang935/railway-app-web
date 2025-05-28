@@ -3,33 +3,27 @@ import jwt from 'jsonwebtoken';
 import User from '../models/Users.js';
 import { sendVerificationEmail } from '../utils/emailService.js';
 
-// Generate JWT Token
 const generateToken = (userId) => {
   return jwt.sign({ userId }, process.env.JWT_SECRET || 'your-secret-key', {
     expiresIn: '7d'
   });
 };
 
-// Register user
 export const register = async (req, res) => {
   try {
     const { UserName, Email, Password, Gender, PhoneNumber } = req.body;
 
-    // Validate input
     const validationErrors = [];
 
-    // Name validation
     if (UserName.length < 2) {
       validationErrors.push("Name must be at least 2 characters long");
     }
 
-    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(Email)) {
       validationErrors.push("Please enter a valid email address");
     }
 
-    // Phone validation (if provided)
     if (PhoneNumber) {
       const phoneRegex = /^[0-9]{10}$/;
       if (!phoneRegex.test(PhoneNumber)) {
@@ -37,7 +31,6 @@ export const register = async (req, res) => {
       }
     }
 
-    // Password validation
     if (Password.length < 8) {
       validationErrors.push("Password must be at least 8 characters long");
     }
@@ -54,7 +47,6 @@ export const register = async (req, res) => {
       });
     }
 
-    // Check if user already exists
     const existingUserByEmail = await User.findByEmail(Email);
     if (existingUserByEmail) {
       return res.status(409).json({
@@ -71,14 +63,11 @@ export const register = async (req, res) => {
       });
     }
 
-    // Hash password
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(Password, saltRounds);
 
-    // Generate verification code
     const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Create user
     const userData = {
       UserName,
       Email,
@@ -86,17 +75,15 @@ export const register = async (req, res) => {
       Gender,
       PhoneNumber,
       VerifyCode: verifyCode,
-      Status: 'pending' // User needs email verification
+      Status: 'pending'
     };
 
     const newUser = await User.create(userData);
 
-    // Send verification email
     try {
       await sendVerificationEmail(Email, verifyCode);
     } catch (emailError) {
       console.error('Failed to send verification email:', emailError);
-      // Continue with registration even if email fails
     }
 
     res.status(201).json({
@@ -120,12 +107,10 @@ export const register = async (req, res) => {
   }
 };
 
-// Login user
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validate input
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -133,7 +118,6 @@ export const login = async (req, res) => {
       });
     }
 
-    // Find user by email
     const user = await User.findByEmail(email);
     if (!user) {
       return res.status(401).json({
@@ -142,7 +126,6 @@ export const login = async (req, res) => {
       });
     }
 
-    // Check if user is verified
     if (user.Status !== 'verified' && user.Status !== 'active') {
       return res.status(401).json({
         success: false,
@@ -150,7 +133,6 @@ export const login = async (req, res) => {
       });
     }
 
-    // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.Password);
     if (!isPasswordValid) {
       return res.status(401).json({
@@ -159,10 +141,8 @@ export const login = async (req, res) => {
       });
     }
 
-    // Generate token
     const token = generateToken(user.userID);
 
-    // Send response
     res.status(200).json({
       success: true,
       message: 'Login successful',
@@ -185,7 +165,6 @@ export const login = async (req, res) => {
   }
 };
 
-// Verify email
 export const verifyEmail = async (req, res) => {
   try {
     const { userId, verifyCode } = req.body;
@@ -219,7 +198,6 @@ export const verifyEmail = async (req, res) => {
   }
 };
 
-// Reset password
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -239,13 +217,10 @@ export const forgotPassword = async (req, res) => {
       });
     }
 
-    // Generate new verification code for password reset
     const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Update user with reset code
     await User.update(user.userID, { VerifyCode: resetCode });
 
-    // Send email with reset code
     try {
       await sendVerificationEmail(user.Email, resetCode);
     } catch (emailError) {
@@ -256,11 +231,9 @@ export const forgotPassword = async (req, res) => {
       });
     }
 
-    // In a real app, you would send this code via email
     res.status(200).json({
       success: true,
       message: 'Password reset code sent to your email',
-      // Remove this in production - only for testing
       resetCode: resetCode
     });
   } catch (error) {
@@ -272,7 +245,6 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
-// Reset password with code
 export const resetPassword = async (req, res) => {
   try {
     const { email, verifyCode, newPassword } = req.body;
@@ -292,11 +264,9 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    // Hash new password
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
-    // Update password and clear verification code
     await User.update(user.userID, {
       Password: hashedPassword,
       VerifyCode: null
@@ -315,7 +285,6 @@ export const resetPassword = async (req, res) => {
   }
 };
 
-// Resend verification code
 export const resendVerificationCode = async (req, res) => {
   try {
     const { userId } = req.body;
@@ -327,7 +296,6 @@ export const resendVerificationCode = async (req, res) => {
       });
     }
 
-    // Find the user
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
@@ -336,13 +304,10 @@ export const resendVerificationCode = async (req, res) => {
       });
     }
 
-    // Generate new verification code
     const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Update user with new verification code
     await User.update(userId, { VerifyCode: verifyCode });
 
-    // Send the verification email
     try {
       await sendVerificationEmail(user.Email, verifyCode);
     } catch (emailError) {
@@ -357,8 +322,6 @@ export const resendVerificationCode = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'New verification code sent to your email'
-      // Remove this in production - only for testing
-      // resetCode: verifyCode
     });
   } catch (error) {
     console.error('Resend verification code error:', error);
