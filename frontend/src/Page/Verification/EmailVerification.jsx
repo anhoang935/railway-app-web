@@ -11,26 +11,22 @@ const EmailVerification = () => {
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
     const [isVisible, setIsVisible] = useState(false);
-    const [timer, setTimer] = useState(600); // 10 minutes in seconds
+    const [timer, setTimer] = useState(600);    // 10 minutes 
     const [canResend, setCanResend] = useState(false);
     const [resendLoading, setResendLoading] = useState(false);
 
     const navigate = useNavigate();
     const location = useLocation();
     const { userId, email } = location.state || {};
-
-    // Create a single ref that holds an array instead of an array of refs
     const inputRefsContainer = useRef([]);
 
     useEffect(() => {
         setIsVisible(true);
 
-        // If no user details are provided, redirect to login
         if (!userId || !email) {
             navigate('/login', { replace: true });
         }
 
-        // Timer countdown
         const interval = setInterval(() => {
             setTimer((prev) => {
                 if (prev <= 1) {
@@ -57,12 +53,10 @@ const EmailVerification = () => {
         newOtp[index] = value;
         setOtp(newOtp);
 
-        // Auto-focus next input
         if (value && index < 5) {
             inputRefsContainer.current[index + 1].focus();
         }
 
-        // Auto-submit when all fields are filled
         if (newOtp.every(digit => digit !== '') && newOtp.join('').length === 6) {
             handleSubmit(newOtp.join(''));
         }
@@ -85,12 +79,9 @@ const EmailVerification = () => {
         setSuccess(null);
 
         try {
-            // Call verify email API
             const response = await authService.verifyEmail(userId, otpValue);
-
             setSuccess(response.message || 'Email verified successfully!');
 
-            // Redirect to login after success
             setTimeout(() => {
                 navigate('/login', { state: { verificationSuccess: true } });
             }, 3000);
@@ -103,7 +94,6 @@ const EmailVerification = () => {
                 setError('Network error. Please try again.');
             }
 
-            // Clear OTP inputs on error
             setOtp(['', '', '', '', '', '']);
             inputRefsContainer.current[0].focus();
         } finally {
@@ -119,11 +109,9 @@ const EmailVerification = () => {
         setSuccess(null);
 
         try {
-            // Call resend verification code API
             const response = await authService.resendVerificationCode(userId);
             setSuccess(response.message || 'Verification code resent to your email');
 
-            // Reset timer and OTP
             setTimer(600);
             setCanResend(false);
             setOtp(['', '', '', '', '', '']);
@@ -146,7 +134,7 @@ const EmailVerification = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: isVisible ? 1 : 0, y: 0 }}
                 transition={{ duration: 0.8 }}
-                className="bg-white bg-opacity-80 backdrop-blur-lg rounded-2xl shadow-2xl p-8 w-full max-w-md z-10 border-4 border-blue-300"
+                className="bg-white bg-opacity-80 backdrop-blur-lg rounded-2xl shadow-2xl p-8 w-full max-w-md z-10 border-4 border-blue-300 -mt-16"
             >
                 <div className="text-center mb-6">
                     <div className="flex justify-center items-center mb-4">
@@ -163,7 +151,6 @@ const EmailVerification = () => {
                 {success && <Alert color="success" className="mb-4">{success}</Alert>}
 
                 <div className="space-y-6">
-                    {/* OTP Input Fields */}
                     <div className="flex justify-center space-x-3">
                         {otp.map((digit, index) => (
                             <input
@@ -180,7 +167,6 @@ const EmailVerification = () => {
                         ))}
                     </div>
 
-                    {/* Timer */}
                     <div className="text-center">
                         <div className="flex items-center justify-center text-blue-600 mb-2">
                             <Clock className="mr-2" size={16} />
@@ -190,7 +176,6 @@ const EmailVerification = () => {
                         </div>
                     </div>
 
-                    {/* Verify Button */}
                     <button
                         onClick={() => handleSubmit()}
                         disabled={loading || otp.some(digit => digit === '')}
@@ -199,7 +184,6 @@ const EmailVerification = () => {
                         {loading ? 'Verifying...' : 'Verify OTP'}
                     </button>
 
-                    {/* Resend Button */}
                     <button
                         onClick={handleResendCode}
                         disabled={!canResend && timer > 0 || resendLoading}
@@ -214,7 +198,6 @@ const EmailVerification = () => {
                         }
                     </button>
 
-                    {/* Back Button */}
                     <button
                         onClick={handleBackToLogin}
                         className="w-full text-gray-600 hover:text-gray-800 transition"
