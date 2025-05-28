@@ -6,10 +6,9 @@ import {
 import userService from "../../data/Service/userService";
 import { useAuth } from "../../context/authContext";
 import { useNavigate } from "react-router-dom";
-// import './settings.css';
 
 export default function Settings() {
-    const { currentUser } = useAuth();
+    const { currentUser, loading: authLoading } = useAuth();
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(true);
     const [formData, setFormData] = useState({
@@ -32,12 +31,18 @@ export default function Settings() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        if (!currentUser) {
-            navigate('/login');
-            return;
-        }
-
         const fetchUserData = async () => {
+            // Only try to fetch data if the auth state has finished loading
+            // and we have a currentUser
+            if (authLoading) {
+                return; // Wait for auth to finish loading
+            }
+
+            if (!currentUser) {
+                setIsLoading(false);
+                return;
+            }
+
             if (currentUser && currentUser.userID) {
                 try {
                     setIsLoading(true);
@@ -74,7 +79,7 @@ export default function Settings() {
         };
 
         fetchUserData();
-    }, [currentUser, navigate]);
+    }, [currentUser, authLoading, navigate]);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -140,11 +145,32 @@ export default function Settings() {
         setIsEditing(!isEditing);
     };
 
-    if (isLoading) {
+    // IMPORTANT: This is the key change - full page overlay during loading
+    if (authLoading || isLoading) {
         return (
-            <div className="flex justify-center items-center py-20">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-                <span className="ml-3 text-gray-600">Loading user data...</span>
+            <div className="fixed inset-0 bg-white z-50 flex justify-center items-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+                    <span className="block mt-3 text-gray-600">Loading...</span>
+                </div>
+            </div>
+        );
+    }
+
+    // Only show not authenticated message if auth loading is done and no user found
+    if (!authLoading && !currentUser) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh]">
+                <div className="text-center p-8 max-w-md">
+                    <h2 className="text-2xl font-bold text-red-600 mb-4">Authentication Required</h2>
+                    <p className="text-gray-600 mb-6">Please log in to access your account settings.</p>
+                    <button
+                        onClick={() => navigate('/login')}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+                    >
+                        Go to Login
+                    </button>
+                </div>
             </div>
         );
     }

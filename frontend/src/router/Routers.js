@@ -13,6 +13,7 @@ import Settings from "../Page/Settings/Settings"
 import Admin from "../Page/Admin/Admin"
 import Checkout from '../Page/Checkout'
 import EmailVerification from "../Page/Verification/EmailVerification"
+import ProtectedRoute from './ProtectedRoute';
 
 const Routers = () => {
   return (
@@ -27,10 +28,14 @@ const Routers = () => {
       <Route path='/login' element={<Login />} />
       <Route path='/register' element={<Register />} />
       <Route path='/forgot-password' element={<Forgot_Password />} />
-      <Route path="/settings" element={<Settings />} />
+      <Route path="/settings" element={
+        <ProtectedRoute>
+          <Settings />
+        </ProtectedRoute>
+      } />
       <Route path="/admin" element={<Admin />} />
       <Route path='/checkout' element={<Checkout />} />
-      <Route path="/verify-email" element={<EmailVerification />} /> 
+      <Route path="/verify-email" element={<EmailVerification />} />
     </Routes>
   )
 }
