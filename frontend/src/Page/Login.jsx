@@ -1,10 +1,11 @@
 import 'tailwindcss/tailwind.css'
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Form, Alert } from "reactstrap";
+import { Container, Row, Col, Form, Alert } from "reactstrap";
 import { Link, useNavigate } from 'react-router-dom';
-import { Gift, User, Lock, EyeOff, Eye } from 'lucide-react';
+import { User, Lock, Eye, EyeOff } from 'lucide-react';
 import authService from '../data/Service/authService';
+import OTPVerification from '../components/OTPVerification';
 import '../styles/login.css';
 
 
@@ -32,6 +33,8 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [snowflakes, setSnowflakes] = useState([]);
+  const [showOTPVerification, setShowOTPVerification] = useState(false);
+  const [loginData, setLoginData] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -92,18 +95,15 @@ const Login = () => {
       // Call login API
       const response = await authService.login(credentials);
 
-      if (response.success) {
-        // Handle remember me
-        if (rememberMe) {
-          localStorage.setItem('email', credentials.email);
-          localStorage.setItem('password', credentials.password);
-          localStorage.setItem('rememberMe', 'true');
-        } else {
-          localStorage.removeItem('email');
-          localStorage.removeItem('password');
-          localStorage.setItem('rememberMe', 'false');
-        }
-
+      if (response.success && response.requiresOTP) {
+        // Show OTP verification step
+        setLoginData(response.data);
+        setShowOTPVerification(true);
+        setLoading(false);
+        setLoadingMessage('');
+        setSuccess('OTP sent to your email. Please check your inbox.');
+      } else if (response.success) {
+        // Direct login (fallback for backward compatibility)
         setSuccess('Login successful! Welcome back.');
         setLoadingMessage('Success! Redirecting...');
 
@@ -139,11 +139,43 @@ const Login = () => {
     }
   };
 
+  const handleOTPSuccess = (response) => {
+    // Handle remember me
+    if (rememberMe) {
+      localStorage.setItem('email', credentials.email);
+      localStorage.setItem('password', credentials.password);
+      localStorage.setItem('rememberMe', 'true');
+    } else {
+      localStorage.removeItem('email');
+      localStorage.removeItem('password');
+      localStorage.setItem('rememberMe', 'false');
+    }
+
+    setSuccess('Login successful! Welcome back.');
+    setTimeout(() => {
+      navigate('/home');
+    }, 1500);
+  };
+
+  const handleBackToLogin = () => {
+    setShowOTPVerification(false);
+    setLoginData(null);
+    setError(null);
+    setSuccess(null);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 to-white flex items-center justify-center p-4 relative overflow-hidden">
 
       {loading ? (
         <LoadingEffect message={loadingMessage} />
+      ) : showOTPVerification ? (
+        <OTPVerification
+          userId={loginData.userId}
+          email={loginData.email}
+          onSuccess={handleOTPSuccess}
+          onBack={handleBackToLogin}
+        />
       ) : (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -211,6 +243,7 @@ const Login = () => {
                   />
                   <label htmlFor="remember-me" className="text-blue-600">Remember me</label>
                 </div>
+
                 <Link to='/forgot-password' className="text-blue-600 hover:underline">
                   Forgot password?
                 </Link>

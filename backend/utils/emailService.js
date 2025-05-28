@@ -4,7 +4,7 @@ const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD
+        pass: process.env.EMAIL_PASS
     },
     secure: true,
     port: 465,
@@ -32,4 +32,54 @@ export const sendVerificationEmail = async (email, verificationCode) => {
     };
 
     await transporter.sendMail(mailOptions);
+};
+
+// Function to send OTP email (new)
+export const sendOTPEmail = async (email, otp, userName) => {
+  try {
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'TAB Railway - Login Verification Code',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #0066ff;">TAB Railway</h1>
+          </div>
+          
+          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+            <h2 style="color: #333; margin-bottom: 15px;">Login Verification Code</h2>
+            <p style="color: #666; margin-bottom: 15px;">Hello ${userName},</p>
+            <p style="color: #666; margin-bottom: 20px;">
+              You have requested to login to your TAB Railway account. Please use the following verification code:
+            </p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <div style="display: inline-block; background-color: #0066ff; color: white; padding: 15px 30px; border-radius: 8px; font-size: 24px; font-weight: bold; letter-spacing: 3px;">
+                ${otp}
+              </div>
+            </div>
+            
+            <p style="color: #666; margin-bottom: 10px;">
+              <strong>Important:</strong> This code will expire in 10 minutes.
+            </p>
+            <p style="color: #666;">
+              If you didn't request this code, please ignore this email or contact our support team.
+            </p>
+          </div>
+          
+          <div style="text-align: center; color: #999; font-size: 12px;">
+            <p>This is an automated message from TAB Railway. Please do not reply to this email.</p>
+          </div>
+        </div>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`OTP email sent successfully to: ${email}`);
+    return true;
+  } catch (error) {
+    console.error('Error sending OTP email:', error);
+    throw new Error('Failed to send OTP email');
+  }
 };

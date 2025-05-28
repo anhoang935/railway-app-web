@@ -33,7 +33,21 @@ const authService = {
                 password: credentials.password
             });
 
-            // Store token in localStorage
+            return response.data;
+        } catch (error) {
+            console.error('Error logging in:', error);
+            throw error;
+        }
+    },
+
+    verifyLoginOTP: async (userId, otp) => {
+        try {
+            const response = await axios.post(`${BASE_URL}/verify-login-otp`, {
+                userId,
+                otp
+            });
+
+            // Store token after successful OTP verification
             if (response.data.data.token) {
                 localStorage.setItem('authToken', response.data.data.token);
                 localStorage.setItem('userId', response.data.data.user.userId.toString());
@@ -43,7 +57,19 @@ const authService = {
 
             return response.data;
         } catch (error) {
-            console.error('Error logging in:', error);
+            console.error('Error verifying OTP:', error);
+            throw error;
+        }
+    },
+
+    resendOTP: async (userId) => {
+        try {
+            const response = await axios.post(`${BASE_URL}/resend-otp`, {
+                userId
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error resending OTP:', error);
             throw error;
         }
     },

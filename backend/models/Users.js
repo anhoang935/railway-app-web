@@ -1,5 +1,8 @@
 import pool from '../Config/db.js';
 
+// In-memory storage for OTP codes
+const otpStorage = new Map();
+
 class User {
   // Get all users
   static async findAll() {
@@ -174,6 +177,9 @@ class User {
         [userID]
       );
 
+      // Clean up any OTP data for this user
+      otpStorage.delete(userID.toString());
+
       return result.affectedRows > 0;
     } catch (error) {
       throw error;
@@ -260,6 +266,118 @@ class User {
       throw error;
     }
   }
+
+  // Generate and store OTP (in memory)
+  static async generateOTP(userID) {
+    try {
+      // Check if user exists
+      const user = await User.findById(userID);
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
+      const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+
+      // Store OTP in memory with user ID as key
+      otpStorage.set(userID.toString(), {
+        otp: otp,
+        expiry: otpExpiry,
+        attempts: 0 // Track failed attempts
+      });
+
+      console.log(`Generated OTP ${otp} for user ${userID}, expires at ${otpExpiry}`);
+      return otp;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Verify OTP (from memory)
+  static async verifyOTP(userID, otp) {
+    try {
+      const userIDStr = userID.toString();
+      const otpData = otpStorage.get(userIDStr);
+
+      if (!otpData) {
+        throw new Error('No OTP found for this user');
+      }
+
+      const now = new Date();
+
+      // Check if OTP has expired
+      if (now > otpData.expiry) {
+        // Clean up expired OTP
+        otpStorage.delete(userIDStr);
+        throw new Error('OTP has expired');
+      }
+
+      // Check if OTP matches
+      if (otpData.otp !== otp) {
+        // Increment failed attempts
+        otpData.attempts += 1;
+        
+        // Lock out after 3 failed attempts
+        if (otpData.attempts >= 3) {
+          otpStorage.delete(userIDStr);
+          throw new Error('Too many failed attempts. Please request a new OTP.');
+        }
+        
+        otpStorage.set(userIDStr, otpData);
+        throw new Error('Invalid OTP');
+      }
+
+      // Clear OTP after successful verification
+      otpStorage.delete(userIDStr);
+      console.log(`OTP verified successfully for user ${userID}`);
+
+      return true;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Clear OTP (from memory)
+  static async clearOTP(userID) {
+    try {
+      const userIDStr = userID.toString();
+      const deleted = otpStorage.delete(userIDStr);
+      console.log(`OTP cleared for user ${userID}: ${deleted ? 'success' : 'not found'}`);
+      return true;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Clean up expired OTPs (optional cleanup method)
+  static cleanupExpiredOTPs() {
+    const now = new Date();
+    for (const [userID, otpData] of otpStorage.entries()) {
+      if (now > otpData.expiry) {
+        otpStorage.delete(userID);
+        console.log(`Cleaned up expired OTP for user ${userID}`);
+      }
+    }
+  }
+
+  // Get OTP info (for debugging - remove in production)
+  static getOTPInfo(userID) {
+    const otpData = otpStorage.get(userID.toString());
+    if (otpData) {
+      return {
+        hasOTP: true,
+        expiry: otpData.expiry,
+        attempts: otpData.attempts,
+        timeRemaining: Math.max(0, otpData.expiry - new Date())
+      };
+    }
+    return { hasOTP: false };
+  }
 }
+
+// Optional: Set up periodic cleanup of expired OTPs
+setInterval(() => {
+  User.cleanupExpiredOTPs();
+}, 5 * 60 * 1000); // Clean up every 5 minutes
 
 export default User;

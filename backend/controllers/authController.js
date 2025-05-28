@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/Users.js';
-import { sendVerificationEmail } from '../utils/emailService.js';
+import { sendVerificationEmail, sendOTPEmail } from '../utils/emailService.js';
 
 const generateToken = (userId) => {
   return jwt.sign({ userId }, process.env.JWT_SECRET || 'your-secret-key', {
@@ -107,6 +107,7 @@ export const register = async (req, res) => {
   }
 };
 
+// Login user - Modified to include OTP
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -141,8 +142,57 @@ export const login = async (req, res) => {
       });
     }
 
+    // Generate and send OTP
+    const otp = await User.generateOTP(user.userID);
+    await sendOTPEmail(user.Email, otp, user.UserName);
+
+    // Send response (don't include token yet)
+    res.status(200).json({
+      success: true,
+      message: 'OTP sent to your email. Please verify to complete login.',
+      requiresOTP: true,
+      data: {
+        userId: user.userID,
+        email: user.Email
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Verify OTP - Second step of login
+export const verifyLoginOTP = async (req, res) => {
+  try {
+    const { userId, otp } = req.body;
+
+    if (!userId || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID and OTP are required'
+      });
+    }
+
+    // Verify OTP
+    await User.verifyOTP(userId, otp);
+
+    // Get user details
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Generate token after successful OTP verification
     const token = generateToken(user.userID);
 
+    // Send response with token
     res.status(200).json({
       success: true,
       message: 'Login successful',
@@ -157,10 +207,48 @@ export const login = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('OTP verification error:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message || 'Invalid OTP'
+    });
+  }
+};
+
+// Resend OTP
+export const resendOTP = async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is required'
+      });
+    }
+
+    // Get user details
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Generate and send new OTP
+    const otp = await User.generateOTP(user.userID);
+    await sendOTPEmail(user.Email, otp, user.UserName);
+
+    res.status(200).json({
+      success: true,
+      message: 'New OTP sent to your email'
+    });
+  } catch (error) {
+    console.error('Resend OTP error:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Failed to resend OTP'
     });
   }
 };
