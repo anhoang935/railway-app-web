@@ -93,6 +93,12 @@ export default function Settings() {
         e.preventDefault();
 
         if (isEditing) {
+            // Add confirmation dialog
+            const isConfirmed = window.confirm("Are you sure you want to save these changes?");
+            if (!isConfirmed) {
+                return; // Exit if user cancels
+            }
+
             if (formData.password && formData.password !== formData.confirmPassword) {
                 alert("Passwords do not match");
                 return;
@@ -280,7 +286,7 @@ export default function Settings() {
                                     value={formData.address}
                                     onChange={handleChange}
                                     disabled={!isEditing}
-                                    className="w-full border rounded-lg px-3 py-2"
+                                    className="w-full border rounded-lg px-3 py-2 resize-none"
                                 />
                             </div>
                         </div>
