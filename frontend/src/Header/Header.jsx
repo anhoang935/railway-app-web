@@ -5,9 +5,9 @@ import { Menu, X, LogOut, User, Settings, CreditCard, History, Bell, ChevronDown
 import logo from '../images/TAB.gif';
 import authService from '../data/Service/authService';
 import './header.css';
-import '../ui/CustomButtons/settingsbutton.css';
+// import '../ui/CustomButtons/settingsbutton.css';
 
-// Options for the "Admin Panel" button
+// Button Options
 // import LongButton from "../ui/CustomButtons/LongButton";
 import BlackButton from "../ui/CustomButtons/BlackButton";
 
@@ -191,7 +191,7 @@ const Header = () => {
                                     </button>
                                 </>
                             )}
-                            
+
                             <button
                                 className="setting-btn"
                                 title="Settings"

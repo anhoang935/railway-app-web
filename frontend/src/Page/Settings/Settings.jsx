@@ -1,33 +1,24 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     User, UserRoundPen, Lock, Mail, Phone, MapPin, Calendar, CheckCircle,
     KeyRound, Save, SlidersHorizontal, ChefHat, Accessibility, School
 } from "lucide-react";
+import userService from "../../data/Service/userService";
+import { useAuth } from "../../context/authContext";
+import { useNavigate } from "react-router-dom";
 // import './settings.css';
 
 export default function Settings() {
-    // const [formData, setFormData] = useState({
-    //     fullName: "",
-    //     gender: "",
-    //     dob: "",
-    //     email: "",
-    //     phone: "",
-    //     address: "",
-    //     preferredClass: "",
-    //     mealPreference: "",
-    //     specialAssistance: false,
-    //     password: "",
-    //     confirmPassword: "",
-    // });
-
-    // For testing
+    const { currentUser } = useAuth();
+    const navigate = useNavigate();
+    const [isLoading, setIsLoading] = useState(true);
     const [formData, setFormData] = useState({
-        fullName: "Binh Chan",
-        gender: "male",
-        dob: "1990-01-01",
-        email: "john.doe@example.com",
-        phone: "123-456-7890",
-        address: "123 Main St",
+        fullName: "",
+        gender: "",
+        dob: "",
+        email: "",
+        phone: "",
+        address: "",
         preferredClass: "first",
         mealPreference: "veg",
         specialAssistance: false,
@@ -37,8 +28,56 @@ export default function Settings() {
 
     const [isEditing, setIsEditing] = useState(false);
     const [activeTab, setActiveTab] = useState("profile");
-    const [notification, setNotification] = useState("");
     const [showNotification, setShowNotification] = useState(false);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        // If user is not logged in, redirect to login
+        if (!currentUser) {
+            navigate('/login');
+            return;
+        }
+
+        const fetchUserData = async () => {
+            if (currentUser && currentUser.userID) {
+                try {
+                    setIsLoading(true);
+                    setError(null);
+                    const userData = await userService.getUserByID(currentUser.userID);
+
+                    // Format date to YYYY-MM-DD for input[type="date"]
+                    let formattedDob = userData.DateOfBirth;
+                    if (userData.DateOfBirth) {
+                        const date = new Date(userData.DateOfBirth);
+                        formattedDob = date.toISOString().split('T')[0];
+                    }
+
+                    // Map the user data from backend to the form format
+                    setFormData({
+                        fullName: userData.UserName || "",
+                        gender: userData.Gender?.toLowerCase() || "",
+                        dob: formattedDob || "",
+                        email: userData.Email || "",
+                        phone: userData.PhoneNumber || "",
+                        address: userData.Address || "",
+                        // These might be stored in a user preferences table or elsewhere
+                        preferredClass: userData.PreferredClass || "first",
+                        mealPreference: userData.MealPreference || "veg",
+                        specialAssistance: userData.SpecialAssistance || false,
+                        password: "",
+                        confirmPassword: "",
+                    });
+                } catch (error) {
+                    console.error("Error fetching user data:", error);
+                    setError("Failed to load user data. Please try again.");
+                } finally {
+                    setIsLoading(false);
+                }
+            }
+        };
+
+        fetchUserData();
+    }, [currentUser, navigate]);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -48,20 +87,76 @@ export default function Settings() {
         });
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log("Updated Settings:", formData);
-        setIsEditing(false);
-        setShowNotification(true);
-        setTimeout(() => {
-            setShowNotification(false);
-        }, 3000);
-    };
 
+        if (isEditing) {
+            // Check if passwords match if changing password
+            if (formData.password && formData.password !== formData.confirmPassword) {
+                alert("Passwords do not match");
+                return;
+            }
+
+            try {
+                // Prepare data for update
+                const userUpdateData = {
+                    UserName: formData.fullName,
+                    Gender: formData.gender,
+                    DateOfBirth: formData.dob,
+                    Email: formData.email,
+                    PhoneNumber: formData.phone,
+                    Address: formData.address,
+                    PreferredClass: formData.preferredClass,
+                    MealPreference: formData.mealPreference,
+                    SpecialAssistance: formData.specialAssistance
+                };
+
+                // Update user data
+                await userService.updateUser(currentUser.userID, userUpdateData);
+
+                // If password was changed, update it separately
+                if (formData.password) {
+                    await userService.updateUserPassword(currentUser.userID, {
+                        newPassword: formData.password
+                    });
+
+                    // Clear password fields after update
+                    setFormData(prev => ({
+                        ...prev,
+                        password: "",
+                        confirmPassword: ""
+                    }));
+                }
+
+                setIsEditing(false);
+                setShowNotification(true);
+
+                // Hide notification after 3 seconds
+                setTimeout(() => {
+                    setShowNotification(false);
+                }, 3000);
+            } catch (error) {
+                console.error("Error updating user data:", error);
+                alert("Failed to update profile. Please try again.");
+            }
+        } else {
+            setIsEditing(true);
+        }
+    };
 
     const handleEditToggle = () => {
         setIsEditing(!isEditing);
     };
+
+    // If the page is still loading or there's no current user, show a loading indicator
+    if (isLoading) {
+        return (
+            <div className="flex justify-center items-center py-20">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                <span className="ml-3 text-gray-600">Loading user data...</span>
+            </div>
+        );
+    }
 
     return (
         <div className="animate-fadeInUp max-w-3xl mx-auto p-4 space-y-6">

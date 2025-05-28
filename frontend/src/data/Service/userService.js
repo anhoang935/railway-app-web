@@ -9,10 +9,16 @@ const getBaseUrl = () => {
 
 const BASE_URL = getBaseUrl();
 
+// Add auth token to requests
+const authHeader = () => {
+    const token = localStorage.getItem('authToken');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 const userService = {
     getAllUsers: async () => {
         try {
-            const response = await axios.get(BASE_URL);
+            const response = await axios.get(BASE_URL, { headers: authHeader() });
             return response.data.data;
         } catch (error) {
             console.error('Error fetching users:', error);
@@ -22,7 +28,7 @@ const userService = {
 
     getUserByID: async (id) => {
         try {
-            const response = await axios.get(`${BASE_URL}/${id}`);
+            const response = await axios.get(`${BASE_URL}/${id}`, { headers: authHeader() });
             return response.data.data;
         } catch (error) {
             console.error('Error fetching user by ID:', error);
@@ -82,7 +88,12 @@ const userService = {
 
     updateUser: async (id, userData) => {
         try {
-            const response = await axios.put(`${BASE_URL}/${id}`, userData);
+            const response = await axios.put(`${BASE_URL}/${id}`, userData, {
+                headers: {
+                    ...authHeader(),
+                    'Content-Type': 'application/json'
+                }
+            });
             return response.data.data;
         } catch (error) {
             console.error('Error updating user:', error);
@@ -100,9 +111,14 @@ const userService = {
         }
     },
 
-    updateUserPassword: async (id, newPassword) => {
+    updateUserPassword: async (id, passwordData) => {
         try {
-            const response = await axios.put(`${BASE_URL}/${id}/password`, { newPassword });
+            const response = await axios.put(`${BASE_URL}/${id}/password`, passwordData, {
+                headers: {
+                    ...authHeader(),
+                    'Content-Type': 'application/json'
+                }
+            });
             return response.data;
         } catch (error) {
             console.error('Error updating user password:', error);
