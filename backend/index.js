@@ -31,6 +31,7 @@ app.use('/api/v1/stations', stationRoutes);
 app.use('/api/v1/trains', trainRoutes);
 app.use('/api/v1/coach-types', coachTypeRoutes);
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/tickets', ticketRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
