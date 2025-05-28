@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/Users.js';
+import { sendVerificationEmail } from '../utils/emailService.js';
 
 // Generate JWT Token
 const generateToken = (userId) => {
@@ -90,6 +91,14 @@ export const register = async (req, res) => {
 
     const newUser = await User.create(userData);
 
+    // Send verification email
+    try {
+      await sendVerificationEmail(Email, verifyCode);
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      // Continue with registration even if email fails
+    }
+
     res.status(201).json({
       success: true,
       message: 'User registered successfully. Please check your email for verification.',
@@ -134,7 +143,7 @@ export const login = async (req, res) => {
     }
 
     // Check if user is verified
-    if (user.Status !== 'active') {
+    if (user.Status !== 'verified' && user.Status !== 'active') {
       return res.status(401).json({
         success: false,
         message: 'Please verify your email before logging in'
@@ -236,6 +245,17 @@ export const forgotPassword = async (req, res) => {
     // Update user with reset code
     await User.update(user.userID, { VerifyCode: resetCode });
 
+    // Send email with reset code
+    try {
+      await sendVerificationEmail(user.Email, resetCode);
+    } catch (emailError) {
+      console.error('Failed to send password reset email:', emailError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send password reset email'
+      });
+    }
+
     // In a real app, you would send this code via email
     res.status(200).json({
       success: true,
@@ -288,6 +308,60 @@ export const resetPassword = async (req, res) => {
     });
   } catch (error) {
     console.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Resend verification code
+export const resendVerificationCode = async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is required'
+      });
+    }
+
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Generate new verification code
+    const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Update user with new verification code
+    await User.update(userId, { VerifyCode: verifyCode });
+
+    // Send the verification email
+    try {
+      await sendVerificationEmail(user.Email, verifyCode);
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError.message);
+      console.error('Error details:', emailError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send verification email: ' + emailError.message
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'New verification code sent to your email'
+      // Remove this in production - only for testing
+      // resetCode: verifyCode
+    });
+  } catch (error) {
+    console.error('Resend verification code error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'

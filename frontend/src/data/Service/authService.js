@@ -97,6 +97,18 @@ const authService = {
         }
     },
 
+    resendVerificationCode: async (userId) => {
+        try {
+            const response = await axios.post(`${BASE_URL}/resend-verification`, {
+                userId
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error resending verification code:', error);
+            throw error;
+        }
+    },
+
     isAuthenticated: () => {
         return !!localStorage.getItem('authToken');
     },

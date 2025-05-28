@@ -5,6 +5,7 @@ npm install express mysql2 dotenv cors
 npm install -D nodemon
 npm install cookie-parser
 npm install bcryptjs jsonwebtoken
+npm install nodemailer
 
 backend libs:
 axios: cd frontend -> npm install axios

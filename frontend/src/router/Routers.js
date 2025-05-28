@@ -12,6 +12,8 @@ import Forgot_Password from '../Page/Forgot_Password'
 import Settings from "../Page/Settings/Settings"
 import Admin from "../Page/Admin/Admin"
 import Checkout from '../Page/Checkout'
+import EmailVerification from "../Page/Verification/EmailVerification"
+
 const Routers = () => {
   return (
     <Routes>
@@ -28,6 +30,7 @@ const Routers = () => {
       <Route path="/settings" element={<Settings />} />
       <Route path="/admin" element={<Admin />} />
       <Route path='/checkout' element={<Checkout />} />
+      <Route path="/verify-email" element={<EmailVerification />} /> 
     </Routes>
   )
 }
