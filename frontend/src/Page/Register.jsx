@@ -22,7 +22,7 @@ const Register = () => {
     password: '',
     confirmPassword: '',
   });
-  
+
   const [isVisible, setIsVisible] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -41,7 +41,7 @@ const Register = () => {
 
   const validateForm = () => {
     const validationErrors = [];
-    
+
     if (formData.name.length < 2) {
       validationErrors.push("Name must be at least 2 characters long");
     }
@@ -180,7 +180,7 @@ const Register = () => {
             <Alert color="danger" className="mb-4">{error}</Alert>
           </motion.div>
         )}
-        
+
         {success && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
             <Alert color="success" className="mb-4">{success}</Alert>
