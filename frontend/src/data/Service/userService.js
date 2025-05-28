@@ -9,7 +9,6 @@ const getBaseUrl = () => {
 
 const BASE_URL = getBaseUrl();
 
-// Add auth token to requests
 const authHeader = () => {
     const token = localStorage.getItem('authToken');
     return token ? { Authorization: `Bearer ${token}` } : {};

@@ -32,7 +32,6 @@ export default function Settings() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        // If user is not logged in, redirect to login
         if (!currentUser) {
             navigate('/login');
             return;
@@ -45,14 +44,12 @@ export default function Settings() {
                     setError(null);
                     const userData = await userService.getUserByID(currentUser.userID);
 
-                    // Format date to YYYY-MM-DD for input[type="date"]
                     let formattedDob = userData.DateOfBirth;
                     if (userData.DateOfBirth) {
                         const date = new Date(userData.DateOfBirth);
                         formattedDob = date.toISOString().split('T')[0];
                     }
 
-                    // Map the user data from backend to the form format
                     setFormData({
                         fullName: userData.UserName || "",
                         gender: userData.Gender?.toLowerCase() || "",
@@ -60,7 +57,6 @@ export default function Settings() {
                         email: userData.Email || "",
                         phone: userData.PhoneNumber || "",
                         address: userData.Address || "",
-                        // These might be stored in a user preferences table or elsewhere
                         preferredClass: userData.PreferredClass || "first",
                         mealPreference: userData.MealPreference || "veg",
                         specialAssistance: userData.SpecialAssistance || false,
@@ -91,7 +87,6 @@ export default function Settings() {
         e.preventDefault();
 
         if (isEditing) {
-            // Check if passwords match if changing password
             if (formData.password && formData.password !== formData.confirmPassword) {
                 alert("Passwords do not match");
                 return;
@@ -111,16 +106,13 @@ export default function Settings() {
                     SpecialAssistance: formData.specialAssistance
                 };
 
-                // Update user data
                 await userService.updateUser(currentUser.userID, userUpdateData);
 
-                // If password was changed, update it separately
                 if (formData.password) {
                     await userService.updateUserPassword(currentUser.userID, {
                         newPassword: formData.password
                     });
 
-                    // Clear password fields after update
                     setFormData(prev => ({
                         ...prev,
                         password: "",
@@ -131,7 +123,6 @@ export default function Settings() {
                 setIsEditing(false);
                 setShowNotification(true);
 
-                // Hide notification after 3 seconds
                 setTimeout(() => {
                     setShowNotification(false);
                 }, 3000);
@@ -148,7 +139,6 @@ export default function Settings() {
         setIsEditing(!isEditing);
     };
 
-    // If the page is still loading or there's no current user, show a loading indicator
     if (isLoading) {
         return (
             <div className="flex justify-center items-center py-20">

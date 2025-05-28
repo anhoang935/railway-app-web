@@ -16,17 +16,14 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Check if user is authenticated on component mount
         const checkAuth = () => {
             try {
                 const user = authService.getCurrentUser();
-                if (user) {
-                    setCurrentUser({
-                        userID: user.userId,
-                        email: user.email,
-                        username: user.username
-                    });
-                }
+                user && setCurrentUser({
+                    userID: user.userId,
+                    email: user.email,
+                    username: user.username
+                });
             } catch (error) {
                 console.error("Error checking authentication status:", error);
             } finally {
@@ -50,15 +47,8 @@ export const AuthProvider = ({ children }) => {
         setCurrentUser(null);
     };
 
-    const value = {
-        currentUser,
-        loading,
-        login,
-        logout
-    };
-
     return (
-        <AuthContext.Provider value={value}>
+        <AuthContext.Provider value={{ currentUser, loading, login, logout }}>
             {!loading ? children : <div>Loading authentication...</div>}
         </AuthContext.Provider>
     );
