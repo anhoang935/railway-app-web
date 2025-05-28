@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row } from 'reactstrap';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, Heart, Settings, TicketsPlane, LogOut } from 'lucide-react';
+import { Menu, X, LogOut, User, Settings, CreditCard, History, Bell, ChevronDown } from 'lucide-react';
 import logo from '../images/TAB.gif';
 import authService from '../data/Service/authService';
 import './header.css';
@@ -24,6 +24,20 @@ const Header = () => {
     const [currentUser, setCurrentUser] = useState(null); // Add this state
     const navigate = useNavigate();
     const location = useLocation();
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const dropdownRef = useRef(null);
+    
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setDropdownOpen(false);
+            }
+        }
+        
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [dropdownRef]);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -115,19 +129,43 @@ const Header = () => {
                             {isAuthenticated ? (
                                 // Show user info and logout when authenticated
                                 <>
-                                    <div className="user-info">
-                                        <span className="welcome-text">
-                                            Welcome, {currentUser?.username || 'User'}!
-                                        </span>
+                                    <div className="user-dropdown-container" ref={dropdownRef}>
+                                        <button 
+                                            className="user-dropdown-trigger"
+                                            onClick={() => setDropdownOpen(!dropdownOpen)}
+                                        >
+                                            <span className="welcome-text">
+                                                Welcome, {currentUser?.username || 'User'}!
+                                            </span>
+                                            <ChevronDown size={16} className={`ml-1 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        
+                                        {dropdownOpen && (
+                                            <div className="user-dropdown-menu">
+                                                <Link to="/settings" className="dropdown-item" onClick={() => setDropdownOpen(false)}>
+                                                    <Settings size={16} className="item-icon" />
+                                                    <span>Settings</span>
+                                                </Link>
+                                                <Link to="/my-bookings" className="dropdown-item" onClick={() => setDropdownOpen(false)}>
+                                                    <CreditCard size={16} className="item-icon" />
+                                                    <span>My Bookings</span>
+                                                </Link>
+                                                <Link to="/travel-history" className="dropdown-item" onClick={() => setDropdownOpen(false)}>
+                                                    <History size={16} className="item-icon" />
+                                                    <span>Travel History</span>
+                                                </Link>
+                                                <Link to="/notifications" className="dropdown-item" onClick={() => setDropdownOpen(false)}>
+                                                    <Bell size={16} className="item-icon" />
+                                                    <span>Notifications</span>
+                                                </Link>
+                                                <div className="dropdown-divider"></div>
+                                                <button className="dropdown-item logout-item" onClick={handleLogout}>
+                                                    <LogOut size={16} className="item-icon" />
+                                                    <span>Logout</span>
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
-                                    <button 
-                                        className="btn btn-outline"
-                                        onClick={handleLogout}
-                                        title="Logout"
-                                    >
-                                        <LogOut size={18} />
-                                        Logout
-                                    </button>
                                 </>
                             ) : (
                                 // Show login/register when not authenticated
@@ -147,6 +185,9 @@ const Header = () => {
                                 </>
                             )}
                             
+                            {/* Admin Panel button - moved outside the authentication conditional to show for all users */}
+                            <LongButton onClick={() => navigate('/admin')} />
+                            
                             <button
                                 className="setting-btn"
                                 title="Settings"
@@ -156,7 +197,6 @@ const Header = () => {
                                 <span className="bar bar2"></span>
                                 <span className="bar bar1"></span>
                             </button>
-                            <LongButton onClick={() => navigate('/admin')} />
                         </div>
 
                         {/* Mobile Menu */}
@@ -175,42 +215,35 @@ const Header = () => {
                                     </li>
                                 ))}
                                 <div className="mobile-auth-buttons">
-                                    {isAuthenticated ? (
-                                        <>
-                                            <div className="mobile-user-info">
-                                                <span>Welcome, {currentUser?.username}!</span>
-                                            </div>
-                                            <button
-                                                className="btn btn-outline"
+                                    {isAuthenticated && (
+                                        <div className="mobile-user-dropdown">
+                                            <Link to="/settings" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
+                                                <Settings size={16} className="mr-2" />
+                                                Settings
+                                            </Link>
+                                            <Link to="/my-bookings" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
+                                                <CreditCard size={16} className="mr-2" />
+                                                My Bookings
+                                            </Link>
+                                            <Link to="/travel-history" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
+                                                <History size={16} className="mr-2" />
+                                                Travel History
+                                            </Link>
+                                            <Link to="/notifications" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
+                                                <Bell size={16} className="mr-2" />
+                                                Notifications
+                                            </Link>
+                                            <button 
+                                                className="mobile-nav-link text-red-500"
                                                 onClick={() => {
                                                     setMobileMenuOpen(false);
                                                     handleLogout();
                                                 }}
                                             >
+                                                <LogOut size={16} className="mr-2" />
                                                 Logout
                                             </button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <button
-                                                className="btn btn-outline"
-                                                onClick={() => {
-                                                    setMobileMenuOpen(false);
-                                                    handleLogin();
-                                                }}
-                                            >
-                                                Log In
-                                            </button>
-                                            <button
-                                                className="btn btn-primary"
-                                                onClick={() => {
-                                                    setMobileMenuOpen(false);
-                                                    handleRegister();
-                                                }}
-                                            >
-                                                Sign Up
-                                            </button>
-                                        </>
+                                        </div>
                                     )}
                                     <button
                                         className="setting-btn"

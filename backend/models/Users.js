@@ -1,8 +1,5 @@
 import pool from '../Config/db.js';
 
-// In-memory storage for OTP codes
-const otpStorage = new Map();
-
 class User {
   // Get all users
   static async findAll() {
@@ -104,7 +101,7 @@ class User {
   // Update user
   static async update(userID, userData) {
     try {
-      const { UserName, Email, Password, VerifyCode, Status } = userData;
+      const { UserName, Email, Password, VerifyCode, Status, OTP, OTPExpiry } = userData;
 
       // Check if user exists
       const existingUser = await User.findById(userID);
@@ -134,7 +131,9 @@ class User {
         Email = COALESCE(?, Email),
         Password = COALESCE(?, Password),
         VerifyCode = COALESCE(?, VerifyCode),
-        Status = COALESCE(?, Status)
+        Status = COALESCE(?, Status),
+        OTP = COALESCE(?, OTP),
+        OTPExpiry = COALESCE(?, OTPExpiry)
         WHERE userID = ?`,
         [
           UserName || null,
@@ -142,6 +141,8 @@ class User {
           Password || null,
           VerifyCode !== undefined ? VerifyCode : null,
           Status || null,
+          OTP !== undefined ? OTP : null,
+          OTPExpiry !== undefined ? OTPExpiry : null,
           userID
         ]
       );
@@ -176,9 +177,6 @@ class User {
         'DELETE FROM user WHERE userID = ?',
         [userID]
       );
-
-      // Clean up any OTP data for this user
-      otpStorage.delete(userID.toString());
 
       return result.affectedRows > 0;
     } catch (error) {
@@ -267,7 +265,7 @@ class User {
     }
   }
 
-  // Generate and store OTP (in memory)
+  // Generate and store OTP (in database)
   static async generateOTP(userID) {
     try {
       // Check if user exists
@@ -279,12 +277,15 @@ class User {
       const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
       const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
 
-      // Store OTP in memory with user ID as key
-      otpStorage.set(userID.toString(), {
-        otp: otp,
-        expiry: otpExpiry,
-        attempts: 0 // Track failed attempts
-      });
+      // Store OTP in database
+      const [result] = await pool.query(
+        'UPDATE user SET OTP = ?, OTPExpiry = ? WHERE userID = ?',
+        [otp, otpExpiry, userID]
+      );
+
+      if (result.affectedRows === 0) {
+        throw new Error('Failed to generate OTP');
+      }
 
       console.log(`Generated OTP ${otp} for user ${userID}, expires at ${otpExpiry}`);
       return otp;
@@ -293,85 +294,115 @@ class User {
     }
   }
 
-  // Verify OTP (from memory)
+  // Verify OTP (from database)
   static async verifyOTP(userID, otp) {
     try {
-      const userIDStr = userID.toString();
-      const otpData = otpStorage.get(userIDStr);
+      const [rows] = await pool.query(
+        'SELECT OTP, OTPExpiry FROM user WHERE userID = ?',
+        [userID]
+      );
 
-      if (!otpData) {
+      if (rows.length === 0) {
+        throw new Error('User not found');
+      }
+
+      const user = rows[0];
+      const now = new Date();
+
+      if (!user.OTP || !user.OTPExpiry) {
         throw new Error('No OTP found for this user');
       }
 
-      const now = new Date();
-
-      // Check if OTP has expired
-      if (now > otpData.expiry) {
-        // Clean up expired OTP
-        otpStorage.delete(userIDStr);
+      if (now > new Date(user.OTPExpiry)) {
+        // Clear expired OTP
+        await pool.query(
+          'UPDATE user SET OTP = NULL, OTPExpiry = NULL WHERE userID = ?',
+          [userID]
+        );
         throw new Error('OTP has expired');
       }
 
-      // Check if OTP matches
-      if (otpData.otp !== otp) {
-        // Increment failed attempts
-        otpData.attempts += 1;
-        
-        // Lock out after 3 failed attempts
-        if (otpData.attempts >= 3) {
-          otpStorage.delete(userIDStr);
-          throw new Error('Too many failed attempts. Please request a new OTP.');
-        }
-        
-        otpStorage.set(userIDStr, otpData);
+      if (user.OTP !== otp) {
         throw new Error('Invalid OTP');
       }
 
       // Clear OTP after successful verification
-      otpStorage.delete(userIDStr);
-      console.log(`OTP verified successfully for user ${userID}`);
+      await pool.query(
+        'UPDATE user SET OTP = NULL, OTPExpiry = NULL WHERE userID = ?',
+        [userID]
+      );
 
+      console.log(`OTP verified successfully for user ${userID}`);
       return true;
     } catch (error) {
       throw error;
     }
   }
 
-  // Clear OTP (from memory)
+  // Clear OTP (from database)
   static async clearOTP(userID) {
     try {
-      const userIDStr = userID.toString();
-      const deleted = otpStorage.delete(userIDStr);
-      console.log(`OTP cleared for user ${userID}: ${deleted ? 'success' : 'not found'}`);
-      return true;
+      const [result] = await pool.query(
+        'UPDATE user SET OTP = NULL, OTPExpiry = NULL WHERE userID = ?',
+        [userID]
+      );
+
+      console.log(`OTP cleared for user ${userID}: ${result.affectedRows > 0 ? 'success' : 'not found'}`);
+      return result.affectedRows > 0;
     } catch (error) {
       throw error;
     }
   }
 
-  // Clean up expired OTPs (optional cleanup method)
-  static cleanupExpiredOTPs() {
-    const now = new Date();
-    for (const [userID, otpData] of otpStorage.entries()) {
-      if (now > otpData.expiry) {
-        otpStorage.delete(userID);
-        console.log(`Cleaned up expired OTP for user ${userID}`);
+  // Clean up expired OTPs (database cleanup)
+  static async cleanupExpiredOTPs() {
+    try {
+      const now = new Date();
+      const [result] = await pool.query(
+        'UPDATE user SET OTP = NULL, OTPExpiry = NULL WHERE OTPExpiry < ?',
+        [now]
+      );
+
+      if (result.affectedRows > 0) {
+        console.log(`Cleaned up ${result.affectedRows} expired OTPs`);
       }
+      
+      return result.affectedRows;
+    } catch (error) {
+      console.error('Error cleaning up expired OTPs:', error);
+      throw error;
     }
   }
 
   // Get OTP info (for debugging - remove in production)
-  static getOTPInfo(userID) {
-    const otpData = otpStorage.get(userID.toString());
-    if (otpData) {
-      return {
-        hasOTP: true,
-        expiry: otpData.expiry,
-        attempts: otpData.attempts,
-        timeRemaining: Math.max(0, otpData.expiry - new Date())
-      };
+  static async getOTPInfo(userID) {
+    try {
+      const [rows] = await pool.query(
+        'SELECT OTP, OTPExpiry FROM user WHERE userID = ?',
+        [userID]
+      );
+
+      if (rows.length === 0) {
+        return { hasOTP: false, message: 'User not found' };
+      }
+
+      const user = rows[0];
+      if (user.OTP && user.OTPExpiry) {
+        const now = new Date();
+        const expiry = new Date(user.OTPExpiry);
+        return {
+          hasOTP: true,
+          expiry: expiry,
+          timeRemaining: Math.max(0, expiry - now),
+          isExpired: now > expiry
+        };
+      }
+      
+      return { hasOTP: false };
+    } catch (error) {
+      console.error('Error getting OTP info:', error);
+      throw error;
     }
-    return { hasOTP: false };
   }
 }
 

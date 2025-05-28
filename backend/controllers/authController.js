@@ -410,6 +410,8 @@ export const resendVerificationCode = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'New verification code sent to your email'
+      // Remove this in production - only for testing
+      // resetCode: verifyCode
     });
   } catch (error) {
     console.error('Resend verification code error:', error);

@@ -34,13 +34,12 @@ export const sendVerificationEmail = async (email, verificationCode) => {
     await transporter.sendMail(mailOptions);
 };
 
-// Function to send OTP email (new)
 export const sendOTPEmail = async (email, otp, userName) => {
   try {
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,
-      subject: 'TAB Railway - Login Verification Code',
+      subject: 'TABB Railways Corporation - Login Verification Code',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="text-align: center; margin-bottom: 30px;">
@@ -51,7 +50,7 @@ export const sendOTPEmail = async (email, otp, userName) => {
             <h2 style="color: #333; margin-bottom: 15px;">Login Verification Code</h2>
             <p style="color: #666; margin-bottom: 15px;">Hello ${userName},</p>
             <p style="color: #666; margin-bottom: 20px;">
-              You have requested to login to your TAB Railway account. Please use the following verification code:
+              You have requested to login to your TABB Railways account. Please use the following verification code:
             </p>
             
             <div style="text-align: center; margin: 30px 0;">
@@ -69,7 +68,7 @@ export const sendOTPEmail = async (email, otp, userName) => {
           </div>
           
           <div style="text-align: center; color: #999; font-size: 12px;">
-            <p>This is an automated message from TAB Railway. Please do not reply to this email.</p>
+            <p>This is an automated message from TABB Railways. Please do not reply to this email.</p>
           </div>
         </div>
       `
