@@ -44,7 +44,8 @@ export default function Settings() {
                     setError(null);
                     const userData = await userService.getUserByID(currentUser.userID);
 
-                    let formattedDob = userData.DateOfBirth;
+                    // Format the date of birth if it exists
+                    let formattedDob = userData.DateOfBirth || "";
                     if (userData.DateOfBirth) {
                         const date = new Date(userData.DateOfBirth);
                         formattedDob = date.toISOString().split('T')[0];
@@ -53,7 +54,7 @@ export default function Settings() {
                     setFormData({
                         fullName: userData.UserName || "",
                         gender: userData.Gender?.toLowerCase() || "",
-                        dob: formattedDob || "",
+                        dob: formattedDob,
                         email: userData.Email || "",
                         phone: userData.PhoneNumber || "",
                         address: userData.Address || "",
@@ -97,10 +98,10 @@ export default function Settings() {
                 const userUpdateData = {
                     UserName: formData.fullName,
                     Gender: formData.gender,
-                    DateOfBirth: formData.dob,
+                    DateOfBirth: formData.dob, // Matching our new DB column name
                     Email: formData.email,
                     PhoneNumber: formData.phone,
-                    Address: formData.address,
+                    Address: formData.address, // Matching our new DB column name
                     PreferredClass: formData.preferredClass,
                     MealPreference: formData.mealPreference,
                     SpecialAssistance: formData.specialAssistance

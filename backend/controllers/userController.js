@@ -4,13 +4,13 @@ import User from '../models/Users.js';
 export const getAllUsers = async (req, res) => {
   try {
     const users = await User.findAll();
-    
+
     // Remove passwords from response for security
     const safeUsers = users.map(user => {
       const { Password, ...safeUser } = user;
       return safeUser;
     });
-    
+
     res.status(200).json({
       success: true,
       count: safeUsers.length,
@@ -29,17 +29,17 @@ export const getUser = async (req, res) => {
   try {
     const { id } = req.params;
     const user = await User.findById(id);
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
       });
     }
-    
+
     // Remove password from response for security
     const { Password, ...safeUser } = user;
-    
+
     res.status(200).json({
       success: true,
       data: safeUser
@@ -57,17 +57,17 @@ export const getUserByEmail = async (req, res) => {
   try {
     const { email } = req.params;
     const user = await User.findByEmail(email);
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
       });
     }
-    
+
     // Remove password from response for security
     const { Password, ...safeUser } = user;
-    
+
     res.status(200).json({
       success: true,
       data: safeUser
@@ -85,13 +85,13 @@ export const getUsersByStatus = async (req, res) => {
   try {
     const { status } = req.params;
     const users = await User.findByStatus(status);
-    
+
     // Remove passwords from response for security
     const safeUsers = users.map(user => {
       const { Password, ...safeUser } = user;
       return safeUser;
     });
-    
+
     res.status(200).json({
       success: true,
       count: safeUsers.length,
@@ -109,7 +109,7 @@ export const getUsersByStatus = async (req, res) => {
 export const getUserStats = async (req, res) => {
   try {
     const stats = await User.getUserStats();
-    
+
     res.status(200).json({
       success: true,
       data: stats
@@ -126,7 +126,7 @@ export const getUserStats = async (req, res) => {
 export const createUser = async (req, res) => {
   try {
     let userData;
-    
+
     // If content type is text/plain, try to parse it as JSON
     if (req.headers['content-type'] === 'text/plain') {
       try {
@@ -141,16 +141,16 @@ export const createUser = async (req, res) => {
       // Otherwise use the parsed body directly
       userData = req.body;
     }
-    
+
     const { UserName, Email, Password, VerifyCode, Status } = userData;
-    
+
     if (!UserName || !Email || !Password) {
       return res.status(400).json({
         success: false,
         message: 'Please provide UserName, Email, and Password'
       });
     }
-    
+
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(Email)) {
@@ -159,7 +159,7 @@ export const createUser = async (req, res) => {
         message: 'Please provide a valid email address'
       });
     }
-    
+
     const user = await User.create({
       UserName,
       Email,
@@ -167,10 +167,10 @@ export const createUser = async (req, res) => {
       VerifyCode,
       Status
     });
-    
+
     // Remove password from response for security
     const { Password: _, ...safeUser } = user;
-    
+
     res.status(201).json({
       success: true,
       message: 'User created successfully',
@@ -190,7 +190,7 @@ export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
     let userData;
-    
+
     // If content type is text/plain, try to parse it as JSON
     if (req.headers['content-type'] === 'text/plain') {
       try {
@@ -205,19 +205,30 @@ export const updateUser = async (req, res) => {
       // Otherwise use the parsed body directly
       userData = req.body;
     }
-    
+
+    // Optional: Add validation for DateOfBirth if needed
+    if (userData.DateOfBirth) {
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(userData.DateOfBirth)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid date format for DateOfBirth. Use YYYY-MM-DD format.'
+        });
+      }
+    }
+
     const updatedUser = await User.update(id, userData);
-    
+
     if (!updatedUser) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
       });
     }
-    
+
     // Remove password from response for security
     const { Password, ...safeUser } = updatedUser;
-    
+
     res.status(200).json({
       success: true,
       message: 'User updated successfully',
@@ -235,17 +246,17 @@ export const updateUser = async (req, res) => {
 export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     try {
       const deleted = await User.delete(id);
-      
+
       if (!deleted) {
         return res.status(404).json({
           success: false,
           message: 'User not found'
         });
       }
-      
+
       res.status(200).json({
         success: true,
         message: 'User deleted successfully'
@@ -272,7 +283,7 @@ export const deleteUser = async (req, res) => {
 export const getUserBookings = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Check if user exists
     const user = await User.findById(id);
     if (!user) {
@@ -281,9 +292,9 @@ export const getUserBookings = async (req, res) => {
         message: 'User not found'
       });
     }
-    
+
     const bookings = await User.getUserBookings(id);
-    
+
     res.status(200).json({
       success: true,
       count: bookings.length,
@@ -302,7 +313,7 @@ export const verifyUserEmail = async (req, res) => {
   try {
     const { id } = req.params;
     let verificationData;
-    
+
     // If content type is text/plain, try to parse it as JSON
     if (req.headers['content-type'] === 'text/plain') {
       try {
@@ -317,18 +328,18 @@ export const verifyUserEmail = async (req, res) => {
       // Otherwise use the parsed body directly
       verificationData = req.body;
     }
-    
+
     const { verifyCode } = verificationData;
-    
+
     if (!verifyCode) {
       return res.status(400).json({
         success: false,
         message: 'Please provide verification code'
       });
     }
-    
+
     const result = await User.verifyEmail(id, verifyCode);
-    
+
     res.status(200).json({
       success: true,
       message: 'Email verified successfully',
@@ -347,7 +358,7 @@ export const updateUserPassword = async (req, res) => {
   try {
     const { id } = req.params;
     let passwordData;
-    
+
     // If content type is text/plain, try to parse it as JSON
     if (req.headers['content-type'] === 'text/plain') {
       try {
@@ -362,25 +373,25 @@ export const updateUserPassword = async (req, res) => {
       // Otherwise use the parsed body directly
       passwordData = req.body;
     }
-    
+
     const { newPassword } = passwordData;
-    
+
     if (!newPassword) {
       return res.status(400).json({
         success: false,
         message: 'Please provide new password'
       });
     }
-    
+
     const updated = await User.updatePassword(id, newPassword);
-    
+
     if (!updated) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
       });
     }
-    
+
     res.status(200).json({
       success: true,
       message: 'Password updated successfully'

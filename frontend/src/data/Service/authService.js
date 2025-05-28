@@ -12,13 +12,7 @@ const BASE_URL = getBaseUrl();
 const authService = {
     register: async (userData) => {
         try {
-            const response = await axios.post(`${BASE_URL}/register`, {
-                UserName: userData.name,
-                Email: userData.email,
-                Password: userData.password,
-                Gender: userData.gender,
-                PhoneNumber: userData.phone
-            });
+            const response = await axios.post(`${BASE_URL}/register`, userData);
             return response.data;
         } catch (error) {
             console.error('Error registering user:', error);

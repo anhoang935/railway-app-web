@@ -11,33 +11,47 @@ const generateToken = (userId) => {
 
 export const register = async (req, res) => {
   try {
-    const { UserName, Email, Password, Gender, PhoneNumber } = req.body;
+    const { UserName, Email, Password, Gender, PhoneNumber, DateOfBirth, Address } = req.body;
 
     const validationErrors = [];
 
-    if (UserName.length < 2) {
+    // Check if UserName exists before checking its length
+    if (!UserName) {
+      validationErrors.push("Name is required");
+    } else if (UserName.length < 2) {
       validationErrors.push("Name must be at least 2 characters long");
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(Email)) {
-      validationErrors.push("Please enter a valid email address");
+    // Check if Email exists
+    if (!Email) {
+      validationErrors.push("Email is required");
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(Email)) {
+        validationErrors.push("Please enter a valid email address");
+      }
     }
 
+    // Check if Password exists
+    if (!Password) {
+      validationErrors.push("Password is required");
+    } else {
+      if (Password.length < 8) {
+        validationErrors.push("Password must be at least 8 characters long");
+      }
+
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+      if (!passwordRegex.test(Password)) {
+        validationErrors.push("Password must include uppercase, lowercase, number, and special character");
+      }
+    }
+
+    // Only validate PhoneNumber if it's provided
     if (PhoneNumber) {
       const phoneRegex = /^[0-9]{10}$/;
       if (!phoneRegex.test(PhoneNumber)) {
         validationErrors.push("Phone number must be 10 digits long");
       }
-    }
-
-    if (Password.length < 8) {
-      validationErrors.push("Password must be at least 8 characters long");
-    }
-
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    if (!passwordRegex.test(Password)) {
-      validationErrors.push("Password must include uppercase, lowercase, number, and special character");
     }
 
     if (validationErrors.length > 0) {
@@ -74,6 +88,8 @@ export const register = async (req, res) => {
       Password: hashedPassword,
       Gender,
       PhoneNumber,
+      DateOfBirth,
+      Address,
       VerifyCode: verifyCode,
       Status: 'pending'
     };
@@ -95,6 +111,8 @@ export const register = async (req, res) => {
         email: newUser.Email,
         gender: newUser.Gender,
         phone: newUser.PhoneNumber,
+        dateOfBirth: newUser.DateOfBirth,
+        address: newUser.Address,
         status: newUser.Status
       }
     });

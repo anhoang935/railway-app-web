@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Form, Alert } from "reactstrap";
 import { Link, useNavigate } from 'react-router-dom';
-import { Gift, User, Lock, Mail, Eye, EyeOff, Phone } from 'lucide-react';
+import { Gift, User, Lock, Mail, Eye, EyeOff, Phone, Calendar, Home } from 'lucide-react';
 import authService from '../data/Service/authService';
 import '../styles/register.css';
 
@@ -15,12 +15,13 @@ const Register = () => {
   ];
 
   const [formData, setFormData] = useState({
-    name: '',
-    gender: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: '',
+    UserName: "",
+    Email: "",
+    Password: "",
+    Gender: "",
+    PhoneNumber: "",
+    DateOfBirth: "",
+    Address: "",
   });
 
   const [isVisible, setIsVisible] = useState(false);
@@ -42,34 +43,51 @@ const Register = () => {
   const validateForm = () => {
     const validationErrors = [];
 
-    if (formData.name.length < 2) {
+    if (formData.UserName.length < 2) {
       validationErrors.push("Name must be at least 2 characters long");
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
+    if (!emailRegex.test(formData.Email)) {
       validationErrors.push("Please enter a valid email address");
     }
 
     const phoneRegex = /^[0-9]{10}$/;
-    if (!phoneRegex.test(formData.phone)) {
+    if (!phoneRegex.test(formData.PhoneNumber)) {
       validationErrors.push("Phone number must be 10 digits long");
     }
 
-    if (formData.password.length < 8) {
+    // Date of birth validation - ensure it's not in the future
+    if (formData.dateOfBirth) {
+      const today = new Date();
+      const dob = new Date(formData.dateOfBirth);
+
+      if (dob > today) {
+        validationErrors.push("Date of birth cannot be in the future");
+      }
+
+      // Check if user is at least 10 years old (arbitrary minimum age)
+      const minAgeDate = new Date();
+      minAgeDate.setFullYear(today.getFullYear() - 10);
+      if (dob > minAgeDate) {
+        validationErrors.push("You must be at least 10 years old to register");
+      }
+    }
+
+    if (formData.Password.length < 8) {
       validationErrors.push("Password must be at least 8 characters long");
     }
 
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    if (!passwordRegex.test(formData.password)) {
+    if (!passwordRegex.test(formData.Password)) {
       validationErrors.push("Password must include uppercase, lowercase, number, and special character");
     }
 
-    if (formData.password !== formData.confirmPassword) {
+    if (formData.Password !== formData.confirmPassword) {
       validationErrors.push("Passwords do not match");
     }
 
-    if (!formData.gender) {
+    if (!formData.Gender) {
       validationErrors.push("Please select a gender");
     }
 
@@ -91,26 +109,30 @@ const Register = () => {
       const response = await authService.register(formData);
       setSuccess(response.message || 'Registration successful');
 
-      setTimeout(() => {
+      if (response.data && response.data.userId) {
+        // Navigate to OTP verification page with both userId and email in location state
         navigate('/verify-email', {
           state: {
             userId: response.data.userId,
-            email: formData.email
+            email: formData.Email
           }
         });
-      }, 2000);
+      } else {
+        console.error('User ID not found in response');
+        navigate('/login');
+      }
 
       setFormData({
-        name: '',
-        gender: '',
-        email: '',
-        phone: '',
-        password: '',
-        confirmPassword: '',
+        UserName: "",
+        Email: "",
+        Password: "",
+        Gender: "",
+        PhoneNumber: "",
+        DateOfBirth: "",
+        Address: "",
       });
     } catch (error) {
       console.error('Error registering user:', error);
-
       if (error.response) {
         switch (error.response.status) {
           case 400:
@@ -145,7 +167,7 @@ const Register = () => {
         value={value}
         onChange={handleChange}
         required
-        className="w-full pl-10 pr-3 py-2 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300"
+        className="w-full pl-10 pr-3 py-3 h-12 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300"
       />
       {showToggle && (
         <button
@@ -156,6 +178,7 @@ const Register = () => {
           {showState ? <EyeOff size={20} /> : <Eye size={20} />}
         </button>
       )}
+      {error && error.includes(id) && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   );
 
@@ -172,7 +195,7 @@ const Register = () => {
             <Gift className="text-blue-600 mr-2" size={40} />
             <h1 className="text-3xl font-bold text-blue-800">Create Account</h1>
           </div>
-          <p className="text-blue-600">Welcome to the TABB Railway Corporation</p>
+          <p className="text-blue-600">Welcome to the TABB Railways Corporation</p>
         </div>
 
         {error && (
@@ -189,15 +212,22 @@ const Register = () => {
 
         <Form onSubmit={handleSubmit}>
           <div className="space-y-4">
-            {renderInput("text", "name", "Full Name", <User className="text-blue-500" size={20} />, formData.name)}
+            {renderInput("text", "UserName", "Full Name", <User className="text-blue-500" size={20} />, formData.UserName)}
 
             <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <User className="text-blue-500" size={20} />
+              </div>
               <select
-                id="gender"
-                value={formData.gender}
+                id="Gender"
+                value={formData.Gender}
                 onChange={handleChange}
                 required
-                className="w-full px-3 py-2 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300 text-gray-700"
+                className="w-full pl-10 pr-10 py-2 h-12 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300 text-gray-700"
+                style={{
+                  appearance: 'none',
+                  textOverflow: 'ellipsis',
+                }}
               >
                 <option value="">Select Gender</option>
                 {genderOptions.map((option) => (
@@ -206,11 +236,50 @@ const Register = () => {
                   </option>
                 ))}
               </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </div>
             </div>
 
-            {renderInput("email", "email", "Email Address", <Mail className="text-blue-500" size={20} />, formData.email)}
-            {renderInput("tel", "phone", "Phone Number", <Phone className="text-blue-500" size={20} />, formData.phone)}
-            {renderInput("password", "password", "Password", <Lock className="text-blue-500" size={20} />, formData.password, true, showPassword, setShowPassword)}
+            {renderInput("email", "Email", "Email Address", <Mail className="text-blue-500" size={20} />, formData.Email)}
+            {renderInput("tel", "PhoneNumber", "Phone Number", <Phone className="text-blue-500" size={20} />, formData.PhoneNumber)}
+
+            {/* New Date of Birth Field */}
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Calendar className="text-blue-500" size={20} />
+              </div>
+              <input
+                type="date"
+                id="DateOfBirth"
+                placeholder="Date of Birth"
+                value={formData.DateOfBirth}
+                onChange={handleChange}
+                className="w-full pl-10 pr-3 py-3 h-12 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300"
+              />
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 pb-2 flex items-center pointer-events-none">
+                <Home className="text-blue-500" size={20} />
+              </div>
+              <textarea
+                id="Address"
+                placeholder="Address"
+                value={formData.Address}
+                onChange={handleChange}
+                className="w-full pl-10 pr-3 py-2.5 h-12 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300 resize-none"
+                style={{
+                  boxSizing: 'border-box',
+                  overflowY: 'auto',
+                  lineHeight: '1.5'
+                }}
+              />
+            </div>
+
+            {renderInput("password", "Password", "Password", <Lock className="text-blue-500" size={20} />, formData.Password, true, showPassword, setShowPassword)}
             {renderInput("password", "confirmPassword", "Confirm Password", <Lock className="text-blue-500" size={20} />, formData.confirmPassword, true, showConfirmPassword, setShowConfirmPassword)}
 
             <motion.button

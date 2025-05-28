@@ -64,7 +64,7 @@ class User {
   }
 
   // Create new user
-  static async create({ UserName, Email, Password, Gender, PhoneNumber, VerifyCode, Status }) {
+  static async create({ UserName, Email, Password, Gender, PhoneNumber, DateOfBirth, Address, VerifyCode, Status }) {
     try {
       // Check if username already exists
       const existingUsername = await User.findByUsername(UserName);
@@ -79,8 +79,8 @@ class User {
       }
 
       const [result] = await pool.query(
-        'INSERT INTO user (UserName, Email, Password, Gender, PhoneNumber, VerifyCode, Status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [UserName, Email, Password, Gender, PhoneNumber, VerifyCode || null, Status || 'pending']
+        'INSERT INTO user (UserName, Email, Password, Gender, PhoneNumber, DateOfBirth, Address, VerifyCode, Status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [UserName, Email, Password, Gender, PhoneNumber, DateOfBirth || null, Address || null, VerifyCode || null, Status || 'pending']
       );
 
       return {
@@ -89,6 +89,8 @@ class User {
         Email,
         Gender,
         PhoneNumber,
+        DateOfBirth,
+        Address,
         VerifyCode,
         Status: Status || 'pending'
       };
@@ -101,7 +103,7 @@ class User {
   // Update user
   static async update(userID, userData) {
     try {
-      const { UserName, Email, Password, VerifyCode, Status, OTP, OTPExpiry } = userData;
+      const { UserName, Email, Password, Gender, PhoneNumber, DateOfBirth, Address, VerifyCode, Status, OTP, OTPExpiry } = userData;
 
       // Check if user exists
       const existingUser = await User.findById(userID);
@@ -130,6 +132,10 @@ class User {
         UserName = COALESCE(?, UserName),
         Email = COALESCE(?, Email),
         Password = COALESCE(?, Password),
+        Gender = COALESCE(?, Gender),
+        PhoneNumber = COALESCE(?, PhoneNumber),
+        DateOfBirth = COALESCE(?, DateOfBirth),
+        Address = COALESCE(?, Address),
         VerifyCode = COALESCE(?, VerifyCode),
         Status = COALESCE(?, Status),
         OTP = COALESCE(?, OTP),
@@ -139,6 +145,10 @@ class User {
           UserName || null,
           Email || null,
           Password || null,
+          Gender || null,
+          PhoneNumber || null,
+          DateOfBirth || null,
+          Address || null,
           VerifyCode !== undefined ? VerifyCode : null,
           Status || null,
           OTP !== undefined ? OTP : null,
@@ -366,7 +376,7 @@ class User {
       if (result.affectedRows > 0) {
         console.log(`Cleaned up ${result.affectedRows} expired OTPs`);
       }
-      
+
       return result.affectedRows;
     } catch (error) {
       console.error('Error cleaning up expired OTPs:', error);
@@ -397,7 +407,7 @@ class User {
           isExpired: now > expiry
         };
       }
-      
+
       return { hasOTP: false };
     } catch (error) {
       console.error('Error getting OTP info:', error);
