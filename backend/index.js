@@ -38,6 +38,7 @@ app.use('/api/v1/passengers', passengerRoutes);
 app.use('/api/v1/schedules', scheduleRoutes);
 app.use('/api/v1/tickets', ticketRoutes);
 app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/tickets', ticketRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

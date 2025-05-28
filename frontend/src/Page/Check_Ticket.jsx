@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import coach1 from '../images/coach1.png';
 import '../styles/check_ticket.css';
 import axios from 'axios';
+import ticketService from '../data/Service/ticketService.js';
 
 const Check_Ticket = () => {
   const [formData, setFormData] = useState({
@@ -10,7 +11,7 @@ const Check_Ticket = () => {
     departureDate: '',
     type: '',
     ticketId: ''
-  })
+  });
 
   // const ticketDatas = [
   //   { id: 1, bookId: 1, passengerId: 1, trainId: 1, coachId: 1, seatNumber: 1, departureStationId: 1, arrivalStationId: 2, departureTime: '08:00', departureDate: '2023-10-01', arrivalDate: '2023-10-01', status: 'pending' },
@@ -24,16 +25,16 @@ const Check_Ticket = () => {
 
   const handleFindTickets = async () => {
     try {
-      const response = await axios.get('https://mysql-production-0a41.up.railway.app/api/tickets', {
-        params: {
-          ticketId: formData.ticketId || undefined,
-          departureStationName: formData.from || undefined,
-          arrivalStationName: formData.to || undefined,
-          departureDate: formData.departureDate || undefined,
-          trainType: formData.type || undefined
-        }
-      });
-      setFilteredtickets(response.data);
+      const filters = {
+        ticketId: formData.ticketId || undefined,
+        departureName: formData.from || undefined,
+        arrivalName: formData.to || undefined,
+        departureDate: formData.departureDate || undefined,
+        trainType: formData.type || undefined
+      };
+
+      const response = await ticketService.getFilteredTickets(filters);
+      setFilteredtickets(response);
     } catch (error) {
       console.error('Error fetching tickets:', error);
     }

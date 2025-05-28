@@ -14,6 +14,6 @@ router.post('/',createTicket);
 router.delete('/:id', deleteTicket);
 
 // Admin routes
-router.get('/', getAllTickets);
+router.get('/all', getAllTickets);
 
 export default router;
