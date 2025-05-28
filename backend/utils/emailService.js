@@ -43,7 +43,7 @@ export const sendOTPEmail = async (email, otp, userName) => {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #0066ff;">TAB Railway</h1>
+            <h1 style="color: #0066ff;">TABB Railways</h1>
           </div>
           
           <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">

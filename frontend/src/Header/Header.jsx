@@ -6,7 +6,10 @@ import logo from '../images/TAB.gif';
 import authService from '../data/Service/authService';
 import './header.css';
 import '../ui/CustomButtons/settingsbutton.css';
-import LongButton from "../ui/CustomButtons/LongButton";
+
+// Options for the "Admin Panel" button
+// import LongButton from "../ui/CustomButtons/LongButton";
+import BlackButton from "../ui/CustomButtons/BlackButton";
 
 const nav_links = [
     { path: '/home', display: 'Home' },
@@ -26,7 +29,7 @@ const Header = () => {
     const location = useLocation();
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
-    
+
     // Close dropdown when clicking outside
     useEffect(() => {
         function handleClickOutside(event) {
@@ -34,7 +37,7 @@ const Header = () => {
                 setDropdownOpen(false);
             }
         }
-        
+
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [dropdownRef]);
@@ -60,7 +63,7 @@ const Header = () => {
         };
 
         checkAuth();
-        
+
         // Check auth status when location changes
         checkAuth();
     }, [location]);
@@ -130,7 +133,7 @@ const Header = () => {
                                 // Show user info and logout when authenticated
                                 <>
                                     <div className="user-dropdown-container" ref={dropdownRef}>
-                                        <button 
+                                        <button
                                             className="user-dropdown-trigger"
                                             onClick={() => setDropdownOpen(!dropdownOpen)}
                                         >
@@ -139,7 +142,7 @@ const Header = () => {
                                             </span>
                                             <ChevronDown size={16} className={`ml-1 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
                                         </button>
-                                        
+
                                         {dropdownOpen && (
                                             <div className="user-dropdown-menu">
                                                 <Link to="/settings" className="dropdown-item" onClick={() => setDropdownOpen(false)}>
@@ -166,17 +169,21 @@ const Header = () => {
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Button Options */}
+                                    {/* <LongButton onClick={() => navigate('/admin')} /> */}
+                                    <BlackButton text="Admin Panel" onClick={() => navigate('/admin')} />
                                 </>
                             ) : (
                                 // Show login/register when not authenticated
                                 <>
-                                    <button 
+                                    <button
                                         className="btn btn-outline"
                                         onClick={handleLogin}
                                     >
                                         Log In
                                     </button>
-                                    <button 
+                                    <button
                                         className="btn btn-primary"
                                         onClick={handleRegister}
                                     >
@@ -184,9 +191,6 @@ const Header = () => {
                                     </button>
                                 </>
                             )}
-                            
-                            {/* Admin Panel button - moved outside the authentication conditional to show for all users */}
-                            <LongButton onClick={() => navigate('/admin')} />
                             
                             <button
                                 className="setting-btn"
@@ -233,7 +237,7 @@ const Header = () => {
                                                 <Bell size={16} className="mr-2" />
                                                 Notifications
                                             </Link>
-                                            <button 
+                                            <button
                                                 className="mobile-nav-link text-red-500"
                                                 onClick={() => {
                                                     setMobileMenuOpen(false);
