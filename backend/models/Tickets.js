@@ -70,7 +70,8 @@ class Tickets {
     }
 
     static async findByFilter(ticketFilters){
-        const {ticketId, trainType, departureName, arrivalName, departureDate} = ticketFilters;
+        // const {ticketId, trainType, departureName, arrivalName, departureDate} = ticketFilters;
+        const {userId, passengerName, passengerEmail, phoneNumber} = ticketFilters;
         try{
             let sql = `
                 SELECT
@@ -85,7 +86,10 @@ class Tickets {
                     arrival.stationName AS arrivalStation,
                     ticket.departureTime,
                     ticket.departureDate,
-                    ticket.ticketPrice
+                    ticket.ticketPrice,
+                    user.UserName AS userName,
+                    user.Email AS userEmail,
+                    passenger.Email as passengerEmail
                 FROM ticket
                 LEFT JOIN booking
                     ON ticket.bookingID = booking.bookingID
@@ -106,26 +110,34 @@ class Tickets {
                 WHERE 1=1                 
             `
             let params = [];
-            if(ticketId){
-                sql+=" AND ticket.ticketId = ?";
-                params.push(ticketId);
+            if(userId){
+                sql+=" AND user.userID = ?";
+                params.push(userId);
             }
-            if(trainType){
-                sql+=" AND train.trainType = ?";
-                params.push(trainType);
+            if(passengerName){
+                sql+=" AND LOWER(passenger.fullname) LIKE ?";
+                params.push(`%${passengerName.toLowerCase()}%`);
             }
-            if(departureName){
-                sql+=" AND departure.stationName = ?";
-                params.push(departureName);
+            if(passengerEmail){
+                sql+=" AND passenger.Email = ?";
+                params.push(passengerEmail);
             }
-            if(arrivalName){
-                sql+=" AND arrival.stationName = ?";
-                params.push(arrivalName);
+            if(phoneNumber){
+                sql+=" AND passenger.phone_number = ?";
+                params.push(phoneNumber);
             }
-            if(departureDate){
-                sql+=" AND ticket.departureDate = ?";
-                params.push(departureDate);
-            }
+            // if(departureName){
+            //     sql+=" AND departure.stationName = ?";
+            //     params.push(departureName);
+            // }
+            // if(arrivalName){
+            //     sql+=" AND arrival.stationName = ?";
+            //     params.push(arrivalName);
+            // }
+            // if(departureDate){
+            //     sql+=" AND ticket.departureDate = ?";
+            //     params.push(departureDate);
+            // }
             const [results] = await pool.query(sql,params);
             return results;
         } catch (error) {
