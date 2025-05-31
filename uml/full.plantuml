@@ -1,0 +1,177 @@
+@startuml Railway Management System
+left to right direction
+
+' Color scheme
+skinparam class {
+  BackgroundColor #F0F7FF
+  BorderColor #009CFF
+  ArrowColor #1E32C5
+  HeaderBackgroundColor #009CFF
+}
+
+skinparam packageStyle rectangle
+skinparam padding 2
+skinparam roundCorner 8
+
+package "Railway Management System" {
+  class Train {
+    +trainID: int
+    +trainName: string
+    +trainType: string
+    +coachTotal: int
+    --
+    +findAll(): Train[]
+    +findById(trainID): Train
+    +create(trainData): Train
+    +update(trainID, trainData): Train
+    +delete(trainID): boolean
+  }
+  
+  class Coach {
+    +coachID: int
+    +coach_typeID: int
+    +trainID: int
+    --
+    +findAll(): Coach[]
+    +findById(coachID): Coach
+    +findByTrainId(trainID): Coach[]
+    +create(coachData): Coach
+    +update(coachID, coachData): Coach
+    +delete(coachID): boolean
+  }
+  
+  class CoachType {
+    +coach_typeID: int
+    +type: string
+    +price: decimal
+    +capacity: int
+    --
+    +findAll(): CoachType[]
+    +findById(typeId): CoachType
+    +create(coachTypeData): CoachType
+    +update(typeId, coachTypeData): CoachType
+    +delete(typeId): boolean
+  }
+  
+  class Station {
+    +stationID: int
+    +stationName: string
+    --
+    +findAll(): Station[]
+    +findById(stationID): Station
+    +create(stationData): Station
+    +update(stationID, stationData): Station
+    +delete(stationID): boolean
+  }
+  
+  class Schedule {
+    +scheduleID: int
+    +start_stationID: int
+    +end_stationID: int
+    +departureTime: dateTime
+    +arrivalTime: dateTime
+    +scheduleStatus: string
+    +trainID: int
+    --
+    +findAll(): Schedule[]
+    +findById(scheduleID): Schedule
+    +findByTrainId(trainID): Schedule[]
+    +findByStationId(stationID): Schedule[]
+    +findBetweenStations(startStationID, endStationID): Schedule[]
+    +create(scheduleData): Schedule
+    +update(scheduleID, scheduleData): Schedule
+    +delete(scheduleID): boolean
+  }
+  
+  class Passenger {
+    +passengerID: int
+    +fullname: string
+    +email: string
+    +phone: string
+    --
+    +findAll(): Passenger[]
+    +findById(passengerID): Passenger
+    +create(passengerData): Passenger
+    +update(passengerID, passengerData): Passenger
+    +delete(passengerID): boolean
+  }
+  
+  class Ticket {
+    +ticketID: int
+    +bookingID: int
+    +trainID: int
+    +coachID: int
+    +departure_stationID: int
+    +arrival_stationID: int
+    +seatNumber: string
+    +departureTime: dateTime
+    +departureDate: date
+    +ticketPrice: decimal
+    --
+    +findAll(): Ticket[]
+    +findById(ticketID): Ticket
+    +create(ticketData): Ticket
+    +update(ticketID, ticketData): Ticket
+    +delete(ticketID): boolean
+  }
+  
+  class Journey {
+    +journeyID: int
+    +scheduleID: int
+    +journeyDate: date
+    +availableSeats: int
+    --
+    +findAll(): Journey[]
+    +findById(journeyID): Journey
+    +findByTrainId(trainID): Journey[]
+    +create(journeyData): Journey
+    +update(journeyID, journeyData): Journey
+    +delete(journeyID): boolean
+  }
+  
+  class User {
+    +userID: int
+    +userName: string
+    +email: string
+    +password: string
+    +role: string
+    --
+    +findAll(): User[]
+    +findById(userID): User
+    +create(userData): User
+    +update(userID, userData): User
+    +delete(userID): boolean
+  }
+  
+  class Booking {
+    +bookingID: int
+    +userID: int
+    +passengerID: int
+    +bookingDate: dateTime
+    +totalAmount: decimal
+    +paymentStatus: string
+    --
+    +findAll(): Booking[]
+    +findById(bookingID): Booking
+    +create(bookingData): Booking
+    +update(bookingID, bookingData): Booking
+    +delete(bookingID): boolean
+  }
+}
+
+' Relationships
+Train "1" -- "many" Coach : has >
+Coach "many" -- "1" CoachType : is of type >
+Train "1" -- "many" Schedule : operates >
+Station "1" -- "many" Schedule : is start of >
+Station "1" -- "many" Schedule : is end of >
+Schedule "1" -- "many" Journey : has >
+Passenger "1" -- "many" Booking : makes >
+User "1" -- "many" Booking : creates >
+Booking "1" -- "many" Ticket : includes >
+Train "1" -- "many" Ticket : belongs to >
+Coach "1" -- "many" Ticket : assigns seat in >
+Station "1" -- "many" Ticket : departure >
+Station "1" -- "many" Ticket : arrival >
+
+@enduml
