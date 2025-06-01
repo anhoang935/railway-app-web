@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, User, Shield, Activity, 
   UserCheck, Clock8, 
-  ArrowLeft
+  RefreshCw
 } from 'lucide-react';
 import userService from '../../../data/Service/userService';
 
@@ -86,6 +86,14 @@ const UsersManagement = ({ setActiveTab }) => {
     <div className="flex-1 flex flex-col p-6 bg-gray-50">
       <div className="flex items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
+        <button 
+          onClick={fetchUserData} 
+          className="ml-auto flex items-center px-4 py-2 bg-white hover:bg-gray-100 rounded-lg shadow-sm border border-gray-200 transition-colors"
+          title="Reload data"
+        >
+          <RefreshCw className="h-5 w-5 text-gray-600 mr-2" />
+          <span className="text-gray-600 font-medium">Reload</span>
+        </button>
       </div>
 
       {loading ? (
