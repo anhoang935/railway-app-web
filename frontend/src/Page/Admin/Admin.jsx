@@ -119,20 +119,7 @@ export default function AdminPanel() {
     const renderContent = () => {
         switch (activeTab) {
             case "dashboard":
-                return (
-                    <Dashboard
-                        formattedDateTime={formattedDateTime}
-                        dashboardLayout={dashboardLayout}
-                        isEditing={isEditing}
-                        toggleWidgetVisibility={toggleWidgetVisibility}
-                        recentAlerts={recentAlerts}
-                        trainStats={trainStats}
-                        stationTraffic={stationTraffic}
-                        upcomingMaintenance={upcomingMaintenance}
-                        handleEditToggle={handleEditToggle}
-                        handleSaveChanges={handleSaveChanges}
-                    />
-                );
+                return <Dashboard />;
             case "trains":
                 return <TrainManagement setActiveTab={setActiveTab} />;
             case "stations":
@@ -150,20 +137,7 @@ export default function AdminPanel() {
             case "settings":
                 return <AdminSettings setActiveTab={setActiveTab} />;
             default:
-                return (
-                    <Dashboard
-                        formattedDateTime={formattedDateTime}
-                        dashboardLayout={dashboardLayout}
-                        isEditing={isEditing}
-                        toggleWidgetVisibility={toggleWidgetVisibility}
-                        recentAlerts={recentAlerts}
-                        trainStats={trainStats}
-                        stationTraffic={stationTraffic}
-                        upcomingMaintenance={upcomingMaintenance}
-                        handleEditToggle={handleEditToggle}
-                        handleSaveChanges={handleSaveChanges}
-                    />
-                );
+                return <Dashboard />;
         }
     };
 
