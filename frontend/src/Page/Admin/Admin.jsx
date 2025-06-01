@@ -136,6 +136,10 @@ export default function AdminPanel() {
                 return <Scheduling setActiveTab={setActiveTab} />;
             case "settings":
                 return <AdminSettings setActiveTab={setActiveTab} />;
+            case "staff-users":
+                return <StaffUsers setActiveTab={setActiveTab} />;
+            case "staff-members":
+                return <StaffMembers setActiveTab={setActiveTab} />;
             default:
                 return <Dashboard />;
         }
