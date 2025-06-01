@@ -112,7 +112,7 @@ const Check_Ticket = () => {
     if(!formData.passEmail){
       validationErrors.push("Email must not be empty!");
     } else {
-      if(!emailRegex.test(formData.Email)){
+      if(!emailRegex.test(formData.passEmail)){
         validationErrors.push("Please enter a valid email address");
       }
     }
@@ -151,7 +151,7 @@ const Check_Ticket = () => {
       <div className='ticketDetails bg-white shadow-lg p-4 text-blue-600 rounded-xl border-4 border-blue-400 flex flex-col md:flex-row md:gap-6 md:p-6 md:w-[750px] mx-auto mt-4'>
         <div className='leftTicket flex gap-3 md:flex-col justify-items-center place-self-center md:place-content-center md:place-items-center'>
           <h1 className='font-bold text-lg text-blue-600'>Train Ticket</h1>
-          <img src={getCoachImage(filteredTickets.coachType)} alt="" className='hidden md:block' />
+          <img src={getCoachImage(ticket.coachType)} alt="" className='hidden md:block' />
           <h1 className={`font-bold text-lg ${getCoachColor(ticket.coachType)}`}>{ticket.coachType} Coach</h1>
         </div>
         <div className='rightTicket flex flex-col flex-1 '>
