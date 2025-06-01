@@ -13,7 +13,7 @@ import scheduleRoutes from './routes/schedule.js';
 import ticketRoutes from './routes/ticket.js';
 import userRoutes from './routes/user.js';
 import authRoutes from './routes/auth.js';
-
+import buyTicket from './routes/buy_ticket.js';
 dotenv.config();
 
 const app = express();
@@ -39,7 +39,7 @@ app.use('/api/v1/schedules', scheduleRoutes);
 app.use('/api/v1/tickets', ticketRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/tickets', ticketRoutes);
-
+app.use('/api/v1/buy-ticket', buyTicket);
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
