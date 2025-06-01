@@ -115,11 +115,11 @@ class Tickets {
                 params.push(userId);
             }
             if(passengerName){
-                sql+=" AND LOWER(passenger.fullname) LIKE ?";
-                params.push(`%${passengerName.toLowerCase()}%`);
+                sql+=" AND REPLACE(LOWER(passenger.fullname), ' ', '') LIKE ?";
+                params.push(`%${passengerName.toLowerCase().replace(/\s/g, '')}%`);
             }
             if(passengerEmail){
-                sql+=" AND passenger.Email = ?";
+                sql+=" AND passenger.email = ?";
                 params.push(passengerEmail);
             }
             if(phoneNumber){
