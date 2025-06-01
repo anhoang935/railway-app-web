@@ -208,7 +208,7 @@ export default function AdminPanel() {
                                         className={`ml-3 flex-1 ${activeTab === "staff" ? 'font-bold' : ''}`}
                                         onClick={() => setActiveTab("staff")}
                                     >
-                                        Staff
+                                        Users
                                     </span>
                                     <button
                                         onClick={(e) => {
@@ -233,7 +233,7 @@ export default function AdminPanel() {
                             <div className="transform transition-all duration-300 ease-in-out">
                                 <NavItem
                                     icon={<Users size={16} />}
-                                    label="Users"
+                                    label="Customer"
                                     active={activeTab === "staff-users"}
                                     expanded={sidebarOpen}
                                     onClick={() => setActiveTab("staff-users")}
@@ -241,7 +241,7 @@ export default function AdminPanel() {
                                 />
                                 <NavItem
                                     icon={<Users size={16} />}
-                                    label="Staff Members"
+                                    label="Admin"
                                     active={activeTab === "staff-members"}
                                     expanded={sidebarOpen}
                                     onClick={() => setActiveTab("staff-members")}
