@@ -5,7 +5,6 @@ import '../styles/buy_ticket.css';
 import { Trash } from 'lucide-react';
 
 document.documentElement.style.setProperty('--primary-color', '#2563eb');
-
 const Buy_Ticket = () => {
   const [formData, setFormData] = useState({
     from: '',
@@ -16,6 +15,8 @@ const Buy_Ticket = () => {
     trainType: '',
     tripType: 'one-way'
   });
+
+  const [isMobile, setIsMobile] = useState(false);
 
   const [availableTrains, setAvailableTrains] = useState([]);
   
@@ -30,6 +31,17 @@ const Buy_Ticket = () => {
   const [selectedItems, setSelectedItems] = useState([]);
 
   const [showSearchResults, setShowSearchResults] = useState(false);
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   const majorStations = [
     { id: 'hanoi', name: 'Hà Nội',},
@@ -179,7 +191,7 @@ const Buy_Ticket = () => {
   const renderSeatsOrBeds = () => {
     if(!selectedCoach) return null;
 
-    const {row, col, type} = selectedCoach;
+    const {type} = selectedCoach;
 
     if(type === 'seat'){
       return renderRegularCoach(selectedCoach);
@@ -232,9 +244,21 @@ const Buy_Ticket = () => {
         
         columns.push(
           <div key={`separator-${c}`} className="column-separator">
-            <div className="flex w-3 h-12 bg-gray-300 rounded-sm sm:w-4 sm:h-20"></div> 
-            <div className="flex-1"></div>
-            <div className="flex w-3 h-12 bg-gray-300 rounded-sm sm:w-4 sm:h-20"></div> 
+            {isMobile ? (
+              <>
+                <div className="flex bg-gray-300 rounded-sm w-20 h-4"></div> 
+                <div className="flex-1"></div>
+                <div className="flex bg-gray-300 rounded-sm w-20 h-4"></div> 
+              </>
+            ) 
+            : 
+            (
+              <>
+                <div className="flex bg-gray-300 rounded-sm w-4 h-20"></div> 
+                <div className="flex-1"></div>
+                <div className="flex bg-gray-300 rounded-sm w-4 h-20"></div> 
+              </>
+            )}
           </div>
         );
       } 
@@ -247,7 +271,7 @@ const Buy_Ticket = () => {
       }
     }
     return (
-      <div className="coach-layout">
+      <div className="coach-layout md:transform-none">
         {columns}
       </div>
     );
@@ -259,7 +283,7 @@ const Buy_Ticket = () => {
 
     const tiers = [];
     for (let row = 0; row < rows; row++) {
-      const tierNumber = rows - row;
+      const tierNumber = row + 1;
       tiers.push(
         <div key={`tier-label-${tierNumber}`} className="tier-label">
           T{tierNumber}
@@ -278,7 +302,9 @@ const Buy_Ticket = () => {
         for(let row = 0; row < rows; row++){
           const actualCol = cabinIdx * 2 + col;
           const key = `${row}-${actualCol}`;
-          const bedNumber = row * cols + actualCol + 1;
+          const bedNumber = isMobile 
+          ? (actualCol) * rows + row + 1  
+          : actualCol * rows + row + 1;    
           const booked = isItemBooked(row, actualCol);
           const selected = selectedItems.some(item => item.key === key);
           const hovered = hoveredItem === key;
@@ -322,12 +348,20 @@ const Buy_Ticket = () => {
     }
     return (
       <div className="flex flex-col items-center">
-        <div className="flex flex-row">
-          <div className="tier-labels">
-            {tiers}
+        {isMobile && (
+          <div className="tier-labels mb-2">
+            {tiers} 
           </div>
+        )}
+        
+        <div className="flex flex-row">
+          {!isMobile && (
+            <div className="tier-labels">
+              {tiers}
+            </div>
+          )}
           
-          <div className="cabins-grid">
+          <div className="cabins-grid md:transform-none">
             {cabinsLayout}
           </div>
         </div>
@@ -380,14 +414,9 @@ const Buy_Ticket = () => {
         <div className="divide-y">
           {selectedItems.map(item => {
             let itemNumber;
-            if (selectedCoach.type === 'seat') {
-              itemNumber = item.col * selectedCoach.rows + item.row + 1;
-            }
-            else {
-              itemNumber = item.row * selectedCoach.cols + item.col + 1;
-            }
+            itemNumber = item.col * selectedCoach.rows + item.row + 1;
             
-            
+
             return (
               <div key={item.key} className="selected-item">
                 <div>
@@ -625,7 +654,9 @@ const Buy_Ticket = () => {
             <h2 className="text-xl font-semibold mb-4">Choose Your Seat</h2>
             
             <div className="bg-gray-100 rounded-lg p-4">
-              {renderSeatsOrBeds()}
+              <div className="seat-selection-container">
+                {renderSeatsOrBeds()}
+              </div>
             </div>
             
             {/* Selected Items Summary */}
@@ -657,9 +688,7 @@ const Buy_Ticket = () => {
                     <p className="text-sm text-gray-600">
                     Number: {selectedItems.map(
                               item => 
-                                selectedCoach.type === 'seat' 
-                                  ? `${item.col * selectedCoach.rows + item.row + 1}` 
-                                  : `${item.row * selectedCoach.cols + item.col + 1}`
+                                item.col * selectedCoach.rows + item.row + 1
                               ).join(', ')}
                     </p>
                     <p className="font-semibold mt-2">

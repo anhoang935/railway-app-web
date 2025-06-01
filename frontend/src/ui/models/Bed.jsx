@@ -1,12 +1,22 @@
-import React from 'react'
+import React, {useState, useEffect} from 'react'
 
 const Bed = ({bedNumber, price, isBooked, isSelected, isHovered, onMouseEnter, onMouseLeave }) => {
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const getSeatColor = () => {
         if(isBooked) return 'bg-orange-500'
         if(isSelected) return 'bg-green-500'
     
         return 'bg-[--primary-color]'
     }
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 768);
+        };
+        
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
     return (
         <div
         className={`relative mx-1 inline-block rounded-md cursor-pointer transition-all`}
