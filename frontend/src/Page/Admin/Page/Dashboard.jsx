@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import SystemAlerts from '../Widgets/SystemAlerts';
 import TrainStatus from '../Widgets/TrainStatus';
 import Maintenance from '../Widgets/Maintenance';
 import StationTraffic from '../Widgets/StationTraffic';
 import {
     AlertTriangle, Train, MapPin, Calendar, Search, Bell,
-    RefreshCw, Filter, Clock, ChevronDown, X
+    RefreshCw, Filter, Clock, ChevronDown, X, AlertCircle
 } from 'lucide-react';
 
 // Import services
@@ -21,6 +21,7 @@ const Dashboard = () => {
     const [error, setError] = useState(null);
     const [currentDateTime, setCurrentDateTime] = useState(new Date());
     const [searchQuery, setSearchQuery] = useState('');
+    const [searchActive, setSearchActive] = useState(false);
     const [timeFilter, setTimeFilter] = useState('today');
     const [showTimeFilterOptions, setShowTimeFilterOptions] = useState(false);
     const [showFilterOptions, setShowFilterOptions] = useState(false);
@@ -28,6 +29,7 @@ const Dashboard = () => {
     const [showNotifications, setShowNotifications] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [isEditing, setIsEditing] = useState(false);
+    const [showCombinedFilters, setShowCombinedFilters] = useState(false);
 
     // Dashboard data
     const [dashboardData, setDashboardData] = useState({
@@ -219,10 +221,10 @@ const Dashboard = () => {
             }
         });
 
-        // Convert to array and sort by passenger count
+        // Convert to array and sort by passenger count (default sort)
         return Object.values(stationMap)
             .sort((a, b) => b.passengers - a.passengers)
-            .slice(0, 5); // Top 5 stations
+            .slice(0, 3); // Top 3 stations
     }
 
     // Extract upcoming maintenance schedules
@@ -426,9 +428,68 @@ const Dashboard = () => {
         );
     };
 
+    // Add this function to perform the search
+    const getSearchResults = useCallback(() => {
+        if (!searchQuery.trim()) {
+            setSearchActive(false);
+            return {
+                recentAlerts: dashboardData.recentAlerts,
+                stationTraffic: dashboardData.stationTraffic,
+                upcomingMaintenance: dashboardData.upcomingMaintenance,
+                trainStats: dashboardData.trainStats
+            };
+        }
+
+        setSearchActive(true);
+        const query = searchQuery.toLowerCase().trim();
+
+        // Filter alerts
+        const filteredAlerts = dashboardData.recentAlerts.filter(alert =>
+            alert.type.toLowerCase().includes(query) ||
+            alert.station.toLowerCase().includes(query) ||
+            alert.trainName.toLowerCase().includes(query)
+        );
+
+        // Filter stations
+        const filteredStations = dashboardData.stationTraffic.filter(station =>
+            station.name.toLowerCase().includes(query)
+        );
+
+        // Filter maintenance
+        const filteredMaintenance = dashboardData.upcomingMaintenance.filter(item =>
+            item.line.toLowerCase().includes(query) ||
+            item.section.toLowerCase().includes(query) ||
+            item.date.toLowerCase().includes(query) ||
+            item.status.toLowerCase().includes(query)
+        );
+
+        return {
+            recentAlerts: filteredAlerts,
+            stationTraffic: filteredStations,
+            upcomingMaintenance: filteredMaintenance,
+            trainStats: dashboardData.trainStats // Keep stats as is
+        };
+    }, [searchQuery, dashboardData]);
+
+    // Calculate filtered data based on search query
+    const filteredData = useMemo(() => getSearchResults(), [searchQuery, getSearchResults]);
+
     // Handle search input change
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
+    };
+
+    // Clear search
+    const clearSearch = () => {
+        setSearchQuery('');
+        setSearchActive(false);
+    };
+
+    // Handle key press in search field
+    const handleSearchKeyPress = (e) => {
+        if (e.key === 'Escape') {
+            clearSearch();
+        }
     };
 
     // Handle manual refresh
@@ -451,20 +512,21 @@ const Dashboard = () => {
     // Set time filter and close dropdown
     const setTimeFilterOption = (filter) => {
         setTimeFilter(filter);
-        setShowTimeFilterOptions(false);
+        setShowCombinedFilters(false);
         fetchDashboardData(); // Refetch with new filter
     };
 
     // Set category filter and close dropdown
     const setCategoryFilter = (filter) => {
         setFilterType(filter);
-        setShowFilterOptions(false);
+        setShowCombinedFilters(false);
         fetchDashboardData(); // Refetch with new filter
     };
 
     // Toggle notifications panel
     const toggleNotifications = () => {
         setShowNotifications(!showNotifications);
+        setShowCombinedFilters(false);
     };
 
     // Mark all notifications as read
@@ -488,17 +550,123 @@ const Dashboard = () => {
 
                     <div className="flex items-center space-x-4">
                         <div className="relative">
+                            {/* Enhanced Search input */}
                             <input
                                 type="text"
-                                placeholder="Search..."
+                                placeholder="Search dashboard..."
                                 value={searchQuery}
                                 onChange={handleSearchChange}
-                                className="pl-9 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                onKeyDown={handleSearchKeyPress}
+                                className={`pl-9 pr-10 py-2 rounded-lg border transition-all duration-200 ${searchActive ? 'border-blue-400 ring-2 ring-blue-200' : 'border-gray-300'
+                                    } focus:outline-none focus:ring-2 focus:ring-blue-500 w-64`}
                             />
-                            <Search size={18} className="absolute left-3 top-2.5 text-gray-400" />
+                            <Search size={18} className={`absolute left-3 top-2.5 ${searchActive ? 'text-blue-500' : 'text-gray-400'}`} />
+                            {searchQuery && (
+                                <button
+                                    onClick={clearSearch}
+                                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                                    title="Clear search"
+                                >
+                                    <X size={16} />
+                                </button>
+                            )}
                         </div>
 
-                        {/* Notifications button with dropdown */}
+                        {/* Combined Filter button */}
+                        <div className="relative">
+                            <button
+                                onClick={() => {
+                                    setShowCombinedFilters(!showCombinedFilters);
+                                    setShowNotifications(false);
+                                }}
+                                className="flex items-center px-3 py-1.5 rounded-lg hover:bg-gray-100"
+                                title="Filters"
+                            >
+                                <Filter size={16} className="text-gray-600 mr-1.5" />
+                                <div className="text-sm text-gray-700 flex items-center">
+                                    <span className="mr-1">
+                                        {filterType === 'all' ? 'All' :
+                                            filterType === 'onTime' ? 'On-time' :
+                                                filterType === 'delayed' ? 'Delayed' :
+                                                    'Maintenance'}
+                                    </span>
+                                    <span className="mx-1 text-gray-400">•</span>
+                                    <span>
+                                        {timeFilter === 'today' ? 'Today' :
+                                            timeFilter === 'week' ? 'This Week' :
+                                                'This Month'}
+                                    </span>
+                                </div>
+                                <ChevronDown size={14} className="text-gray-500 ml-1.5" />
+                            </button>
+
+                            {showCombinedFilters && (
+                                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg py-2 z-20 border border-gray-200">
+                                    <div className="px-4 py-2 border-b border-gray-100">
+                                        <h3 className="font-semibold text-gray-700">Filters</h3>
+                                    </div>
+
+                                    <div className="px-4 py-2 border-b border-gray-100">
+                                        <p className="text-xs text-gray-500 font-medium mb-2">CATEGORY</p>
+                                        <div className="space-y-2">
+                                            <button
+                                                onClick={() => setCategoryFilter('all')}
+                                                className={`w-full text-left px-3 py-1.5 text-sm flex items-center rounded ${filterType === 'all' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
+                                            >
+                                                All
+                                            </button>
+                                            <button
+                                                onClick={() => setCategoryFilter('onTime')}
+                                                className={`w-full text-left px-3 py-1.5 text-sm flex items-center rounded ${filterType === 'onTime' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
+                                            >
+                                                On-time Trains
+                                            </button>
+                                            <button
+                                                onClick={() => setCategoryFilter('delayed')}
+                                                className={`w-full text-left px-3 py-1.5 text-sm flex items-center rounded ${filterType === 'delayed' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
+                                            >
+                                                Delayed Trains
+                                            </button>
+                                            <button
+                                                onClick={() => setCategoryFilter('maintenance')}
+                                                className={`w-full text-left px-3 py-1.5 text-sm flex items-center rounded ${filterType === 'maintenance' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
+                                            >
+                                                Maintenance Only
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="px-4 py-2">
+                                        <p className="text-xs text-gray-500 font-medium mb-2">TIME PERIOD</p>
+                                        <div className="space-y-2">
+                                            <button
+                                                onClick={() => setTimeFilterOption('today')}
+                                                className={`w-full text-left px-3 py-1.5 text-sm flex items-center rounded ${timeFilter === 'today' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
+                                            >
+                                                <Clock size={14} className="mr-2" />
+                                                Today
+                                            </button>
+                                            <button
+                                                onClick={() => setTimeFilterOption('week')}
+                                                className={`w-full text-left px-3 py-1.5 text-sm flex items-center rounded ${timeFilter === 'week' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
+                                            >
+                                                <Clock size={14} className="mr-2" />
+                                                This Week
+                                            </button>
+                                            <button
+                                                onClick={() => setTimeFilterOption('month')}
+                                                className={`w-full text-left px-3 py-1.5 text-sm flex items-center rounded ${timeFilter === 'month' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
+                                            >
+                                                <Clock size={14} className="mr-2" />
+                                                This Month
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Notifications */}
                         <div className="relative">
                             <button
                                 onClick={toggleNotifications}
@@ -541,120 +709,73 @@ const Dashboard = () => {
                             )}
                         </div>
 
+                        {/* Refresh button */}
                         <button
                             onClick={handleRefresh}
-                            className="flex items-center text-gray-700 hover:text-blue-600"
+                            className="flex items-center px-3 py-1.5 rounded-lg hover:bg-gray-100 text-gray-700"
                         >
-                            <RefreshCw size={18} className={`mr-1 ${loading ? 'animate-spin' : ''}`} />
+                            <RefreshCw size={18} className={`mr-1.5 ${loading ? 'animate-spin' : ''}`} />
                             <span className="text-sm">{loading ? 'Refreshing...' : 'Refresh'}</span>
                         </button>
 
+                        {/* Edit View button */}
                         <button
                             onClick={() => setIsEditing(!isEditing)}
-                            className={`py-1 px-3 text-sm rounded ${isEditing ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'} hover:bg-opacity-90`}
+                            className={`py-1.5 px-3 text-sm rounded-lg ${isEditing ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'} hover:bg-opacity-90`}
                         >
                             {isEditing ? 'Done' : 'Edit View'}
                         </button>
-                    </div>
-                </div>
 
-                <div className="px-4 py-2 border-t border-gray-200 flex items-center justify-between bg-gray-50">
-                    <div className="flex items-center space-x-2">
-                        <div className="relative">
+                        {/* Save Layout button - moved from second header */}
+                        {isEditing && (
                             <button
-                                onClick={toggleFilterOptions}
-                                className="flex items-center px-3 py-1 bg-white rounded-lg border border-gray-300 text-sm"
+                                onClick={() => setIsEditing(false)}
+                                className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
                             >
-                                <Filter size={14} className="mr-1" />
-                                <span>
-                                    {filterType === 'all' ? 'All' :
-                                        filterType === 'onTime' ? 'On-time' :
-                                            filterType === 'delayed' ? 'Delayed' :
-                                                filterType === 'maintenance' ? 'Maintenance' : 'Filter'}
-                                </span>
-                                <ChevronDown size={14} className="ml-1" />
+                                Save Layout
                             </button>
-
-                            {showFilterOptions && (
-                                <div className="absolute mt-1 w-40 bg-white rounded-lg shadow-lg py-1 z-10 border border-gray-200">
-                                    <button
-                                        onClick={() => setCategoryFilter('all')}
-                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${filterType === 'all' ? 'bg-blue-50 text-blue-600' : ''}`}
-                                    >
-                                        All
-                                    </button>
-                                    <button
-                                        onClick={() => setCategoryFilter('onTime')}
-                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${filterType === 'onTime' ? 'bg-blue-50 text-blue-600' : ''}`}
-                                    >
-                                        On-time Trains
-                                    </button>
-                                    <button
-                                        onClick={() => setCategoryFilter('delayed')}
-                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${filterType === 'delayed' ? 'bg-blue-50 text-blue-600' : ''}`}
-                                    >
-                                        Delayed Trains
-                                    </button>
-                                    <button
-                                        onClick={() => setCategoryFilter('maintenance')}
-                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${filterType === 'maintenance' ? 'bg-blue-50 text-blue-600' : ''}`}
-                                    >
-                                        Maintenance Only
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="relative">
-                            <button
-                                onClick={toggleTimeFilter}
-                                className="flex items-center px-3 py-1 bg-white rounded-lg border border-gray-300 text-sm"
-                            >
-                                <Clock size={14} className="mr-1" />
-                                <span>
-                                    {timeFilter === 'today' ? 'Today' :
-                                        timeFilter === 'week' ? 'This Week' : 'This Month'}
-                                </span>
-                                <ChevronDown size={14} className="ml-1" />
-                            </button>
-
-                            {showTimeFilterOptions && (
-                                <div className="absolute mt-1 w-40 bg-white rounded-lg shadow-lg py-1 z-10 border border-gray-200">
-                                    <button
-                                        onClick={() => setTimeFilterOption('today')}
-                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${timeFilter === 'today' ? 'bg-blue-50 text-blue-600' : ''}`}
-                                    >
-                                        Today
-                                    </button>
-                                    <button
-                                        onClick={() => setTimeFilterOption('week')}
-                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${timeFilter === 'week' ? 'bg-blue-50 text-blue-600' : ''}`}
-                                    >
-                                        This Week
-                                    </button>
-                                    <button
-                                        onClick={() => setTimeFilterOption('month')}
-                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 ${timeFilter === 'month' ? 'bg-blue-50 text-blue-600' : ''}`}
-                                    >
-                                        This Month
-                                    </button>
-                                </div>
-                            )}
-                        </div>
+                        )}
                     </div>
-
-                    {isEditing && (
-                        <button
-                            onClick={() => setIsEditing(false)}
-                            className="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-                        >
-                            Save Layout
-                        </button>
-                    )}
                 </div>
             </header>
 
             <main className="flex-1 overflow-y-auto p-4 bg-gray-100">
+                {/* Search results indicator */}
+                {searchActive && (
+                    <div className="mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+                        <div className="flex items-center">
+                            <Search size={16} className="text-blue-500 mr-2" />
+                            <span className="text-sm text-blue-700">
+                                Search results for "<strong>{searchQuery}</strong>"
+                            </span>
+                        </div>
+                        <button
+                            onClick={clearSearch}
+                            className="text-blue-500 hover:text-blue-700 text-sm"
+                        >
+                            Clear
+                        </button>
+                    </div>
+                )}
+
+                {/* No results indicator */}
+                {searchActive &&
+                    filteredData.recentAlerts.length === 0 &&
+                    filteredData.stationTraffic.length === 0 &&
+                    filteredData.upcomingMaintenance.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-16 text-center">
+                            <AlertCircle size={40} className="text-gray-400 mb-3" />
+                            <h3 className="text-lg font-semibold text-gray-700 mb-1">No results found</h3>
+                            <p className="text-gray-500 mb-4">Try a different search term or clear the search</p>
+                            <button
+                                onClick={clearSearch}
+                                className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+                            >
+                                Clear Search
+                            </button>
+                        </div>
+                    )}
+
                 {error && (
                     <div className="mb-4 p-4 bg-red-100 border-l-4 border-red-500 text-red-700">
                         <p>{error}</p>
@@ -667,7 +788,7 @@ const Dashboard = () => {
                     </div>
                 )}
 
-                {loading && !error && (
+                {loading && !error && !searchActive && (
                     <div className="flex justify-center items-center py-12">
                         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
                     </div>
@@ -705,7 +826,7 @@ const Dashboard = () => {
 
                                     <div className="p-6">
                                         {widget.id === 'alerts' && (
-                                            <SystemAlerts alerts={dashboardData.recentAlerts} />
+                                            <SystemAlerts alerts={searchActive ? filteredData.recentAlerts : dashboardData.recentAlerts} />
                                         )}
                                         {widget.id === 'trains' && (
                                             <TrainStatus
@@ -717,10 +838,13 @@ const Dashboard = () => {
                                             />
                                         )}
                                         {widget.id === 'stations' && (
-                                            <StationTraffic stations={dashboardData.stationTraffic} />
+                                            <StationTraffic
+                                                stations={searchActive ? filteredData.stationTraffic : dashboardData.stationTraffic}
+                                                timeFilter={timeFilter}
+                                            />
                                         )}
                                         {widget.id === 'maintenance' && (
-                                            <Maintenance maintenance={dashboardData.upcomingMaintenance} />
+                                            <Maintenance maintenance={searchActive ? filteredData.upcomingMaintenance : dashboardData.upcomingMaintenance} />
                                         )}
                                     </div>
                                 </div>
