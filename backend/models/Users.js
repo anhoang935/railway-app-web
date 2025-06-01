@@ -103,7 +103,7 @@ class User {
   // Update user
   static async update(userID, userData) {
     try {
-      const { UserName, Email, Password, Gender, PhoneNumber, DateOfBirth, Address, VerifyCode, Status, OTP, OTPExpiry } = userData;
+      const { UserName, Email, Password, Gender, PhoneNumber, DateOfBirth, Address, VerifyCode, Status, Role, OTP, OTPExpiry } = userData;
 
       // Check if user exists
       const existingUser = await User.findById(userID);
@@ -138,6 +138,7 @@ class User {
         Address = COALESCE(?, Address),
         VerifyCode = COALESCE(?, VerifyCode),
         Status = COALESCE(?, Status),
+        Role = COALESCE(?, Role),
         OTP = COALESCE(?, OTP),
         OTPExpiry = COALESCE(?, OTPExpiry)
         WHERE userID = ?`,
@@ -151,6 +152,7 @@ class User {
           Address || null,
           VerifyCode !== undefined ? VerifyCode : null,
           Status || null,
+          Role || null,
           OTP !== undefined ? OTP : null,
           OTPExpiry !== undefined ? OTPExpiry : null,
           userID

@@ -1,12 +1,12 @@
 import React from 'react';
 import { TrendingUp } from 'lucide-react';
 
-function StationTraffic({ stations }) {
+function StationTraffic({ stations, timeFilter = 'today' }) {
     return (
         <div>
             <div className="flex justify-between items-center mb-4">
                 <h4 className="font-medium">Top Stations by Traffic</h4>
-                <button className="text-sm text-blue-600 hover:text-blue-800">View All</button>
+                {/* Filter & Sort button removed */}
             </div>
 
             <div className="space-y-4">
@@ -26,7 +26,8 @@ function StationTraffic({ stations }) {
                             ></div>
                         </div>
                         <div className="flex justify-between text-xs text-gray-500">
-                            <span>{station.trains} trains today</span>
+                            <span>{station.trains} trains {timeFilter === 'today' ? 'today' :
+                                timeFilter === 'week' ? 'this week' : 'this month'}</span>
                             <span>Updated 5m ago</span>
                         </div>
                     </div>
