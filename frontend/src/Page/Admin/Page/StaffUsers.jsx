@@ -124,37 +124,29 @@ const StaffUsers = ({ setActiveTab }) => {
     
     try {
       if (modalMode === 'create') {
-        await userService.createUser(formData);
+        await userService.createUser({
+          ...formData,
+          Role: formData.Role // Explicitly include Role
+        });
         setSuccessMessage("User created successfully");
       } else if (modalMode === 'edit') {
         // Only send non-empty fields for update
-        const updateData = { ...formData };
+        const updateData = {
+          ...formData,
+          Role: formData.Role // Ensure Role is explicitly included
+        };
         if (!updateData.Password) delete updateData.Password;
-        
-        // Check if role is changing from Customer to Admin
-        const isChangingToAdmin = currentUser.Role === 'Customer' && formData.Role === 'Admin';
-        
+                
         await userService.updateUser(currentUser.userID, updateData);
         
-        if (isChangingToAdmin) {
-          // If changing to Admin, show special message and redirect
-          setShowModal(false);
-          setSuccessMessage("User role changed to Admin. Redirecting to Admin management...");
-          
-          // Redirect after a short delay
-          setTimeout(() => {
-            setActiveTab("staff-members"); // This requires passing setActiveTab as a prop to StaffUsers component
-          }, 1500);
-          
-          return;
-        }
-        
-        setSuccessMessage("User updated successfully");
+        // Simple success message without redirection
+        setSuccessMessage(`User updated successfully. Role changed to: ${formData.Role}`);
       }
       
       setShowModal(false);
       fetchUsers(); // Refresh the list
     } catch (err) {
+      console.error('Error during user update:', err);
       setError(`Operation failed: ${err.toString()}`);
     }
   };
