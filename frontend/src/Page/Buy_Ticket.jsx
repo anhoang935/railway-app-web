@@ -191,7 +191,7 @@ const Buy_Ticket = () => {
   const renderSeatsOrBeds = () => {
     if(!selectedCoach) return null;
 
-    const {row, col, type} = selectedCoach;
+    const {type} = selectedCoach;
 
     if(type === 'seat'){
       return renderRegularCoach(selectedCoach);
@@ -283,7 +283,7 @@ const Buy_Ticket = () => {
 
     const tiers = [];
     for (let row = 0; row < rows; row++) {
-      const tierNumber = rows - row;
+      const tierNumber = row + 1;
       tiers.push(
         <div key={`tier-label-${tierNumber}`} className="tier-label">
           T{tierNumber}
@@ -348,10 +348,18 @@ const Buy_Ticket = () => {
     }
     return (
       <div className="flex flex-col items-center">
-        <div className="flex flex-row">
-          <div className="tier-labels">
-            {tiers}
+        {isMobile && (
+          <div className="tier-labels mb-2">
+            {tiers} 
           </div>
+        )}
+        
+        <div className="flex flex-row">
+          {!isMobile && (
+            <div className="tier-labels">
+              {tiers}
+            </div>
+          )}
           
           <div className="cabins-grid md:transform-none">
             {cabinsLayout}
@@ -680,9 +688,7 @@ const Buy_Ticket = () => {
                     <p className="text-sm text-gray-600">
                     Number: {selectedItems.map(
                               item => 
-                                selectedCoach.type === 'seat' 
-                                  ? `${item.col * selectedCoach.rows + item.row + 1}` 
-                                  : `${item.row * selectedCoach.cols + item.col + 1}`
+                                item.col * selectedCoach.rows + item.row + 1
                               ).join(', ')}
                     </p>
                     <p className="font-semibold mt-2">
