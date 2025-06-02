@@ -35,18 +35,18 @@ const Check_Ticket = () => {
   const [filteredTickets, setFilteredtickets] = useState([]);
   
   const getCoachImage = (coachType) => {
-    if(coachType === 'room-4-bed') return coachSilver;
-    if(coachType === 'room-6-bed') return coachBlue;
-    if(coachType === 'soft-seat') return coachGreen;
-    if(coachType === 'hard-seat') return coachYellow;
+    if(coachType === 'Room 4 beds') return coachSilver;
+    if(coachType === 'Room 6 beds') return coachBlue;
+    if(coachType === 'Soft seat') return coachGreen;
+    if(coachType === 'Hard seat') return coachYellow;
     return coachBlack;
   }
 
   const getCoachColor = (coachType) => {
-    if(coachType === 'room-4-bed') return 'text-gray-400';
-    if(coachType === 'room-6-bed') return 'text-blue-400';
-    if(coachType === 'soft-seat') return 'text-green-400';
-    if(coachType === 'hard-seat') return 'text-yellow-400';
+    if(coachType === 'Room 4 beds') return 'text-gray-400';
+    if(coachType === 'Room 6 beds') return 'text-blue-400';
+    if(coachType === 'Soft seat') return 'text-green-400';
+    if(coachType === 'Hard seat') return 'text-yellow-400';
     return 'text-black-400';
   }
 
@@ -151,8 +151,8 @@ const Check_Ticket = () => {
       <div className='ticketDetails bg-white shadow-lg p-4 text-blue-600 rounded-xl border-4 border-blue-400 flex flex-col md:flex-row md:gap-6 md:p-6 md:w-[750px] mx-auto mt-4'>
         <div className='leftTicket flex gap-3 md:flex-col justify-items-center place-self-center md:place-content-center md:place-items-center'>
           <h1 className='font-bold text-lg text-blue-600'>Train Ticket</h1>
-          <img src={getCoachImage(ticket.coachType)} alt="" className='hidden md:block' />
-          <h1 className={`font-bold text-lg ${getCoachColor(ticket.coachType)}`}>{ticket.coachType} Coach</h1>
+          <img src={getCoachImage(ticket.coachType.split(',')[0])} alt="" className='hidden md:block' />
+          <h1 className={`font-bold text-lg ${getCoachColor(ticket.coachType.split(',')[0])}`}>{ticket.coachType.split(',')[0]}</h1>
         </div>
         <div className='rightTicket flex flex-col flex-1 '>
           <h1 className='font-bold text-lg text-blue-600 place-self-center'>Ticket Details</h1>

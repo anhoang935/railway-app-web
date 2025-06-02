@@ -13,6 +13,7 @@ import scheduleRoutes from './routes/schedule.js';
 import ticketRoutes from './routes/ticket.js';
 import userRoutes from './routes/user.js';
 import authRoutes from './routes/auth.js';
+import './utils/ticketExpireService.js';
 
 dotenv.config();
 

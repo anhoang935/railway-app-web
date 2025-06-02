@@ -34,18 +34,18 @@ const Return_Ticket = () => {
   const [filteredTickets, setFilteredtickets] = useState([]);
   
   const getCoachImage = (coachType) => {
-    if(coachType === 'room-4-bed') return coachSilver;
-    if(coachType === 'room-6-bed') return coachBlue;
-    if(coachType === 'soft-seat') return coachGreen;
-    if(coachType === 'hard-seat') return coachYellow;
+    if(coachType === 'Room 4 beds') return coachSilver;
+    if(coachType === 'Room 6 beds') return coachBlue;
+    if(coachType === 'Soft seat') return coachGreen;
+    if(coachType === 'Hard seat') return coachYellow;
     return coachBlack;
   }
 
   const getCoachColor = (coachType) => {
-    if(coachType === 'room-4-bed') return 'text-gray-400';
-    if(coachType === 'room-6-bed') return 'text-blue-400';
-    if(coachType === 'soft-seat') return 'text-green-400';
-    if(coachType === 'hard-seat') return 'text-yellow-400';
+    if(coachType === 'Room 4 beds') return 'text-gray-400';
+    if(coachType === 'Room 6 beds') return 'text-blue-400';
+    if(coachType === 'Soft seat') return 'text-green-400';
+    if(coachType === 'Hard seat') return 'text-yellow-400';
     return 'text-black-400';
   }
 
@@ -164,8 +164,8 @@ const Return_Ticket = () => {
         <div className='ticketDetails text-blue-600 flex flex-col p-4 md:flex-row md:gap-6 md:p-6 '>
           <div className='leftTicket flex gap-3 md:flex-col justify-items-center place-self-center md:place-content-center md:place-items-center'>
             <h1 className='font-bold text-lg text-blue-600'>Train Ticket</h1>
-            <img src={getCoachImage(ticket.coachType)} alt="" className='hidden md:block' />
-            <h1 className={`font-bold text-lg ${getCoachColor(ticket.coachType)}`}>{ticket.coachType} Coach</h1>
+          <img src={getCoachImage(ticket.coachType.split(',')[0])} alt="" className='hidden md:block' />
+          <h1 className={`font-bold text-lg ${getCoachColor(ticket.coachType.split(',')[0])}`}>{ticket.coachType.split(',')[0]}</h1>
           </div>
           <div className='rightTicket flex flex-col flex-1 '>
             <h1 className='font-bold text-lg text-blue-600 place-self-center'>Ticket Details</h1>
@@ -176,19 +176,18 @@ const Return_Ticket = () => {
                   <p className='ticketContentElementDetail'>{ticket.ticketId}</p>
                 </div>
                 <div className='ticketContentElement'> 
-                  <p>Passenger Name: </p>
+                  <p>Booked at: </p>
                   {/* <p className='ticketContentElementDetail' >{ticket.passengerName}</p> */}
                 </div>
                 <div>
-                  <u>{ticket.passengerName}</u>
+                  <u>{new Date(ticket.bookingDateTime).toLocaleString('sv-SE', { hour12: false })}</u>
                 </div>
                 <div className='ticketContentElement'> 
-                  <p>Train Name: </p>
-                  <p className='ticketContentElementDetail'>{ticket.trainName}</p>
+                  <p>Expires at: </p>
+                  {/* <p className='ticketContentElementDetail' >{ticket.passengerName}</p> */}
                 </div>
-                <div className='ticketContentElement'> 
-                  <p>Seat Number: </p>
-                  <p className='ticketContentElementDetail'>{ticket.seatNumber}</p>
+                <div>
+                  <u>{new Date(ticket.expireDateTime).toLocaleString('sv-SE', { hour12: false })}</u>
                 </div>
               </div>
               <div className='ticketContents2 ml-auto md:w-[50%]'>
@@ -208,10 +207,19 @@ const Return_Ticket = () => {
                   <p>Departure Time:</p>
                   <p className='ticketContentElementDetail'>{ticket.departureTime}</p>
                 </div>
-                <p>Status: <span className='text-green-600'>Confirmed</span></p>
+                <p>
+                  Status:&nbsp;
+                  <span className={
+                    ticket.status === 'paid'
+                      ? 'text-green-600'
+                      : ticket.status === 'pending'
+                      ? 'text-yellow-600'
+                      : 'text-black'
+                  }>
+                    {ticket.status}
+                  </span>
+                </p>
               </div>
-
-
             </div>
           </div>
 
@@ -220,9 +228,11 @@ const Return_Ticket = () => {
           <div className="w-1/2 flex justify-center">
             <button className="red-button" onClick={() => handleDeleteTicket(ticket.ticketId)}>Return Ticket</button>
           </div>
-          <div className="w-1/2 flex justify-center">
-            <button className="green-button">Process Payment</button>
-          </div>
+          {ticket.status === 'pending' && (
+            <div className="w-1/2 flex justify-center">
+              <button className="green-button">Process Payment</button>
+            </div>
+          )}
         </div>
       </div>
       
@@ -234,7 +244,7 @@ const Return_Ticket = () => {
   return (
     <div className='booking-container bg-[#f0f7ff]'>      
       <div className='booking-content bg-white shadow-lg p-6 text-blue-600'>
-        <h1 className='page-title h-1 mb-4'>Check Ticket</h1>
+        <h1 className='page-title h-1 mb-4'>Return Ticket</h1>
         <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4'>
           <div>
             <span>Passenger Name</span>

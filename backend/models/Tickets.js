@@ -77,6 +77,9 @@ class Tickets {
                 SELECT
                     ticket.ticketID AS ticketId,
                     ticket.bookingID AS bookingId,
+                    ticket.expire_date_time AS expireDateTime,
+                    booking.bookingDate AS bookingDateTime,
+                    booking.status AS status,
                     passenger.fullname AS passengerName,
                     user.UserName AS userName,
                     coach_type.type AS coachType,
