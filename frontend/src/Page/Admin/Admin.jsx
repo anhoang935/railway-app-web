@@ -3,11 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import {
     BarChart3, Train, Users, Calendar, Settings, MapPin,
     LogOut, ArrowLeftToLine, Menu, ChevronDown, ChevronRight,
-    Route
+    Route, CreditCard, UserCheck, Ticket, User
 } from 'lucide-react';
 import "./admin.css";
 
-// Pages
 import Dashboard from './Page/Dashboard';
 import TrainManagement from './Page/TrainManagement';
 import StationManagement from './Page/StationManagement';
@@ -17,27 +16,21 @@ import StaffUsers from './Page/StaffUsers';
 import StaffMembers from './Page/StaffMembers';
 import Scheduling from './Page/Scheduling';
 import AdminSettings from './Page/AdminSettings';
+import BookingManagement from './Page/BookingManagement';
+import PassengerManagement from './Page/PassengerManagement';
 
-// Components
 import NavItem from './Components/NavItem';
 
-// Sample data
 const recentAlerts = [
     { id: 1, type: 'Delay', station: 'Central Station', time: '10 mins ago', severity: 'medium' },
-    { id: 2, type: 'Maintenance', station: 'North Terminal', time: '25 mins ago', severity: 'low' },
-    { id: 3, type: 'Signal Failure', station: 'East Junction', time: '45 mins ago', severity: 'high' }
-];
-
-const trainStats = [
-    { label: 'On Time', value: 85, color: 'bg-green-500' },
-    { label: 'Delayed', value: 12, color: 'bg-yellow-500' },
-    { label: 'Cancelled', value: 3, color: 'bg-red-500' }
+    { id: 2, type: 'Maintenance', station: 'North Junction', time: '25 mins ago', severity: 'low' },
+    { id: 3, type: 'Emergency', station: 'South Terminal', time: '1 hour ago', severity: 'high' }
 ];
 
 const stationTraffic = [
-    { id: 1, name: 'Central Station', passengers: 12500, trains: 145 },
-    { id: 2, name: 'North Terminal', passengers: 8700, trains: 98 },
-    { id: 3, name: 'East Junction', passengers: 6200, trains: 72 },
+    { id: 1, name: 'Central Station', passengers: 15420, trains: 142 },
+    { id: 2, name: 'North Junction', passengers: 12800, trains: 98 },
+    { id: 3, name: 'East Terminal', passengers: 11300, trains: 87 },
     { id: 4, name: 'West Station', passengers: 9300, trains: 110 }
 ];
 
@@ -119,51 +112,27 @@ export default function AdminPanel() {
     const renderContent = () => {
         switch (activeTab) {
             case "dashboard":
-                return (
-                    <Dashboard
-                        formattedDateTime={formattedDateTime}
-                        dashboardLayout={dashboardLayout}
-                        isEditing={isEditing}
-                        toggleWidgetVisibility={toggleWidgetVisibility}
-                        recentAlerts={recentAlerts}
-                        trainStats={trainStats}
-                        stationTraffic={stationTraffic}
-                        upcomingMaintenance={upcomingMaintenance}
-                        handleEditToggle={handleEditToggle}
-                        handleSaveChanges={handleSaveChanges}
-                    />
-                );
+                return <Dashboard />;
             case "trains":
                 return <TrainManagement setActiveTab={setActiveTab} />;
             case "stations":
                 return <StationManagement setActiveTab={setActiveTab} />;
             case "journey":
                 return <JourneyManagement setActiveTab={setActiveTab} />;
-            case "staff":
-                return <UsersManagement setActiveTab={setActiveTab} />;
+            case "scheduling":
+                return <Scheduling setActiveTab={setActiveTab} />;
+            case "bookings":
+                return <BookingManagement setActiveTab={setActiveTab} />;
+            case "passengers":
+                return <PassengerManagement setActiveTab={setActiveTab} />;
             case "staff-users":
                 return <StaffUsers setActiveTab={setActiveTab} />;
             case "staff-members":
                 return <StaffMembers setActiveTab={setActiveTab} />;
-            case "scheduling":
-                return <Scheduling setActiveTab={setActiveTab} />;
             case "settings":
                 return <AdminSettings setActiveTab={setActiveTab} />;
             default:
-                return (
-                    <Dashboard
-                        formattedDateTime={formattedDateTime}
-                        dashboardLayout={dashboardLayout}
-                        isEditing={isEditing}
-                        toggleWidgetVisibility={toggleWidgetVisibility}
-                        recentAlerts={recentAlerts}
-                        trainStats={trainStats}
-                        stationTraffic={stationTraffic}
-                        upcomingMaintenance={upcomingMaintenance}
-                        handleEditToggle={handleEditToggle}
-                        handleSaveChanges={handleSaveChanges}
-                    />
-                );
+                return <Dashboard />;
         }
     };
 
@@ -191,68 +160,103 @@ export default function AdminPanel() {
                     </button>
                 </div>
 
-                <nav className="mt-6 flex-1">
-                    <NavItem icon={<BarChart3 size={20} />} label="Dashboard" active={activeTab === "dashboard"} expanded={sidebarOpen} onClick={() => setActiveTab("dashboard")} />
-                    <NavItem icon={<Train size={20} />} label="Train Management" active={activeTab === "trains"} expanded={sidebarOpen} onClick={() => setActiveTab("trains")} />
-                    <NavItem icon={<MapPin size={20} />} label="Stations" active={activeTab === "stations"} expanded={sidebarOpen} onClick={() => setActiveTab("stations")} />
-                    <NavItem icon={<Route size={20} />} label="Journey" active={activeTab === "journey"} expanded={sidebarOpen} onClick={() => setActiveTab("journey")} />
+                <nav className="mt-2 flex-1">
+                    {/* Dashboard - Overview */}
+                    <NavItem
+                        icon={<BarChart3 size={20} />}
+                        label="Dashboard"
+                        active={activeTab === "dashboard"}
+                        expanded={sidebarOpen}
+                        onClick={() => setActiveTab("dashboard")}
+                    />
 
-                    <div>
-                        <div className={`flex items-center px-4 py-2 cursor-pointer hover:bg-blue-700 ${activeTab === "staff" ? 'bg-blue-700' : ''}`}>
-                            <div className={`flex items-center ${sidebarOpen ? 'justify-start' : 'justify-center w-full'}`}>
-                                <Users size={20} />
-                            </div>
-                            {sidebarOpen && (
-                                <>
-                                    <span
-                                        className={`ml-3 flex-1 ${activeTab === "staff" ? 'font-bold' : ''}`}
-                                        onClick={() => setActiveTab("staff")}
-                                    >
-                                        Users
-                                    </span>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            toggleSubmenu('staff');
-                                        }}
-                                        className="p-1 rounded-md hover:bg-blue-600"
-                                    >
-                                        {isMenuExpanded('staff') ?
-                                            <ChevronDown size={16} /> :
-                                            <ChevronRight size={16} />
-                                        }
-                                    </button>
-                                </>
-                            )}
+                    {/* Transportation Management Group */}
+                    {sidebarOpen && (
+                        <div className="px-4 py-2 text-xs font-semibold text-blue-200 uppercase tracking-wider mt-4">
+                            Transportation
                         </div>
+                    )}
+                    <NavItem
+                        icon={<Train size={20} />}
+                        label="Train Management"
+                        active={activeTab === "trains"}
+                        expanded={sidebarOpen}
+                        onClick={() => setActiveTab("trains")}
+                    />
+                    <NavItem
+                        icon={<MapPin size={20} />}
+                        label="Stations"
+                        active={activeTab === "stations"}
+                        expanded={sidebarOpen}
+                        onClick={() => setActiveTab("stations")}
+                    />
+                    <NavItem
+                        icon={<Route size={20} />}
+                        label="Journey"
+                        active={activeTab === "journey"}
+                        expanded={sidebarOpen}
+                        onClick={() => setActiveTab("journey")}
+                    />
+                    <NavItem
+                        icon={<Calendar size={20} />}
+                        label="Scheduling"
+                        active={activeTab === "scheduling"}
+                        expanded={sidebarOpen}
+                        onClick={() => setActiveTab("scheduling")}
+                    />
 
-                        <div
-                            className={`overflow-hidden transition-all duration-300 ease-in-out ${isMenuExpanded('staff') && sidebarOpen ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
-                                }`}
-                        >
-                            <div className="transform transition-all duration-300 ease-in-out">
-                                <NavItem
-                                    icon={<Users size={16} />}
-                                    label="Customer"
-                                    active={activeTab === "staff-users"}
-                                    expanded={sidebarOpen}
-                                    onClick={() => setActiveTab("staff-users")}
-                                    isSubmenu={true}
-                                />
-                                <NavItem
-                                    icon={<Users size={16} />}
-                                    label="Admin"
-                                    active={activeTab === "staff-members"}
-                                    expanded={sidebarOpen}
-                                    onClick={() => setActiveTab("staff-members")}
-                                    isSubmenu={true}
-                                />
-                            </div>
+                    {/* Customer Management Group */}
+                    {sidebarOpen && (
+                        <div className="px-4 py-2 text-xs font-semibold text-blue-200 uppercase tracking-wider mt-4">
+                            Customer Management
                         </div>
+                    )}
+                    <NavItem
+                        icon={<Ticket size={20} />}
+                        label="Bookings"
+                        active={activeTab === "bookings"}
+                        expanded={sidebarOpen}
+                        onClick={() => setActiveTab("bookings")}
+                    />
+                    <NavItem
+                        icon={<User size={20} />}
+                        label="Passengers"
+                        active={activeTab === "passengers"}
+                        expanded={sidebarOpen}
+                        onClick={() => setActiveTab("passengers")}
+                    />
+
+                    {/* User Management Group */}
+                    {sidebarOpen && (
+                        <div className="px-4 py-2 text-xs font-semibold text-blue-200 uppercase tracking-wider mt-4">
+                            User Management
+                        </div>
+                    )}
+                    <NavItem
+                        icon={<UserCheck size={20} />}
+                        label="Customer"
+                        active={activeTab === "staff-users"}
+                        expanded={sidebarOpen}
+                        onClick={() => setActiveTab("staff-users")}
+                    />
+                    <NavItem
+                        icon={<Users size={20} />}
+                        label="Admin"
+                        active={activeTab === "staff-members"}
+                        expanded={sidebarOpen}
+                        onClick={() => setActiveTab("staff-members")}
+                    />
+
+                    {/* Settings */}
+                    <div className="mt-4">
+                        <NavItem
+                            icon={<Settings size={20} />}
+                            label="Settings"
+                            active={activeTab === "settings"}
+                            expanded={sidebarOpen}
+                            onClick={() => setActiveTab("settings")}
+                        />
                     </div>
-
-                    <NavItem icon={<Calendar size={20} />} label="Scheduling" active={activeTab === "scheduling"} expanded={sidebarOpen} onClick={() => setActiveTab("scheduling")} />
-                    <NavItem icon={<Settings size={20} />} label="Settings" active={activeTab === "settings"} expanded={sidebarOpen} onClick={() => setActiveTab("settings")} />
                 </nav>
 
                 <div className="p-4 border-t border-blue-500">

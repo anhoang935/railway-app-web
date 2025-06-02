@@ -3,6 +3,7 @@ import Seat from '../ui/models/Seat';
 import Bed from '../ui/models/Bed';
 import '../styles/buy_ticket.css';
 import { Trash } from 'lucide-react';
+import stationService from '../data/Service/stationService';
 
 document.documentElement.style.setProperty('--primary-color', '#2563eb');
 const Buy_Ticket = () => {
@@ -32,6 +33,10 @@ const Buy_Ticket = () => {
 
   const [showSearchResults, setShowSearchResults] = useState(false);
 
+  const [stations, setStations] = useState([]);
+  const [loadingStations, setLoadingStations] = useState(true);
+  const [stationError, setStationError] = useState(null);
+
   useEffect(() => {
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -43,15 +48,34 @@ const Buy_Ticket = () => {
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-  const majorStations = [
-    { id: 'hanoi', name: 'Hà Nội',},
-    { id: 'vinh', name: 'Vinh',},
-    { id: 'hue', name: 'Huế',},
-    { id: 'danang', name: 'Đà Nẵng',},
-    { id: 'nhatrang', name: 'Nha Trang',},
-    { id: 'saigon', name: 'Sài Gòn',},
-    
-  ]
+  useEffect(() => {
+    const fetchStations = async () => {
+      try {
+        setLoadingStations(true);
+        setStationError(null);
+        const stationData = await stationService.getAllStations();
+
+        
+        setStations(stationData);
+      } catch (error) {
+        console.error('Failed to fetch stations:', error);
+        setStationError('Failed to load stations. Please try again.');
+        const fallbackStations = [
+          { id: 'hanoi', name: 'Hà Nội' },
+          { id: 'vinh', name: 'Vinh' },
+          { id: 'hue', name: 'Huế' },
+          { id: 'danang', name: 'Đà Nẵng' },
+          { id: 'nhatrang', name: 'Nha Trang' },
+          { id: 'saigon', name: 'Sài Gòn' },
+        ];
+        setStations(fallbackStations);
+      } finally {
+        setLoadingStations(false);
+      }
+    };
+
+    fetchStations();
+  }, [])
 
   const trainTypes = [
     { id: 'SE1', direction: 'Bắc-Nam', startTime: '12:00', endTime: '04:00', duration: 16 },
@@ -73,7 +97,7 @@ const Buy_Ticket = () => {
 
   const calculateDistance = (from, to) => {
     const stationIndices = {};
-    majorStations.forEach((station, index) => {
+    stations.forEach((station, index) => {
       stationIndices[station.id] = index;
     })
     if(stationIndices[from] === stationIndices[to]) return 0;
@@ -93,13 +117,13 @@ const Buy_Ticket = () => {
     
     if (!from || !to || from === to) return;
     
-    const fromStation = majorStations.find(s => s.id === from)
-    const toStation = majorStations.find(s => s.id === to)
+    const fromStation = stations.find(s => s.id === from)
+    const toStation = stations.find(s => s.id === to)
     
     let direction;
     if (fromStation && toStation) {
-      const fromIndex = majorStations.findIndex(s => s.id === from)
-      const toIndex = majorStations.findIndex(s => s.id === to)
+      const fromIndex = stations.findIndex(s => s.id === from)
+      const toIndex = stations.findIndex(s => s.id === to)
       direction = fromIndex < toIndex ? 'Bắc-Nam' : 'Nam-Bắc'
     }
     
@@ -496,10 +520,15 @@ const Buy_Ticket = () => {
                 value={formData.from}
                 onChange={handleInputChange}
                 className="field-select"
+                disabled={loadingStations}
               >
-                <option value="">Select departure station</option>
-                {majorStations.map(station => (
-                  <option key={station.id} value={station.id}>{station.name}</option>
+                <option value="">
+                  {loadingStations ? 'Loading stations...' : 'Select departure station'}
+                </option>
+                {stations.map(station => (
+                  <option key={station.id || station.stationID} value={station.id || station.stationID}>
+                    {station.name || station.stationName}
+                  </option>
                 ))}
               </select>
             </div>
@@ -512,10 +541,15 @@ const Buy_Ticket = () => {
                 value={formData.to}
                 onChange={handleInputChange}
                 className="field-select"
+                disabled={loadingStations}
               >
-                <option value="">Select arrival station</option>
-                {majorStations.map(station => (
-                  <option key={station.id} value={station.id}>{station.name}</option>
+                <option value="">
+                  {loadingStations ? 'Loading stations...' : 'Select departure station'}
+                </option>
+                {stations.map(station => (
+                  <option key={station.id || station.stationID} value={station.id || station.stationID}>
+                    {station.name || station.stationName}
+                  </option>
                 ))}
               </select>
             </div>
@@ -597,7 +631,12 @@ const Buy_Ticket = () => {
                   <div className="flex justify-between text-sm mb-2">
                     <div>
                       <div className="font-semibold text-lg">{formatTime(train.startTime)}</div>
-                      <div className="text-gray-500">{formData.from && majorStations.find(s => s.id === formData.from)?.name}</div>
+                      <div className="text-gray-500">
+                        {formData.from && stations.find(s => 
+                          (s.id || s.stationID) === formData.from)?.name || 
+                          stations.find(s => (s.id || s.stationID) === formData.from)?.stationName
+                        }
+                      </div>
                     </div>
                     <div className="flex flex-col items-center justify-center px-4">
                       <div className="text-gray-500 text-xs">{train.duration}h</div>
@@ -606,7 +645,12 @@ const Buy_Ticket = () => {
                     </div>
                     <div>
                       <div className="font-semibold text-lg">{formatTime(train.endTime)}</div>
-                      <div className="text-gray-500">{formData.to && majorStations.find(s => s.id === formData.to)?.name}</div>
+                      <div className="text-gray-500">
+                        {formData.to && stations.find(s => 
+                          (s.id || s.stationID) === formData.to)?.name || 
+                          stations.find(s => (s.id || s.stationID) === formData.to)?.stationName
+                        }
+                      </div>
                     </div>
                   </div>
                   
@@ -669,7 +713,9 @@ const Buy_Ticket = () => {
                     <p className="text-sm text-gray-600">Train: {selectedTrain.id}</p>
                     <p className="text-sm text-gray-600">Coach: {selectedCoach.name}</p>
                     <p className="text-sm text-gray-600">
-                      Journey: {majorStations.find(s => s.id === formData.from)?.name} → {majorStations.find(s => s.id === formData.to)?.name}
+                      Journey: {stations.find(s => 
+                                  (s.id || s.stationID) === formData.from)?.name || 
+                                  stations.find(s => (s.id || s.stationID) === formData.from)?.stationName} → {stations.find(s => (s.id || s.stationID) === formData.to)?.name || stations.find(s => (s.id || s.stationID) === formData.to)?.stationName}
                     </p>
                     <p className="text-sm text-gray-600">
                       Departure Date: {new Date(formData.departureDate).toLocaleDateString('vi-VN')}

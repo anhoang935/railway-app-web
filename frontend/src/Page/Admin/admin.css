@@ -9,4 +9,25 @@
       background-position: 0% 50%;
     }
   }
-  
+
+/* Group headers */
+.nav-group-header {
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #93c5fd;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 1rem;
+}
+
+.nav-group-header:first-of-type {
+    margin-top: 0;
+}
+
+/* Visual separator for settings */
+.nav-separator {
+    border-top: 1px solid #3b82f6;
+    margin: 1rem 0;
+    opacity: 0.3;
+}

@@ -82,15 +82,16 @@ export const createJourney = async (req, res) => {
 
         const { journeyID, scheduleID, stationID, arrivalTime, departureTime } = journeyData;
 
-        if (!journeyID || !scheduleID || !stationID || !arrivalTime || !departureTime) {
+        // Validate required fields (journeyID is optional, will be auto-generated if not provided)
+        if (!scheduleID || !stationID || !arrivalTime || !departureTime) {
             return res.status(400).json({
                 success: false,
-                message: 'Please provide journeyID, scheduleID, stationID, arrivalTime, and departureTime'
+                message: 'Please provide scheduleID, stationID, arrivalTime, and departureTime'
             });
         }
 
         const journey = await Journey.create({
-            journeyID,
+            journeyID, // Can be null, will be auto-generated
             scheduleID,
             stationID,
             arrivalTime,

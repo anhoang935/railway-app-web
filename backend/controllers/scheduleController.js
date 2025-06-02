@@ -4,7 +4,7 @@ import Schedule from '../models/Schedules.js';
 export const getAllSchedules = async (req, res) => {
   try {
     const schedules = await Schedule.findAll();
-    
+
     res.status(200).json({
       success: true,
       count: schedules.length,
@@ -23,14 +23,14 @@ export const getSchedule = async (req, res) => {
   try {
     const { id } = req.params;
     const schedule = await Schedule.findById(id);
-    
+
     if (!schedule) {
       return res.status(404).json({
         success: false,
         message: 'Schedule not found'
       });
     }
-    
+
     res.status(200).json({
       success: true,
       data: schedule
@@ -48,7 +48,7 @@ export const getSchedulesByTrain = async (req, res) => {
   try {
     const { trainId } = req.params;
     const schedules = await Schedule.findByTrainId(trainId);
-    
+
     res.status(200).json({
       success: true,
       count: schedules.length,
@@ -67,7 +67,7 @@ export const getSchedulesByStation = async (req, res) => {
   try {
     const { stationId } = req.params;
     const schedules = await Schedule.findByStationId(stationId);
-    
+
     res.status(200).json({
       success: true,
       count: schedules.length,
@@ -85,16 +85,16 @@ export const getSchedulesByStation = async (req, res) => {
 export const getSchedulesBetweenStations = async (req, res) => {
   try {
     const { startId, endId } = req.params;
-    
+
     if (!startId || !endId) {
       return res.status(400).json({
         success: false,
         message: 'Please provide both start and end station IDs'
       });
     }
-    
+
     const schedules = await Schedule.findBetweenStations(startId, endId);
-    
+
     res.status(200).json({
       success: true,
       count: schedules.length,
@@ -112,7 +112,7 @@ export const getSchedulesBetweenStations = async (req, res) => {
 export const createSchedule = async (req, res) => {
   try {
     let scheduleData;
-    
+
     // If content type is text/plain, try to parse it as JSON
     if (req.headers['content-type'] === 'text/plain') {
       try {
@@ -124,35 +124,50 @@ export const createSchedule = async (req, res) => {
         });
       }
     } else {
-      // Otherwise use the parsed body directly
       scheduleData = req.body;
     }
-    
+
     const { start_stationID, end_stationID, departureTime, arrivalTime, scheduleStatus, trainID } = scheduleData;
-    
-    if (!start_stationID || !end_stationID || !departureTime || !arrivalTime || !scheduleStatus || !trainID) {
+
+    // Validate required fields
+    if (!start_stationID || !end_stationID || !departureTime || !arrivalTime || !trainID) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide all required fields: start_stationID, end_stationID, departureTime, arrivalTime, scheduleStatus, trainID'
+        message: 'Please provide start_stationID, end_stationID, departureTime, arrivalTime, and trainID'
       });
     }
-    
+
+    // Additional validation for same stations
+    if (start_stationID === end_stationID) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start station and end station cannot be the same'
+      });
+    }
+
     const schedule = await Schedule.create({
       start_stationID,
       end_stationID,
       departureTime,
       arrivalTime,
-      scheduleStatus,
+      scheduleStatus: scheduleStatus || 'Active',
       trainID
     });
-    
+
     res.status(201).json({
       success: true,
       message: 'Schedule created successfully',
       data: schedule
     });
   } catch (error) {
-    console.error('Controller error:', error);
+    // Handle specific validation errors
+    if (error.message.includes('cannot be the same')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: error.message
@@ -165,7 +180,7 @@ export const updateSchedule = async (req, res) => {
   try {
     const { id } = req.params;
     let scheduleData;
-    
+
     // If content type is text/plain, try to parse it as JSON
     if (req.headers['content-type'] === 'text/plain') {
       try {
@@ -177,25 +192,49 @@ export const updateSchedule = async (req, res) => {
         });
       }
     } else {
-      // Otherwise use the parsed body directly
       scheduleData = req.body;
     }
-    
-    const updatedSchedule = await Schedule.update(id, scheduleData);
-    
+
+    const { start_stationID, end_stationID, departureTime, arrivalTime, scheduleStatus, trainID } = scheduleData;
+
+    // Additional validation for same stations (if both are provided)
+    if (start_stationID && end_stationID && start_stationID === end_stationID) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start station and end station cannot be the same'
+      });
+    }
+
+    const updatedSchedule = await Schedule.update(id, {
+      start_stationID,
+      end_stationID,
+      departureTime,
+      arrivalTime,
+      scheduleStatus,
+      trainID
+    });
+
     if (!updatedSchedule) {
       return res.status(404).json({
         success: false,
         message: 'Schedule not found'
       });
     }
-    
+
     res.status(200).json({
       success: true,
       message: 'Schedule updated successfully',
       data: updatedSchedule
     });
   } catch (error) {
+    // Handle specific validation errors
+    if (error.message.includes('cannot be the same')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: error.message
@@ -207,17 +246,17 @@ export const updateSchedule = async (req, res) => {
 export const deleteSchedule = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     try {
       const deleted = await Schedule.delete(id);
-      
+
       if (!deleted) {
         return res.status(404).json({
           success: false,
           message: 'Schedule not found'
         });
       }
-      
+
       res.status(200).json({
         success: true,
         message: 'Schedule deleted successfully'
