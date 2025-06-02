@@ -296,11 +296,9 @@ const Scheduling = ({ setActiveTab }) => {
         <div className="p-4 h-screen flex flex-col">
             <div className="flex justify-between items-center mb-4">
                 <div>
-                    <h1 className="text-2xl font-bold flex items-center">
-                        <FaClock className="mr-3 text-blue-600" />
+                    <h1 className="text-2xl font-bold">
                         Train Scheduling
                     </h1>
-                    <p className="text-gray-600 mt-1">Manage train schedules and routes</p>
                 </div>
                 <button
                     onClick={handleAddNew}
@@ -356,8 +354,8 @@ const Scheduling = ({ setActiveTab }) => {
                                             value={formData.start_stationID}
                                             onChange={handleInputChange}
                                             className={`w-1/2 px-2 py-1 border rounded focus:outline-none focus:border-blue-500 ${formData.start_stationID === formData.end_stationID && formData.start_stationID
-                                                    ? 'border-red-500 bg-red-50'
-                                                    : ''
+                                                ? 'border-red-500 bg-red-50'
+                                                : ''
                                                 }`}
                                         >
                                             <option value="">From</option>
@@ -373,8 +371,8 @@ const Scheduling = ({ setActiveTab }) => {
                                             value={formData.end_stationID}
                                             onChange={handleInputChange}
                                             className={`w-1/2 px-2 py-1 border rounded focus:outline-none focus:border-blue-500 ${formData.start_stationID === formData.end_stationID && formData.end_stationID
-                                                    ? 'border-red-500 bg-red-50'
-                                                    : ''
+                                                ? 'border-red-500 bg-red-50'
+                                                : ''
                                                 }`}
                                         >
                                             <option value="">To</option>
@@ -476,8 +474,8 @@ const Scheduling = ({ setActiveTab }) => {
                                                     value={formData.start_stationID}
                                                     onChange={handleInputChange}
                                                     className={`w-1/2 px-2 py-1 border rounded focus:outline-none focus:border-blue-500 ${formData.start_stationID === formData.end_stationID && formData.start_stationID
-                                                            ? 'border-red-500 bg-red-50'
-                                                            : ''
+                                                        ? 'border-red-500 bg-red-50'
+                                                        : ''
                                                         }`}
                                                 >
                                                     <option value="">From</option>
@@ -493,8 +491,8 @@ const Scheduling = ({ setActiveTab }) => {
                                                     value={formData.end_stationID}
                                                     onChange={handleInputChange}
                                                     className={`w-1/2 px-2 py-1 border rounded focus:outline-none focus:border-blue-500 ${formData.start_stationID === formData.end_stationID && formData.end_stationID
-                                                            ? 'border-red-500 bg-red-50'
-                                                            : ''
+                                                        ? 'border-red-500 bg-red-50'
+                                                        : ''
                                                         }`}
                                                 >
                                                     <option value="">To</option>

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     BarChart3, Train, Users, Calendar, Settings, MapPin,
     LogOut, ArrowLeftToLine, Menu, ChevronDown, ChevronRight,
-    Route
+    Route, CreditCard, UserCheck, Ticket, User
 } from 'lucide-react';
 import "./admin.css";
 
@@ -17,6 +17,8 @@ import StaffUsers from './Page/StaffUsers';
 import StaffMembers from './Page/StaffMembers';
 import Scheduling from './Page/Scheduling';
 import AdminSettings from './Page/AdminSettings';
+import BookingManagement from './Page/BookingManagement';
+import PassengerManagement from './Page/PassengerManagement';
 
 // Components
 import NavItem from './Components/NavItem';
@@ -24,20 +26,14 @@ import NavItem from './Components/NavItem';
 // Sample data
 const recentAlerts = [
     { id: 1, type: 'Delay', station: 'Central Station', time: '10 mins ago', severity: 'medium' },
-    { id: 2, type: 'Maintenance', station: 'North Terminal', time: '25 mins ago', severity: 'low' },
-    { id: 3, type: 'Signal Failure', station: 'East Junction', time: '45 mins ago', severity: 'high' }
-];
-
-const trainStats = [
-    { label: 'On Time', value: 85, color: 'bg-green-500' },
-    { label: 'Delayed', value: 12, color: 'bg-yellow-500' },
-    { label: 'Cancelled', value: 3, color: 'bg-red-500' }
+    { id: 2, type: 'Maintenance', station: 'North Junction', time: '25 mins ago', severity: 'low' },
+    { id: 3, type: 'Emergency', station: 'South Terminal', time: '1 hour ago', severity: 'high' }
 ];
 
 const stationTraffic = [
-    { id: 1, name: 'Central Station', passengers: 12500, trains: 145 },
-    { id: 2, name: 'North Terminal', passengers: 8700, trains: 98 },
-    { id: 3, name: 'East Junction', passengers: 6200, trains: 72 },
+    { id: 1, name: 'Central Station', passengers: 15420, trains: 142 },
+    { id: 2, name: 'North Junction', passengers: 12800, trains: 98 },
+    { id: 3, name: 'East Terminal', passengers: 11300, trains: 87 },
     { id: 4, name: 'West Station', passengers: 9300, trains: 110 }
 ];
 
@@ -126,6 +122,10 @@ export default function AdminPanel() {
                 return <StationManagement setActiveTab={setActiveTab} />;
             case "journey":
                 return <JourneyManagement setActiveTab={setActiveTab} />;
+            case "bookings":
+                return <BookingManagement setActiveTab={setActiveTab} />;
+            case "passengers":
+                return <PassengerManagement setActiveTab={setActiveTab} />;
             case "staff":
                 return <UsersManagement setActiveTab={setActiveTab} />;
             case "staff-users":
@@ -174,6 +174,8 @@ export default function AdminPanel() {
                     <NavItem icon={<Train size={20} />} label="Train Management" active={activeTab === "trains"} expanded={sidebarOpen} onClick={() => setActiveTab("trains")} />
                     <NavItem icon={<MapPin size={20} />} label="Stations" active={activeTab === "stations"} expanded={sidebarOpen} onClick={() => setActiveTab("stations")} />
                     <NavItem icon={<Route size={20} />} label="Journey" active={activeTab === "journey"} expanded={sidebarOpen} onClick={() => setActiveTab("journey")} />
+                    <NavItem icon={<Ticket size={20} />} label="Bookings" active={activeTab === "bookings"} expanded={sidebarOpen} onClick={() => setActiveTab("bookings")} />
+                    <NavItem icon={<User size={20} />} label="Passengers" active={activeTab === "passengers"} expanded={sidebarOpen} onClick={() => setActiveTab("passengers")} />
 
                     <div>
                         <div className={`flex items-center px-4 py-2 cursor-pointer hover:bg-blue-700 ${activeTab === "staff" ? 'bg-blue-700' : ''}`}>

@@ -78,6 +78,16 @@ const bookingService = {
             console.error('Error deleting booking:', error);
             throw error.response?.data?.message || error.message || 'Failed to delete booking';
         }
+    },
+
+    getBookingTickets: async (bookingId) => {
+        try {
+            const response = await axios.get(`${BASE_URL}/${bookingId}/tickets`);
+            return response.data.data;
+        } catch (error) {
+            console.error('Error fetching booking tickets:', error);
+            throw error.response?.data?.message || error.message || 'Failed to fetch booking tickets';
+        }
     }
 };
 
