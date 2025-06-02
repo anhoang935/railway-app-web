@@ -8,12 +8,13 @@ import './JourneyManagement.css';
 
 const JourneyManagement = ({ setActiveTab }) => {
     const [journeys, setJourneys] = useState([]);
-    const [stations, setStations] = useState([]); // Add this state
+    const [stations, setStations] = useState([]);
     const [schedules, setSchedules] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [error, setError] = useState(null);
+    const [isJourneyIDManual, setIsJourneyIDManual] = useState(false); // Add this state
     const [formData, setFormData] = useState({
         journeyID: '',
         scheduleID: '',
@@ -63,33 +64,72 @@ const JourneyManagement = ({ setActiveTab }) => {
         }
     };
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({
-            ...formData,
-            [name]: value
-        });
-    };
-
     const handleAddNew = () => {
-        // Generate a new ID based on existing journeys
-        const maxId = journeys.length > 0
-            ? Math.max(...journeys.map(j => {
-                // Extract the numeric part if IDs are like "J1", "J2"
-                const numericPart = j.journeyID.toString().replace(/\D/g, '');
-                return numericPart ? parseInt(numericPart) : 0;
-            }))
-            : 0;
-
         setIsAdding(true);
         setEditingId(null);
+        setIsJourneyIDManual(false); // Reset manual mode
         setFormData({
-            journeyID: `J${maxId + 1}`, // Auto-generate next ID
+            journeyID: '',
             scheduleID: '',
             stationID: '',
             arrivalTime: '',
             departureTime: ''
         });
+    };
+
+    // Add new function to generate journey ID based on selected schedule
+    const generateJourneyID = (selectedScheduleID) => {
+        if (!selectedScheduleID) return '';
+
+        // Find all existing journeys for this schedule
+        const journeysForSchedule = journeys.filter(j =>
+            j.scheduleID.toString() === selectedScheduleID.toString()
+        );
+
+        // Get the highest auto-increment number for this schedule
+        const maxAutoIncrement = journeysForSchedule.length > 0
+            ? Math.max(...journeysForSchedule.map(j => {
+                const journeyIdStr = j.journeyID.toString();
+                if (journeyIdStr.length >= 4) {
+                    // Extract last 2 digits as auto-increment
+                    return parseInt(journeyIdStr.slice(-2)) || 0;
+                }
+                return 0;
+            }))
+            : 0;
+
+        // Format: ab (schedule ID padded to 2 digits) + cd (auto-increment padded to 2 digits)
+        const schedulePart = selectedScheduleID.toString().padStart(2, '0');
+        const autoIncrementPart = (maxAutoIncrement + 1).toString().padStart(2, '0');
+
+        return schedulePart + autoIncrementPart;
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        const newFormData = {
+            ...formData,
+            [name]: value
+        };
+
+        // Auto-generate journey ID when schedule is selected during adding (only if not in manual mode)
+        if (name === 'scheduleID' && isAdding && !isJourneyIDManual) {
+            newFormData.journeyID = generateJourneyID(value);
+        }
+
+        setFormData(newFormData);
+    };
+
+    // Add function to toggle manual journey ID editing
+    const toggleJourneyIDEdit = () => {
+        setIsJourneyIDManual(!isJourneyIDManual);
+        if (!isJourneyIDManual && formData.scheduleID) {
+            // If switching from manual to auto, regenerate the ID
+            setFormData(prev => ({
+                ...prev,
+                journeyID: generateJourneyID(prev.scheduleID)
+            }));
+        }
     };
 
     const handleEdit = (journey) => {
@@ -117,15 +157,15 @@ const JourneyManagement = ({ setActiveTab }) => {
     };
 
     const validateForm = () => {
-        if (!formData.journeyID || formData.journeyID.trim() === '') {
+        if (!formData.journeyID || formData.journeyID.toString().trim() === '') {
             setError('Journey ID is required.');
             return false;
         }
-        if (!formData.scheduleID || formData.scheduleID.trim() === '') {
+        if (!formData.scheduleID || formData.scheduleID.toString().trim() === '') {
             setError('Schedule ID is required.');
             return false;
         }
-        if (!formData.stationID || formData.stationID.trim() === '') {
+        if (!formData.stationID || formData.stationID.toString().trim() === '') {
             setError('Station ID is required.');
             return false;
         }
@@ -246,7 +286,7 @@ const JourneyManagement = ({ setActiveTab }) => {
                     <thead className="sticky top-0 bg-gray-50 z-10">
                         <tr>
                             <th className="px-4 py-2 border-b border-gray-200 text-left">Journey ID</th>
-                            <th className="px-4 py-2 border-b border-gray-200 text-left">Train Schedule</th> {/* Even more descriptive */}
+                            <th className="px-4 py-2 border-b border-gray-200 text-left">Train Schedule</th>
                             <th className="px-4 py-2 border-b border-gray-200 text-left">Station</th>
                             <th className="px-4 py-2 border-b border-gray-200 text-left">Arrival Time</th>
                             <th className="px-4 py-2 border-b border-gray-200 text-left">Departure Time</th>
@@ -254,69 +294,99 @@ const JourneyManagement = ({ setActiveTab }) => {
                         </tr>
                         {isAdding && (
                             <tr className="bg-blue-50 sticky top-[41px] z-10">
-                                {/* Hide Journey ID field when adding new journey */}
                                 <td className="px-4 py-2 border-b border-gray-200">
-                                    <span className="text-gray-500 italic">Auto-generated</span>
+                                    <div className="h-12 flex items-center"> {/* Changed to match other cells */}
+                                        <div className="flex items-center space-x-2 w-full">
+                                            <input
+                                                type="text"
+                                                name="journeyID"
+                                                value={formData.journeyID}
+                                                onChange={handleInputChange}
+                                                readOnly={!isJourneyIDManual}
+                                                className={`flex-1 px-2 py-1 border rounded focus:outline-none h-8 ${isJourneyIDManual
+                                                    ? 'focus:border-blue-500 bg-white'
+                                                    : 'bg-gray-100 text-gray-600'
+                                                    }`}
+                                                placeholder={isJourneyIDManual ? "Enter Journey ID" : "Select schedule first"}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={toggleJourneyIDEdit}
+                                                className="bg-blue-500 hover:bg-blue-700 text-white font-bold px-2 rounded flex items-center justify-center text-xs h-8 w-12 flex-shrink-0"
+                                                title={isJourneyIDManual ? "Switch to auto-generate" : "Edit manually"}
+                                            >
+                                                {isJourneyIDManual ? "Auto" : "Edit"}
+                                            </button>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td className="px-4 py-2 border-b border-gray-200">
-                                    <select
-                                        name="scheduleID"
-                                        value={formData.scheduleID}
-                                        onChange={handleInputChange}
-                                        className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                    >
-                                        <option value="">Select Schedule</option>
-                                        {schedules.map(schedule => (
-                                            <option key={schedule.scheduleID} value={schedule.scheduleID}>
-                                                {schedule.start_stationName} → {schedule.end_stationName} ({schedule.trainName})
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <div className="h-12 flex items-center"> {/* Fixed height container */}
+                                        <select
+                                            name="scheduleID"
+                                            value={formData.scheduleID}
+                                            onChange={handleInputChange}
+                                            className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500 h-8"
+                                        >
+                                            <option value="">Select Schedule</option>
+                                            {schedules.map(schedule => (
+                                                <option key={schedule.scheduleID} value={schedule.scheduleID}>
+                                                    {schedule.start_stationName} → {schedule.end_stationName} ({schedule.trainName})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </td>
                                 <td className="px-4 py-2 border-b border-gray-200">
-                                    <select
-                                        name="stationID"
-                                        value={formData.stationID}
-                                        onChange={handleInputChange}
-                                        className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                    >
-                                        <option value="">Select Station</option>
-                                        {stations.map(station => (
-                                            <option key={station.stationID} value={station.stationID}>
-                                                {station.stationName}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <div className="h-12 flex items-center"> {/* Fixed height container */}
+                                        <select
+                                            name="stationID"
+                                            value={formData.stationID}
+                                            onChange={handleInputChange}
+                                            className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500 h-8"
+                                        >
+                                            <option value="">Select Station</option>
+                                            {stations.map(station => (
+                                                <option key={station.stationID} value={station.stationID}>
+                                                    {station.stationName}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </td>
                                 <td className="px-4 py-2 border-b border-gray-200">
-                                    <input
-                                        type="time"
-                                        name="arrivalTime"
-                                        value={formData.arrivalTime}
-                                        onChange={handleInputChange}
-                                        className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                    />
+                                    <div className="h-12 flex items-center"> {/* Fixed height container */}
+                                        <input
+                                            type="time"
+                                            name="arrivalTime"
+                                            value={formData.arrivalTime}
+                                            onChange={handleInputChange}
+                                            className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500 h-8"
+                                        />
+                                    </div>
                                 </td>
                                 <td className="px-4 py-2 border-b border-gray-200">
-                                    <input
-                                        type="time"
-                                        name="departureTime"
-                                        value={formData.departureTime}
-                                        onChange={handleInputChange}
-                                        className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                    />
+                                    <div className="h-12 flex items-center"> {/* Fixed height container */}
+                                        <input
+                                            type="time"
+                                            name="departureTime"
+                                            value={formData.departureTime}
+                                            onChange={handleInputChange}
+                                            className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500 h-8"
+                                        />
+                                    </div>
                                 </td>
                                 <td className="px-4 py-2 border-b border-gray-200">
-                                    <div className="flex justify-center space-x-2">
+                                    <div className="h-12 flex justify-center items-center space-x-2"> {/* Fixed height container */}
                                         <button
                                             onClick={handleSaveNew}
-                                            className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                            className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center h-8"
                                         >
                                             <FaSave className="mr-1" /> Save
                                         </button>
                                         <button
                                             onClick={handleCancel}
-                                            className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                            className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center h-8"
                                         >
                                             <FaTimes className="mr-1" /> Cancel
                                         </button>
@@ -372,26 +442,30 @@ const JourneyManagement = ({ setActiveTab }) => {
                                     </td>
                                     <td className="px-4 py-2 border-b border-gray-200">
                                         {editingId === journey.journeyID ? (
-                                            <input
-                                                type="time"
-                                                name="arrivalTime"
-                                                value={formData.arrivalTime}
-                                                onChange={handleInputChange}
-                                                className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                            />
+                                            <div className="h-12 flex items-center">
+                                                <input
+                                                    type="time"
+                                                    name="arrivalTime"
+                                                    value={formData.arrivalTime}
+                                                    onChange={handleInputChange}
+                                                    className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500 h-8"
+                                                />
+                                            </div>
                                         ) : (
                                             journey.arrivalTime || 'N/A'
                                         )}
                                     </td>
                                     <td className="px-4 py-2 border-b border-gray-200">
                                         {editingId === journey.journeyID ? (
-                                            <input
-                                                type="time"
-                                                name="departureTime"
-                                                value={formData.departureTime}
-                                                onChange={handleInputChange}
-                                                className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                            />
+                                            <div className="h-12 flex items-center">
+                                                <input
+                                                    type="time"
+                                                    name="departureTime"
+                                                    value={formData.departureTime}
+                                                    onChange={handleInputChange}
+                                                    className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500 h-8"
+                                                />
+                                            </div>
                                         ) : (
                                             journey.departureTime || 'N/A'
                                         )}

@@ -174,11 +174,6 @@ const Scheduling = ({ setActiveTab }) => {
             setError('Both departure and arrival times are required.');
             return false;
         }
-        // Validate that arrival time is after departure time
-        if (formData.departureTime >= formData.arrivalTime) {
-            setError('Arrival time must be after departure time.');
-            return false;
-        }
         return true;
     };
 
