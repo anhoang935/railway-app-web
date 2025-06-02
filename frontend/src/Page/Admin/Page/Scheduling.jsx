@@ -21,7 +21,7 @@ const Scheduling = ({ setActiveTab }) => {
         end_stationID: '',
         departureTime: '',
         arrivalTime: '',
-        scheduleStatus: 'Active'
+        scheduleStatus: 'on-time'  // Changed from 'Active' to 'on-time'
     });
 
     useEffect(() => {
@@ -140,7 +140,7 @@ const Scheduling = ({ setActiveTab }) => {
             end_stationID: '',
             departureTime: '',
             arrivalTime: '',
-            scheduleStatus: 'Active'
+            scheduleStatus: 'on-time'  // Changed from 'Active' to 'on-time'
         });
     };
 
@@ -200,7 +200,7 @@ const Scheduling = ({ setActiveTab }) => {
                 end_stationID: '',
                 departureTime: '',
                 arrivalTime: '',
-                scheduleStatus: 'Active'
+                scheduleStatus: 'on-time'  // Changed from 'Active' to 'on-time'
             });
             setError(null);
         } catch (error) {
@@ -232,7 +232,7 @@ const Scheduling = ({ setActiveTab }) => {
                 end_stationID: '',
                 departureTime: '',
                 arrivalTime: '',
-                scheduleStatus: 'Active'
+                scheduleStatus: 'on-time'  // Changed from 'Active' to 'on-time'
             });
             setError(null);
         } catch (error) {
@@ -408,9 +408,9 @@ const Scheduling = ({ setActiveTab }) => {
                                         onChange={handleInputChange}
                                         className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                     >
-                                        <option value="Active">Active</option>
-                                        <option value="Inactive">Inactive</option>
-                                        <option value="Maintenance">Maintenance</option>
+                                        <option value="on-time">On Time</option>
+                                        <option value="delayed">Delayed</option>
+                                        <option value="cancelled">Cancelled</option>
                                     </select>
                                 </td>
                                 <td className="px-4 py-2 border-b border-gray-200">
@@ -542,9 +542,9 @@ const Scheduling = ({ setActiveTab }) => {
                                                 onChange={handleInputChange}
                                                 className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                             >
-                                                <option value="Active">Active</option>
-                                                <option value="Inactive">Inactive</option>
-                                                <option value="Maintenance">Maintenance</option>
+                                                <option value="on-time">On Time</option>
+                                                <option value="delayed">Delayed</option>
+                                                <option value="cancelled">Cancelled</option>
                                             </select>
                                         ) : (
                                             getStatusBadge(schedule.scheduleStatus || 'Active')
