@@ -18,6 +18,7 @@ import Scheduling from './Page/Scheduling';
 import AdminSettings from './Page/AdminSettings';
 import BookingManagement from './Page/BookingManagement';
 import PassengerManagement from './Page/PassengerManagement';
+import TrackManagement from './Page/TrackManagement';
 
 import NavItem from './Components/NavItem';
 
@@ -131,6 +132,8 @@ export default function AdminPanel() {
                 return <StaffMembers setActiveTab={setActiveTab} />;
             case "settings":
                 return <AdminSettings setActiveTab={setActiveTab} />;
+            case "tracks":
+                return <TrackManagement setActiveTab={setActiveTab} />;
             default:
                 return <Dashboard />;
         }
@@ -203,6 +206,13 @@ export default function AdminPanel() {
                         active={activeTab === "scheduling"}
                         expanded={sidebarOpen}
                         onClick={() => setActiveTab("scheduling")}
+                    />
+                    <NavItem
+                        icon={<CreditCard size={20} />}
+                        label="Tracks"
+                        active={activeTab === "tracks"}
+                        expanded={sidebarOpen}
+                        onClick={() => setActiveTab("tracks")}
                     />
 
                     {/* Customer Management Group */}

@@ -14,6 +14,7 @@ import ticketRoutes from './routes/ticket.js';
 import userRoutes from './routes/user.js';
 import authRoutes from './routes/auth.js';
 import buyTicket from './routes/buy_ticket.js';
+import trackRoutes from './routes/track.js'; 
 import './utils/ticketExpireService.js';
 
 dotenv.config();
@@ -40,8 +41,9 @@ app.use('/api/v1/passengers', passengerRoutes);
 app.use('/api/v1/schedules', scheduleRoutes);
 app.use('/api/v1/tickets', ticketRoutes);
 app.use('/api/v1/users', userRoutes);
-app.use('/api/v1/tickets', ticketRoutes);
 app.use('/api/v1/buy-ticket', buyTicket);
+app.use('/api/v1/tracks', trackRoutes); 
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
