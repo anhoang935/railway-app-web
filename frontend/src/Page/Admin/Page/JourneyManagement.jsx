@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import journeyService from '../../../data/Service/journeyService';
+import stationService from '../../../data/Service/stationService'; // Add this import
+import scheduleService from '../../../data/Service/scheduleService';
 import LoadingSpinner from '../Components/LoadingSpinner';
 import { FaEdit, FaTrash, FaPlus, FaSave, FaTimes } from 'react-icons/fa';
 import './JourneyManagement.css';
 
 const JourneyManagement = ({ setActiveTab }) => {
     const [journeys, setJourneys] = useState([]);
+    const [stations, setStations] = useState([]); // Add this state
+    const [schedules, setSchedules] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState(null);
@@ -20,7 +24,20 @@ const JourneyManagement = ({ setActiveTab }) => {
 
     useEffect(() => {
         fetchJourneys();
+        fetchStations(); // Add this function call
+        fetchSchedules();
     }, []);
+
+    // Add this function to fetch stations
+    const fetchStations = async () => {
+        try {
+            const data = await stationService.getAllStations();
+            setStations(data);
+        } catch (error) {
+            console.error('Error fetching stations:', error);
+            setError('Failed to load station data. Please try again.');
+        }
+    };
 
     const fetchJourneys = async () => {
         try {
@@ -36,6 +53,16 @@ const JourneyManagement = ({ setActiveTab }) => {
         }
     };
 
+    const fetchSchedules = async () => {
+        try {
+            const data = await scheduleService.getAllSchedules();
+            setSchedules(data);
+        } catch (error) {
+            console.error('Error fetching schedules:', error);
+            setError('Failed to load schedule data. Please try again.');
+        }
+    };
+
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData({
@@ -45,10 +72,19 @@ const JourneyManagement = ({ setActiveTab }) => {
     };
 
     const handleAddNew = () => {
+        // Generate a new ID based on existing journeys
+        const maxId = journeys.length > 0
+            ? Math.max(...journeys.map(j => {
+                // Extract the numeric part if IDs are like "J1", "J2"
+                const numericPart = j.journeyID.toString().replace(/\D/g, '');
+                return numericPart ? parseInt(numericPart) : 0;
+            }))
+            : 0;
+
         setIsAdding(true);
         setEditingId(null);
         setFormData({
-            journeyID: '',
+            journeyID: `J${maxId + 1}`, // Auto-generate next ID
             scheduleID: '',
             stationID: '',
             arrivalTime: '',
@@ -167,6 +203,21 @@ const JourneyManagement = ({ setActiveTab }) => {
         }
     };
 
+    // Find station name by ID (helper function)
+    const getStationNameById = (id) => {
+        const station = stations.find(s => s.stationID.toString() === id.toString());
+        return station ? station.stationName : 'Unknown Station';
+    };
+
+    // Helper function to display schedule information
+    const getScheduleDisplayText = (scheduleID) => {
+        const schedule = schedules.find(s => s.scheduleID.toString() === scheduleID.toString());
+        if (schedule) {
+            return `${schedule.start_stationName} → ${schedule.end_stationName} (${schedule.trainName})`;
+        }
+        return 'Unknown Schedule';
+    };
+
     if (loading) {
         return <div className="p-4 text-center"><LoadingSpinner /></div>;
     }
@@ -195,43 +246,47 @@ const JourneyManagement = ({ setActiveTab }) => {
                     <thead className="sticky top-0 bg-gray-50 z-10">
                         <tr>
                             <th className="px-4 py-2 border-b border-gray-200 text-left">Journey ID</th>
-                            <th className="px-4 py-2 border-b border-gray-200 text-left">Schedule ID</th>
-                            <th className="px-4 py-2 border-b border-gray-200 text-left">Station ID</th>
+                            <th className="px-4 py-2 border-b border-gray-200 text-left">Train Schedule</th> {/* Even more descriptive */}
+                            <th className="px-4 py-2 border-b border-gray-200 text-left">Station</th>
                             <th className="px-4 py-2 border-b border-gray-200 text-left">Arrival Time</th>
                             <th className="px-4 py-2 border-b border-gray-200 text-left">Departure Time</th>
                             <th className="px-4 py-2 border-b border-gray-200 text-center">Actions</th>
                         </tr>
                         {isAdding && (
                             <tr className="bg-blue-50 sticky top-[41px] z-10">
+                                {/* Hide Journey ID field when adding new journey */}
                                 <td className="px-4 py-2 border-b border-gray-200">
-                                    <input
-                                        type="number"
-                                        name="journeyID"
-                                        value={formData.journeyID}
-                                        onChange={handleInputChange}
-                                        className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                        placeholder="Journey ID"
-                                    />
+                                    <span className="text-gray-500 italic">Auto-generated</span>
                                 </td>
                                 <td className="px-4 py-2 border-b border-gray-200">
-                                    <input
-                                        type="number"
+                                    <select
                                         name="scheduleID"
                                         value={formData.scheduleID}
                                         onChange={handleInputChange}
                                         className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                        placeholder="Schedule ID"
-                                    />
+                                    >
+                                        <option value="">Select Schedule</option>
+                                        {schedules.map(schedule => (
+                                            <option key={schedule.scheduleID} value={schedule.scheduleID}>
+                                                {schedule.start_stationName} → {schedule.end_stationName} ({schedule.trainName})
+                                            </option>
+                                        ))}
+                                    </select>
                                 </td>
                                 <td className="px-4 py-2 border-b border-gray-200">
-                                    <input
-                                        type="number"
+                                    <select
                                         name="stationID"
                                         value={formData.stationID}
                                         onChange={handleInputChange}
                                         className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                        placeholder="Station ID"
-                                    />
+                                    >
+                                        <option value="">Select Station</option>
+                                        {stations.map(station => (
+                                            <option key={station.stationID} value={station.stationID}>
+                                                {station.stationName}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </td>
                                 <td className="px-4 py-2 border-b border-gray-200">
                                     <input
@@ -279,28 +334,40 @@ const JourneyManagement = ({ setActiveTab }) => {
                                     </td>
                                     <td className="px-4 py-2 border-b border-gray-200">
                                         {editingId === journey.journeyID ? (
-                                            <input
-                                                type="number"
+                                            <select
                                                 name="scheduleID"
                                                 value={formData.scheduleID}
                                                 onChange={handleInputChange}
                                                 className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                            />
+                                            >
+                                                <option value="">Select Schedule</option>
+                                                {schedules.map(schedule => (
+                                                    <option key={schedule.scheduleID} value={schedule.scheduleID}>
+                                                        {schedule.start_stationName} → {schedule.end_stationName} ({schedule.trainName})
+                                                    </option>
+                                                ))}
+                                            </select>
                                         ) : (
-                                            journey.scheduleID
+                                            getScheduleDisplayText(journey.scheduleID)
                                         )}
                                     </td>
                                     <td className="px-4 py-2 border-b border-gray-200">
                                         {editingId === journey.journeyID ? (
-                                            <input
-                                                type="number"
+                                            <select
                                                 name="stationID"
                                                 value={formData.stationID}
                                                 onChange={handleInputChange}
                                                 className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                            />
+                                            >
+                                                <option value="">Select Station</option>
+                                                {stations.map(station => (
+                                                    <option key={station.stationID} value={station.stationID}>
+                                                        {station.stationName}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         ) : (
-                                            journey.stationID
+                                            getStationNameById(journey.stationID)
                                         )}
                                     </td>
                                     <td className="px-4 py-2 border-b border-gray-200">

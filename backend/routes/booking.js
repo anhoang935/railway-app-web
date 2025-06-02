@@ -5,7 +5,8 @@ import {
     getBookingsByUser,
     createBooking,
     updateBooking,
-    deleteBooking
+    deleteBooking,
+    getBookingTickets  // Add this import
 } from '../controllers/bookingController.js';
 
 const router = express.Router();
@@ -14,6 +15,7 @@ const router = express.Router();
 router.get('/', getAllBookings);
 router.get('/:id', getBooking);
 router.get('/user/:userId', getBookingsByUser);
+router.get('/:id/tickets', getBookingTickets);  // Add this route
 
 // Admin routes
 router.post('/', createBooking);
