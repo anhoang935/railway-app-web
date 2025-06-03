@@ -1,4 +1,4 @@
-import pool from '../config/db.js';
+import pool from '../Config/db.js';
 
 class Timetable {
   // Get all stations
