@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import Map from './Map';
 import '../styles/timetable.css';
 import { FaTrain, FaMapMarkerAlt, FaClock, FaAngleRight } from 'react-icons/fa';
 import LoadingSpinner from './Admin/Components/LoadingSpinner';
+import timetableService from '../data/Service/timetableService';
 
 const Timetable = () => {
   // State variables
@@ -26,14 +26,9 @@ const Timetable = () => {
     const fetchStations = async () => {
       try {
         setLoading(true);
-        // Make sure this endpoint is correctly implemented in your backend
-        const response = await axios.get('/api/stations');
-        if (response.data && response.data.data && response.data.data.length > 0) {
-          setStations(response.data.data);
-          console.log('Stations loaded from database:', response.data.data.length);
-        } else {
-          throw new Error('No stations received from API');
-        }
+        const data = await timetableService.getAllStations();
+        setStations(data);
+        console.log('Stations loaded from database:', data.length);
       } catch (error) {
         console.error('Failed to fetch stations:', error);
         setError('Failed to load stations. Please try again.');
@@ -87,11 +82,9 @@ const Timetable = () => {
 
     const fetchTracks = async () => {
       try {
-        const response = await axios.get('/api/tracks');
-        if (response.data && response.data.data) {
-          setTracks(response.data.data);
-          console.log('Tracks loaded from database:', response.data.data.length);
-        }
+        const data = await timetableService.getAllTracks();
+        setTracks(data);
+        console.log('Tracks loaded from database:', data.length);
       } catch (error) {
         console.error('Failed to fetch tracks:', error);
         // Fallback with empty tracks array - we'll use the distance calculation fallback
@@ -107,8 +100,8 @@ const Timetable = () => {
   useEffect(() => {
     const fetchCoachTypes = async () => {
       try {
-        const response = await axios.get('/api/coach-types');
-        setCoachTypes(response.data.data);
+        const data = await timetableService.getAllCoachTypes();
+        setCoachTypes(data);
       } catch (error) {
         console.error('Failed to fetch coach types:', error);
         
@@ -137,7 +130,6 @@ const Timetable = () => {
     }
     
     // Fallback: calculate approximate distance based on station IDs
-    // This is just a mock calculation - in reality, we'd use actual track distances
     return Math.abs(startStationId - endStationId) * 100;
   };
   
@@ -167,14 +159,14 @@ const Timetable = () => {
         departureDate: departureDate
       };
       
-      const response = await axios.get('/api/buy-ticket/search', { params });
+      const result = await timetableService.searchTrains(params);
       
-      if (!response.data.data || response.data.data.length === 0) {
+      if (!result.data || result.data.length === 0) {
         setError('No trains found for this route. Please try different stations or date.');
         setAvailableTrains([]);
       } else {
         // Format the train data
-        const trains = response.data.data.map(train => ({
+        const trains = result.data.map(train => ({
           id: train['Train Name'] || train.trainName,
           trainName: train['Train Name'] || train.trainName,
           trainID: train.trainID,
@@ -192,13 +184,13 @@ const Timetable = () => {
       
       // Fallback for development/testing
       if (process.env.NODE_ENV === 'development') {
-        // Create mock data for testing based on the database schema
+        // Create mock data for testing
         const mockTrains = [
           {
             id: 'SE1',
             trainName: 'SE1',
             trainID: 1,
-            availableCapacity: 364, // 8 coaches x average capacity
+            availableCapacity: 364,
             departureTime: fromStation < toStation ? '20:55:00' : '20:35:00',
             arrivalTime: fromStation < toStation ? '05:45:00' : '05:55:00'
           }
@@ -223,8 +215,8 @@ const Timetable = () => {
       const toStationId = parseInt(toStation);
       
       // Fetch route stations and timetable
-      const scheduleResponse = await axios.get(`/api/schedules/route/${fromStationId}/${toStationId}`);
-      const schedules = scheduleResponse.data.data;
+      // Instead of getting schedules between selected stations, get the complete route
+      const schedules = await timetableService.getSchedulesBetweenStations(1, 38); // Ha Noi (1) to Sai Gon (38)
       
       // Find the schedule for this specific train
       const schedule = schedules.find(s => s.trainName === train.trainName || s.trainID === train.trainID);
@@ -237,25 +229,11 @@ const Timetable = () => {
       }
       
       // Get all stations on this route
-      const journeysResponse = await axios.get(`/api/journeys/schedule/${schedule.scheduleID}`);
-      const allJourneys = journeysResponse.data.data;
-      
-      // Filter journeys to include only those between our selected stations and sort them
-      const startIndex = allJourneys.findIndex(j => parseInt(j.stationID) === fromStationId);
-      const endIndex = allJourneys.findIndex(j => parseInt(j.stationID) === toStationId);
-      
-      // Handle either direction (fromStation can be before or after toStation in the route)
-      let journeys;
-      if (startIndex < endIndex) {
-        journeys = allJourneys.slice(startIndex, endIndex + 1);
-      } else {
-        journeys = allJourneys.slice(endIndex, startIndex + 1).reverse();
-      }
+      const allJourneys = await timetableService.getJourneysBySchedule(schedule.scheduleID);
       
       // Sort journeys by their order in the schedule
-      journeys.sort((a, b) => {
-        // Use arrival time for sorting
-        return new Date(`1970-01-01T${a.arrivalTime}`) - new Date(`1970-01-01T${b.arrivalTime}`);
+      const journeys = [...allJourneys].sort((a, b) => {
+        return parseInt(a.journeyID) - parseInt(b.journeyID);
       });
       
       // Format timetable data
@@ -284,7 +262,7 @@ const Timetable = () => {
       
       setTimetableData(stationData);
       
-      // Prepare data for the route map
+      // Prepare data for the route map - include ALL stations
       setRouteStations(journeys.map(j => {
         const station = stations.find(s => parseInt(s.stationID) === parseInt(j.stationID));
         return { 
@@ -298,42 +276,32 @@ const Timetable = () => {
       
       // Fallback for development/testing
       if (process.env.NODE_ENV === 'development') {
-        // Use mock data from our SQL dump
-        const mockStationIds = [1, 2, 3, 9, 17, 29, 38]; // Major stations from our DB
-        const fromIndex = mockStationIds.indexOf(parseInt(fromStation)) !== -1 ? 
-                          mockStationIds.indexOf(parseInt(fromStation)) : 0;
-        const toIndex = mockStationIds.indexOf(parseInt(toStation)) !== -1 ? 
-                        mockStationIds.indexOf(parseInt(toStation)) : mockStationIds.length - 1;
-                        
-        const start = Math.min(fromIndex, toIndex);
-        const end = Math.max(fromIndex, toIndex);
+        // Use all stations from our database for fallback
+        const mockJourneys = stations
+          .sort((a, b) => parseInt(a.stationID) - parseInt(b.stationID))
+          .map((station, index) => {
+            // Calculate mock times
+            const baseHour = 20; // Starting at 8 PM
+            const hourIncrement = index * 0.5; // 30 mins between stations
+            const departureHour = (baseHour + hourIncrement) % 24;
+            const arrivalHour = (departureHour - 0.1 + 24) % 24; // 6 min earlier
+            
+            const formatTime = (hour) => {
+              const hourStr = Math.floor(hour).toString().padStart(2, '0');
+              const minStr = Math.floor((hour % 1) * 60).toString().padStart(2, '0');
+              return `${hourStr}:${minStr}:00`;
+            };
+            
+            return {
+              stationID: station.stationID,
+              stationName: station.stationName,
+              distance: index * 50, // Approximate distance
+              arrival: formatTime(arrivalHour),
+              departure: formatTime(departureHour)
+            };
+          });
         
-        const mockJourneys = mockStationIds.slice(start, end + 1).map((stationId, index) => {
-          const stationObj = stations.find(s => parseInt(s.stationID) === stationId) || 
-                            { stationID: stationId, stationName: `Station ${stationId}` };
-          
-          // Calculate mock times
-          const baseHour = 20; // Starting at 8 PM
-          const hourIncrement = index * 2; // 2 hours between stations
-          const departureHour = (baseHour + hourIncrement) % 24;
-          const arrivalHour = (departureHour - 0.5 + 24) % 24; // 30 min earlier
-          
-          const formatTime = (hour) => {
-            const hourStr = Math.floor(hour).toString().padStart(2, '0');
-            const minStr = hour % 1 > 0 ? '30' : '00';
-            return `${hourStr}:${minStr}:00`;
-          };
-          
-          return {
-            stationID: stationId,
-            stationName: stationObj.stationName,
-            distance: index * 120,
-            arrival: formatTime(arrivalHour),
-            departure: formatTime(departureHour)
-          };
-        });
-        
-        // Set mock route data
+        // Set mock route data for all stations
         setTimetableData(mockJourneys.map((journey, index) => ({
           station: journey.stationName,
           stationID: journey.stationID,
@@ -343,6 +311,7 @@ const Timetable = () => {
           departure: journey.departure || (index === mockJourneys.length - 1 ? '-' : '')
         })));
         
+        // Set route stations data for the map
         setRouteStations(mockJourneys.map(j => ({
           id: j.stationID,
           name: j.stationName,
@@ -506,23 +475,29 @@ const Timetable = () => {
   const renderCoachTypes = () => {
     if (!selectedTrain) return null;
     
-    // Get coach types associated with the selected train
-    // In a real implementation, we'd filter by train ID
     return (
-      <div className="coach-types">
+      <div className="timetable coach-types">
         <h3>Available Coach Types</h3>
-        <div className="coach-options">
-          {coachTypes.map(coach => (
-            <div 
-              key={coach.coach_typeID}
-              className="coach-option"
-            >
-              <h4>{coach.type}</h4>
-              <p>{formatPrice(coach.price)}</p>
-              <p className="text-sm text-gray-500">{coach.capacity} seats per coach</p>
-            </div>
-          ))}
-        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>No.</th>
+              <th>Coach Type</th>
+              <th>Price</th>
+              <th>Capacity</th>
+            </tr>
+          </thead>
+          <tbody>
+            {coachTypes.map((coach, index) => (
+              <tr key={coach.coach_typeID}>
+                <td>{index + 1}</td>
+                <td>{coach.type}</td>
+                <td>{formatPrice(coach.price)}</td>
+                <td>{coach.capacity} seats per coach</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     );
   };

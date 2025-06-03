@@ -1,0 +1,138 @@
+.coach-management {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Prevent outer scroll */
+}
+
+.coach-tab {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0; /* Important for flexbox scrolling */
+}
+
+.coach-table-container {
+    flex: 1;
+    overflow: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    min-height: 0; /* Important for flexbox scrolling */
+}
+
+.coach-table {
+    min-width: 100%;
+    background-color: white;
+}
+
+.coach-table thead {
+    position: sticky;
+    top: 0;
+    background-color: #f9fafb;
+    z-index: 10;
+}
+
+.coach-table th,
+.coach-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.coach-table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Ensure the administrative overview doesn't take too much space */
+.administrative-overview {
+    flex-shrink: 0;
+    max-height: 200px;
+}
+
+/* Tab styling */
+.coach-tab,
+.coach-type-tab {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Tab button styling */
+.coach-management .bg-blue-600 {
+    font-weight: bold;
+}
+
+.coach-management .bg-gray-200 {
+    font-weight: normal;
+}
+
+/* Form inputs */
+.coach-management input,
+.coach-management select {
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.coach-management input:focus,
+.coach-management select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Loading and error states */
+.loading-spinner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+}
+
+.error-message {
+    background-color: #fef2f2;
+    border-left: 4px solid #ef4444;
+    color: #dc2626;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 0.375rem;
+}
+
+/* Empty state */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+    color: #6b7280;
+}
+
+.empty-state-icon {
+    font-size: 2.5rem;
+    color: #d1d5db;
+    margin-bottom: 0.5rem;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .coach-management {
+        padding: 1rem;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .btn-edit,
+    .btn-delete {
+        width: 100%;
+        justify-content: center;
+    }
+}

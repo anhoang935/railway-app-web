@@ -1,12 +1,13 @@
 import axios from "axios";
 
 const getBaseUrl = () => {
-    if (window.location.hostname === 'localhost') {
-        return 'http://localhost:5000/api/v1/bookings';
+    // const port = '5000';
+    const port = '25422';    
+        if (window.location.hostname === 'localhost') {
+        return `http://localhost:${port}/api/v1/bookings`;
     }
-    return `${window.location.protocol}//${window.location.hostname}:5000/api/v1/bookings`;
+    return `${window.location.protocol}//${window.location.hostname}:${port}/api/v1/bookings`;
 };
-
 const BASE_URL = getBaseUrl();
 
 const bookingService = {

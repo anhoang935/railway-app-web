@@ -1,12 +1,13 @@
 import axios from "axios";
 
 const getBaseUrl = () => {
+    // const port = '5000';
+    const port = '25422';
     if (window.location.hostname === 'localhost') {
-        return 'http://localhost:5000/api/v1/coaches';
+        return `http://localhost:${port}/api/v1/coaches`;
     }
-    return `${window.location.protocol}//${window.location.hostname}:5000/api/v1/coaches`;
+    return `${window.location.protocol}//${window.location.hostname}:${port}/api/v1/coaches`;
 };
-
 const BASE_URL = getBaseUrl();
 
 const coachService = {
@@ -67,6 +68,27 @@ const coachService = {
         } catch (error) {
             console.error('Error deleting coach:', error);
             throw error.response?.data?.message || error.message || 'Failed to delete coach';
+        }
+    },
+
+    // Admin sync functions
+    syncAllCoachCounts: async () => {
+        try {
+            const response = await axios.post(`${BASE_URL}/sync/all`);
+            return response.data;
+        } catch (error) {
+            console.error('Error syncing all coach counts:', error);
+            throw error.response?.data?.message || error.message || 'Failed to sync coach counts';
+        }
+    },
+
+    syncTrainCoachCount: async (trainId) => {
+        try {
+            const response = await axios.post(`${BASE_URL}/sync/train/${trainId}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error syncing train coach count:', error);
+            throw error.response?.data?.message || error.message || 'Failed to sync train coach count';
         }
     }
 };

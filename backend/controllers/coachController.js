@@ -165,3 +165,39 @@ export const deleteCoach = async (req, res) => {
         });
     }
 };
+
+export const syncCoachCounts = async (req, res) => {
+    try {
+        await Coach.syncAllTrainCoachCounts();
+
+        res.status(200).json({
+            success: true,
+            message: 'All train coach counts have been synchronized'
+        });
+    } catch (error) {
+        console.error('Controller error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+export const syncTrainCoachCount = async (req, res) => {
+    try {
+        const { trainId } = req.params;
+        const actualCount = await Coach.updateTrainCoachCount(trainId);
+
+        res.status(200).json({
+            success: true,
+            message: `Train ${trainId} coach count updated to ${actualCount}`,
+            data: { trainID: trainId, coachTotal: actualCount }
+        });
+    } catch (error) {
+        console.error('Controller error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};

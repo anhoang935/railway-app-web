@@ -34,12 +34,39 @@ class Coach {
         }
     }
 
+    // NEW: Update train's coach count based on actual coaches
+    static async updateTrainCoachCount(trainID) {
+        try {
+            // Count actual coaches for this train
+            const [countResult] = await pool.query(
+                'SELECT COUNT(*) as coachCount FROM coach WHERE trainID = ?',
+                [trainID]
+            );
+
+            const actualCoachCount = countResult[0].coachCount;
+
+            // Update the train table with the actual count
+            await pool.query(
+                'UPDATE train SET coachTotal = ? WHERE trainID = ?',
+                [actualCoachCount, trainID]
+            );
+
+            return actualCoachCount;
+        } catch (error) {
+            console.error('Error updating train coach count:', error);
+            throw error;
+        }
+    }
+
     static async create({ coachID, trainID, coach_typeID }) {
         try {
             const [result] = await pool.query(
                 'INSERT INTO coach (coachID, trainID, coach_typeID) VALUES (?, ?, ?)',
                 [coachID, trainID, coach_typeID]
             );
+
+            // Update the train's coach count after adding a coach
+            await this.updateTrainCoachCount(trainID);
 
             return {
                 coachID,
@@ -55,6 +82,11 @@ class Coach {
     static async update(coachID, coachData) {
         try {
             const { trainID, coach_typeID } = coachData;
+
+            // Get the current coach to see if trainID is changing
+            const currentCoach = await this.findById(coachID);
+            const oldTrainID = currentCoach ? currentCoach.trainID : null;
+
             const [result] = await pool.query(
                 'UPDATE coach SET trainID = ?, coach_typeID = ? WHERE coachID = ?',
                 [trainID, coach_typeID, coachID]
@@ -63,6 +95,12 @@ class Coach {
             if (result.affectedRows === 0) {
                 return null;
             }
+
+            // Update coach count for both old and new trains if trainID changed
+            if (oldTrainID && oldTrainID !== trainID) {
+                await this.updateTrainCoachCount(oldTrainID);
+            }
+            await this.updateTrainCoachCount(trainID);
 
             return { coachID, trainID, coach_typeID };
         } catch (error) {
@@ -73,12 +111,38 @@ class Coach {
 
     static async delete(coachID) {
         try {
+            // Get the coach's trainID before deletion
+            const coach = await this.findById(coachID);
+            const trainID = coach ? coach.trainID : null;
+
             const [result] = await pool.query(
                 'DELETE FROM coach WHERE coachID = ?',
                 [coachID]
             );
+
+            // Update the train's coach count after deletion
+            if (trainID) {
+                await this.updateTrainCoachCount(trainID);
+            }
+
             return result.affectedRows > 0;
         } catch (error) {
+            throw error;
+        }
+    }
+
+    // NEW: Sync all trains' coach counts - useful for data maintenance
+    static async syncAllTrainCoachCounts() {
+        try {
+            const [trains] = await pool.query('SELECT trainID FROM train');
+
+            for (const train of trains) {
+                await this.updateTrainCoachCount(train.trainID);
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Error syncing all train coach counts:', error);
             throw error;
         }
     }
