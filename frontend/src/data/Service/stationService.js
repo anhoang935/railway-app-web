@@ -2,8 +2,8 @@ import axios from "axios";
 
 
 const getBaseUrl = () => {
-    // const port = '5000';
-    const port = '25422';
+    const port = '5000';
+    // const port = '25422';
     if (window.location.hostname === 'localhost') {
         return `http://localhost:${port}/api/v1/stations`;
     }

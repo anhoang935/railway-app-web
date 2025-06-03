@@ -22,7 +22,7 @@ class Buy_Ticket{
                 WHERE s_departure.stationName = ? AND 
                 s_arrival.stationName = ? AND 
                 j_departure.journeyID < j_arrival.journeyID AND
-                (? IS NULL OR j_arrival.arrivalTime <= ?)
+                (? IS NULL OR j_departure.departureTime >= ?)
                 GROUP BY t.trainName, 
                 j_departure.departureTime, 
                 j_arrival.arrivalTime
