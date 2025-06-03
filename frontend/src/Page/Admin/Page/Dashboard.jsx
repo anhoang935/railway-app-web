@@ -3,6 +3,7 @@ import SystemAlerts from '../Widgets/SystemAlerts';
 import TrainStatus from '../Widgets/TrainStatus';
 import Maintenance from '../Widgets/Maintenance';
 import StationTraffic from '../Widgets/StationTraffic';
+import LoadingPage from '../../../components/LoadingPage';
 import {
     AlertTriangle, Train, MapPin, Calendar, Search, Bell,
     RefreshCw, Filter, Clock, ChevronDown, X, AlertCircle
@@ -17,7 +18,8 @@ import journeyService from '../../../data/Service/journeyService';
 
 const Dashboard = () => {
     // Local state
-    const [loading, setLoading] = useState(true);
+    const [initialLoading, setInitialLoading] = useState(true);
+    const [refreshLoading, setRefreshLoading] = useState(false);
     const [error, setError] = useState(null);
     const [currentDateTime, setCurrentDateTime] = useState(new Date());
     const [searchQuery, setSearchQuery] = useState('');
@@ -57,90 +59,40 @@ const Dashboard = () => {
         { id: 'maintenance', title: 'Maintenance Schedule', visible: true, order: 4 }
     ]);
 
-    // Format date for display
-    const formattedDateTime = currentDateTime.toLocaleString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    // Helper to convert time ago string to minutes for sorting
+    function getMinutesFromTimeAgo(timeAgo) {
+        if (timeAgo.includes('just now')) return 0;
 
-    // Update time every minute
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentDateTime(new Date());
-        }, 60000);
+        const match = timeAgo.match(/^(\d+)\s+(\w+)/);
+        if (!match) return 999999;
 
-        return () => clearInterval(interval);
-    }, []);
+        const number = parseInt(match[1], 10);
+        const unit = match[2];
 
-    // Main data fetching function
-    const fetchDashboardData = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError(null);
+        if (unit.includes('min')) return number;
+        if (unit.includes('hour')) return number * 60;
+        if (unit.includes('day')) return number * 24 * 60;
 
-            // Fetch all required data in parallel
-            const [trains, schedules, stations, tickets, journeys] = await Promise.all([
-                trainService.getAllTrains(),
-                scheduleService.getAllSchedules(),
-                stationService.getAllStations(),
-                ticketService.getAllTickets().catch(() => []), // Handle if endpoint is not available
-                journeyService.getAllJourneys().catch(() => []) // Handle if endpoint is not available
-            ]);
+        return 999999;
+    }
 
-            // Process data for each widget
-            const processedData = {
-                recentAlerts: generateSystemAlerts(trains, schedules),
-                trainStats: calculateTrainStats(trains, schedules),
-                stationTraffic: calculateStationTraffic(stations, tickets, journeys),
-                upcomingMaintenance: getUpcomingMaintenance(schedules),
-                activeJourneys: countActiveJourneys(journeys),
-                ticketSales: calculateTicketSales(tickets)
-            };
+    // Helper to format time ago string
+    function formatTimeAgo(date) {
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
 
-            // Apply time filter
-            const filteredData = filterDataByTimeRange(processedData, timeFilter);
+        if (diffMins < 1) return 'just now';
+        if (diffMins < 60) return `${diffMins} mins ago`;
 
-            // Apply category filter
-            const categoryFilteredData = filterDataByCategory(filteredData, filterType);
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return `${diffHours} hours ago`;
 
-            setDashboardData(categoryFilteredData);
+        const diffDays = Math.floor(diffHours / 24);
+        return `${diffDays} days ago`;
+    }
 
-            // Generate notifications from alerts
-            const newNotifications = processedData.recentAlerts
-                .slice(0, 3)
-                .map((alert, idx) => ({
-                    id: `notification-${idx}`,
-                    text: `${alert.type} at ${alert.station}: ${alert.time}`,
-                    read: false,
-                    timestamp: new Date()
-                }));
-
-            setNotifications(newNotifications);
-
-        } catch (err) {
-            console.error('Error fetching dashboard data:', err);
-            setError('Failed to load dashboard data. Please try again.');
-        } finally {
-            setLoading(false);
-        }
-    }, [timeFilter, filterType]);
-
-    // Initial data fetch
-    useEffect(() => {
-        fetchDashboardData();
-
-        // Refresh data every 5 minutes
-        const refreshInterval = setInterval(fetchDashboardData, 5 * 60 * 1000);
-        return () => clearInterval(refreshInterval);
-    }, [fetchDashboardData]);
-
-    // -- Data Processing Functions --
-
-    // Process train data to calculate statistics
+    // Data processing functions
     function calculateTrainStats(trains, schedules) {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -190,7 +142,6 @@ const Dashboard = () => {
         };
     }
 
-    // Process station and ticket data to calculate station traffic
     function calculateStationTraffic(stations, tickets, journeys) {
         const stationMap = {};
 
@@ -227,7 +178,6 @@ const Dashboard = () => {
             .slice(0, 3); // Top 3 stations
     }
 
-    // Extract upcoming maintenance schedules
     function getUpcomingMaintenance(schedules) {
         const now = new Date();
 
@@ -251,7 +201,6 @@ const Dashboard = () => {
             .slice(0, 5); // Top 5 maintenance tasks
     }
 
-    // Generate system alerts from train and schedule data
     function generateSystemAlerts(trains, schedules) {
         const alerts = [];
 
@@ -304,40 +253,6 @@ const Dashboard = () => {
             .slice(0, 5);
     }
 
-    // Helper to convert time ago string to minutes for sorting
-    function getMinutesFromTimeAgo(timeAgo) {
-        if (timeAgo.includes('just now')) return 0;
-
-        const match = timeAgo.match(/^(\d+)\s+(\w+)/);
-        if (!match) return 999999;
-
-        const number = parseInt(match[1], 10);
-        const unit = match[2];
-
-        if (unit.includes('min')) return number;
-        if (unit.includes('hour')) return number * 60;
-        if (unit.includes('day')) return number * 24 * 60;
-
-        return 999999;
-    }
-
-    // Helper to format time ago string
-    function formatTimeAgo(date) {
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-
-        if (diffMins < 1) return 'just now';
-        if (diffMins < 60) return `${diffMins} mins ago`;
-
-        const diffHours = Math.floor(diffMins / 60);
-        if (diffHours < 24) return `${diffHours} hours ago`;
-
-        const diffDays = Math.floor(diffHours / 24);
-        return `${diffDays} days ago`;
-    }
-
-    // Calculate ticket sales statistics
     function calculateTicketSales(tickets) {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -369,7 +284,6 @@ const Dashboard = () => {
         return { today: todayCount, thisWeek: weekCount, thisMonth: monthCount };
     }
 
-    // Count active journeys
     function countActiveJourneys(journeys) {
         const now = new Date();
 
@@ -383,13 +297,11 @@ const Dashboard = () => {
         }).length;
     }
 
-    // Filter data based on time range
     function filterDataByTimeRange(data, timeRange) {
         // We already filter by time in individual processing functions
         return data;
     }
 
-    // Filter data by category (train status, station, etc)
     function filterDataByCategory(data, category) {
         if (category === 'all') return data;
 
@@ -417,18 +329,65 @@ const Dashboard = () => {
         return data;
     }
 
-    // -- Event Handlers --
+    // Main data fetching function - moved before all hooks
+    const fetchDashboardData = useCallback(async (isRefresh = false) => {
+        try {
+            if (isRefresh) {
+                setRefreshLoading(true);
+            } else {
+                setInitialLoading(true);
+            }
+            setError(null);
 
-    // Toggle widget visibility
-    const toggleWidgetVisibility = (id) => {
-        setDashboardLayout(prev =>
-            prev.map(widget =>
-                widget.id === id ? { ...widget, visible: !widget.visible } : widget
-            )
-        );
-    };
+            // Fetch all required data in parallel
+            const [trains, schedules, stations, tickets, journeys] = await Promise.all([
+                trainService.getAllTrains(),
+                scheduleService.getAllSchedules(),
+                stationService.getAllStations(),
+                ticketService.getAllTickets().catch(() => []), // Handle if endpoint is not available
+                journeyService.getAllJourneys().catch(() => []) // Handle if endpoint is not available
+            ]);
 
-    // Add this function to perform the search
+            // Process data for each widget
+            const processedData = {
+                recentAlerts: generateSystemAlerts(trains, schedules),
+                trainStats: calculateTrainStats(trains, schedules),
+                stationTraffic: calculateStationTraffic(stations, tickets, journeys),
+                upcomingMaintenance: getUpcomingMaintenance(schedules),
+                activeJourneys: countActiveJourneys(journeys),
+                ticketSales: calculateTicketSales(tickets)
+            };
+
+            // Apply time filter
+            const filteredData = filterDataByTimeRange(processedData, timeFilter);
+
+            // Apply category filter
+            const categoryFilteredData = filterDataByCategory(filteredData, filterType);
+
+            setDashboardData(categoryFilteredData);
+
+            // Generate notifications from alerts
+            const newNotifications = processedData.recentAlerts
+                .slice(0, 3)
+                .map((alert, idx) => ({
+                    id: `notification-${idx}`,
+                    text: `${alert.type} at ${alert.station}: ${alert.time}`,
+                    read: false,
+                    timestamp: new Date()
+                }));
+
+            setNotifications(newNotifications);
+
+        } catch (err) {
+            console.error('Error fetching dashboard data:', err);
+            setError('Failed to load dashboard data. Please try again.');
+        } finally {
+            setInitialLoading(false);
+            setRefreshLoading(false);
+        }
+    }, [timeFilter, filterType]);
+
+    // Search functionality with useCallback
     const getSearchResults = useCallback(() => {
         if (!searchQuery.trim()) {
             setSearchActive(false);
@@ -471,65 +430,97 @@ const Dashboard = () => {
         };
     }, [searchQuery, dashboardData]);
 
-    // Calculate filtered data based on search query
-    const filteredData = useMemo(() => getSearchResults(), [searchQuery, getSearchResults]);
+    // Calculate filtered data based on search query with useMemo
+    const filteredData = useMemo(() => getSearchResults(), [getSearchResults]);
 
-    // Handle search input change
+    // Format date for display
+    const formattedDateTime = currentDateTime.toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    // Update time every minute
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentDateTime(new Date());
+        }, 60000);
+
+        return () => clearInterval(interval);
+    }, []);
+
+    // Initial data fetch
+    useEffect(() => {
+        fetchDashboardData();
+
+        // Refresh data every 5 minutes
+        const refreshInterval = setInterval(() => fetchDashboardData(true), 5 * 60 * 1000);
+        return () => clearInterval(refreshInterval);
+    }, [fetchDashboardData]);
+
+    // Show loading page during initial data fetch - MOVED AFTER ALL HOOKS
+    if (initialLoading) {
+        return <LoadingPage message="Loading dashboard..." />;
+    }
+
+    // Event handlers
+    const toggleWidgetVisibility = (id) => {
+        setDashboardLayout(prev =>
+            prev.map(widget =>
+                widget.id === id ? { ...widget, visible: !widget.visible } : widget
+            )
+        );
+    };
+
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
     };
 
-    // Clear search
     const clearSearch = () => {
         setSearchQuery('');
         setSearchActive(false);
     };
 
-    // Handle key press in search field
     const handleSearchKeyPress = (e) => {
         if (e.key === 'Escape') {
             clearSearch();
         }
     };
 
-    // Handle manual refresh
     const handleRefresh = () => {
-        fetchDashboardData();
+        fetchDashboardData(true);
     };
 
-    // Toggle time filter dropdown
     const toggleTimeFilter = () => {
         setShowTimeFilterOptions(!showTimeFilterOptions);
         setShowFilterOptions(false);
     };
 
-    // Toggle filter dropdown
     const toggleFilterOptions = () => {
         setShowFilterOptions(!showFilterOptions);
         setShowTimeFilterOptions(false);
     };
 
-    // Set time filter and close dropdown
     const setTimeFilterOption = (filter) => {
         setTimeFilter(filter);
         setShowCombinedFilters(false);
-        fetchDashboardData(); // Refetch with new filter
+        fetchDashboardData(true); // Refetch with new filter
     };
 
-    // Set category filter and close dropdown
     const setCategoryFilter = (filter) => {
         setFilterType(filter);
         setShowCombinedFilters(false);
-        fetchDashboardData(); // Refetch with new filter
+        fetchDashboardData(true); // Refetch with new filter
     };
 
-    // Toggle notifications panel
     const toggleNotifications = () => {
         setShowNotifications(!showNotifications);
         setShowCombinedFilters(false);
     };
 
-    // Mark all notifications as read
     const markAllAsRead = () => {
         setNotifications(prev =>
             prev.map(notification => ({ ...notification, read: true }))
@@ -540,8 +531,18 @@ const Dashboard = () => {
     const sortedWidgets = [...dashboardLayout].sort((a, b) => a.order - b.order);
 
     return (
-        <>
-            <header className="bg-white shadow-sm z-10">
+        <div className="h-screen flex flex-col dashboard relative">
+            {/* Only show refresh loading overlay when refreshing */}
+            {refreshLoading && (
+                <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+                    <div className="flex flex-col items-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                        <p className="mt-2 text-sm text-gray-600">Refreshing dashboard...</p>
+                    </div>
+                </div>
+            )}
+
+            <header className="bg-white shadow-sm z-10 flex-shrink-0">
                 <div className="px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center">
                         <h2 className="text-xl font-bold text-gray-800">Dashboard</h2>
@@ -712,10 +713,11 @@ const Dashboard = () => {
                         {/* Refresh button */}
                         <button
                             onClick={handleRefresh}
-                            className="flex items-center px-3 py-1.5 rounded-lg hover:bg-gray-100 text-gray-700"
+                            disabled={refreshLoading}
+                            className="flex items-center px-3 py-1.5 rounded-lg hover:bg-gray-100 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <RefreshCw size={18} className={`mr-1.5 ${loading ? 'animate-spin' : ''}`} />
-                            <span className="text-sm">{loading ? 'Refreshing...' : 'Refresh'}</span>
+                            <RefreshCw size={18} className={`mr-1.5 ${refreshLoading ? 'animate-spin' : ''}`} />
+                            <span className="text-sm">{refreshLoading ? 'Refreshing...' : 'Refresh'}</span>
                         </button>
 
                         {/* Edit View button */}
@@ -788,13 +790,7 @@ const Dashboard = () => {
                     </div>
                 )}
 
-                {loading && !error && !searchActive && (
-                    <div className="flex justify-center items-center py-12">
-                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
-                    </div>
-                )}
-
-                {!loading && !error && (
+                {!error && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 animate-fadeInUp">
                         {sortedWidgets.map(widget => {
                             if (!widget.visible) return null;
@@ -853,7 +849,7 @@ const Dashboard = () => {
                     </div>
                 )}
             </main>
-        </>
+        </div>
     );
 };
 

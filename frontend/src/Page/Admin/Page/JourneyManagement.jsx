@@ -1,20 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import journeyService from '../../../data/Service/journeyService';
-import stationService from '../../../data/Service/stationService'; // Add this import
+import stationService from '../../../data/Service/stationService';
 import scheduleService from '../../../data/Service/scheduleService';
-import LoadingSpinner from '../Components/LoadingSpinner';
+import { useLoadingWithTimeout } from '../../../hooks/useLoadingWithTimeout';
+import { useAsyncData } from '../../../hooks/useAsyncData';
+import LoadingPage from '../../../components/LoadingPage';
 import { FaEdit, FaTrash, FaPlus, FaSave, FaTimes } from 'react-icons/fa';
 import './JourneyManagement.css';
 
 const JourneyManagement = ({ setActiveTab }) => {
-    const [journeys, setJourneys] = useState([]);
-    const [stations, setStations] = useState([]);
-    const [schedules, setSchedules] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState(null);
-    const [error, setError] = useState(null);
-    const [isJourneyIDManual, setIsJourneyIDManual] = useState(false); // Add this state
+    const [isJourneyIDManual, setIsJourneyIDManual] = useState(false);
     const [formData, setFormData] = useState({
         journeyID: '',
         scheduleID: '',
@@ -23,61 +20,54 @@ const JourneyManagement = ({ setActiveTab }) => {
         departureTime: ''
     });
 
-    useEffect(() => {
-        fetchJourneys();
-        fetchStations(); // Add this function call
-        fetchSchedules();
-    }, []);
+    // Use useAsyncData for initial data fetching
+    const {
+        data: journeys,
+        loading: dataLoading,
+        error: dataError,
+        refetch: refetchJourneys,
+        setData: setJourneys
+    } = useAsyncData(() => journeyService.getAllJourneys());
 
-    // Add this function to fetch stations
-    const fetchStations = async () => {
-        try {
-            const data = await stationService.getAllStations();
-            setStations(data);
-        } catch (error) {
-            console.error('Error fetching stations:', error);
-            setError('Failed to load station data. Please try again.');
-        }
-    };
+    const {
+        data: stations,
+        loading: stationsLoading,
+        error: stationsError,
+        refetch: refetchStations
+    } = useAsyncData(() => stationService.getAllStations());
 
-    const fetchJourneys = async () => {
-        try {
-            setLoading(true);
-            const data = await journeyService.getAllJourneys();
-            setJourneys(data);
-            setError(null);
-        } catch (error) {
-            console.error('Error fetching journeys:', error);
-            setError('Failed to load journey data. Please try again.');
-        } finally {
-            setLoading(false);
-        }
-    };
+    const {
+        data: schedules,
+        loading: schedulesLoading,
+        error: schedulesError,
+        refetch: refetchSchedules
+    } = useAsyncData(() => scheduleService.getAllSchedules());
 
-    const fetchSchedules = async () => {
-        try {
-            const data = await scheduleService.getAllSchedules();
-            setSchedules(data);
-        } catch (error) {
-            console.error('Error fetching schedules:', error);
-            setError('Failed to load schedule data. Please try again.');
-        }
-    };
+    // Use useLoadingWithTimeout for operations (create, update, delete)
+    const {
+        loading: operationLoading,
+        error: operationError,
+        setError: setOperationError,
+        startLoading,
+        stopLoading,
+        setLoadingError
+    } = useLoadingWithTimeout();
 
-    const handleAddNew = () => {
-        setIsAdding(true);
-        setEditingId(null);
-        setIsJourneyIDManual(false); // Reset manual mode
-        setFormData({
-            journeyID: '',
-            scheduleID: '',
-            stationID: '',
-            arrivalTime: '',
-            departureTime: ''
-        });
-    };
+    // Show blank loading page while initial data loads
+    const isInitialLoading = dataLoading || stationsLoading || schedulesLoading;
+    const currentError = dataError || stationsError || schedulesError || operationError;
 
-    // Add new function to generate journey ID based on selected schedule
+    // Show loading page during initial data fetch with specific messages
+    if (isInitialLoading) {
+        let loadingMessage = "Loading journey management...";
+        if (dataLoading) loadingMessage = "Loading journeys...";
+        else if (stationsLoading) loadingMessage = "Loading stations...";
+        else if (schedulesLoading) loadingMessage = "Loading schedules...";
+
+        return <LoadingPage message={loadingMessage} />;
+    }
+
+    // Generate journey ID based on selected schedule
     const generateJourneyID = (selectedScheduleID) => {
         if (!selectedScheduleID) return '';
 
@@ -105,6 +95,21 @@ const JourneyManagement = ({ setActiveTab }) => {
         return schedulePart + autoIncrementPart;
     };
 
+    const handleAddNew = () => {
+        setIsAdding(true);
+        setEditingId(null);
+        setIsJourneyIDManual(false);
+        setFormData({
+            journeyID: '',
+            scheduleID: '',
+            stationID: '',
+            arrivalTime: '',
+            departureTime: ''
+        });
+        // Clear any previous operation errors when starting new action
+        setOperationError(null);
+    };
+
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         const newFormData = {
@@ -120,7 +125,7 @@ const JourneyManagement = ({ setActiveTab }) => {
         setFormData(newFormData);
     };
 
-    // Add function to toggle manual journey ID editing
+    // Toggle manual journey ID editing
     const toggleJourneyIDEdit = () => {
         setIsJourneyIDManual(!isJourneyIDManual);
         if (!isJourneyIDManual && formData.scheduleID) {
@@ -142,6 +147,8 @@ const JourneyManagement = ({ setActiveTab }) => {
             arrivalTime: journey.arrivalTime || '',
             departureTime: journey.departureTime || ''
         });
+        // Clear any previous operation errors when starting edit
+        setOperationError(null);
     };
 
     const handleCancel = () => {
@@ -154,19 +161,21 @@ const JourneyManagement = ({ setActiveTab }) => {
             arrivalTime: '',
             departureTime: ''
         });
+        // Clear operation errors when canceling
+        setOperationError(null);
     };
 
     const validateForm = () => {
         if (!formData.journeyID || formData.journeyID.toString().trim() === '') {
-            setError('Journey ID is required.');
+            setOperationError('Journey ID is required.');
             return false;
         }
         if (!formData.scheduleID || formData.scheduleID.toString().trim() === '') {
-            setError('Schedule ID is required.');
+            setOperationError('Schedule ID is required.');
             return false;
         }
         if (!formData.stationID || formData.stationID.toString().trim() === '') {
-            setError('Station ID is required.');
+            setOperationError('Station ID is required.');
             return false;
         }
         return true;
@@ -176,6 +185,8 @@ const JourneyManagement = ({ setActiveTab }) => {
         try {
             if (!validateForm()) return;
 
+            startLoading(); // Use operation loading for this action
+
             const journeyToCreate = {
                 journeyID: formData.journeyID,
                 scheduleID: formData.scheduleID,
@@ -184,8 +195,20 @@ const JourneyManagement = ({ setActiveTab }) => {
                 departureTime: formData.departureTime
             };
 
-            await journeyService.createJourney(journeyToCreate);
-            await fetchJourneys();
+            console.log("Creating journey with data:", journeyToCreate);
+
+            // Create the journey
+            const newJourney = await journeyService.createJourney(journeyToCreate);
+
+            // Optimistic update: add to local state immediately
+            if (newJourney) {
+                setJourneys(prevJourneys => [...prevJourneys, newJourney]);
+            } else {
+                // Fallback: refetch all data if creation response doesn't include the new journey
+                await refetchJourneys();
+            }
+
+            // Reset form and states
             setIsAdding(false);
             setFormData({
                 journeyID: '',
@@ -194,9 +217,11 @@ const JourneyManagement = ({ setActiveTab }) => {
                 arrivalTime: '',
                 departureTime: ''
             });
-            setError(null);
-        } catch (error) {
-            setError('Failed to create journey: ' + (error.toString() || 'Unknown error'));
+
+            stopLoading(); // Stop operation loading on success
+        }
+        catch (error) {
+            setLoadingError('Failed to create journey: ' + (error.toString() || 'Unknown error'));
             console.error(error);
         }
     };
@@ -204,6 +229,8 @@ const JourneyManagement = ({ setActiveTab }) => {
     const handleUpdate = async () => {
         try {
             if (!validateForm()) return;
+
+            startLoading();
 
             const journeyToUpdate = {
                 journeyID: formData.journeyID,
@@ -213,8 +240,21 @@ const JourneyManagement = ({ setActiveTab }) => {
                 departureTime: formData.departureTime
             };
 
+            console.log("Updating journey ID:", editingId, "with data:", journeyToUpdate);
+
+            // Update the journey
             await journeyService.updateJourney(editingId, journeyToUpdate);
-            await fetchJourneys();
+
+            // Optimistic update: update local state immediately
+            setJourneys(prevJourneys =>
+                prevJourneys.map(journey =>
+                    journey.journeyID === editingId
+                        ? { ...journey, ...journeyToUpdate }
+                        : journey
+                )
+            );
+
+            // Reset form and states
             setEditingId(null);
             setFormData({
                 journeyID: '',
@@ -223,9 +263,11 @@ const JourneyManagement = ({ setActiveTab }) => {
                 arrivalTime: '',
                 departureTime: ''
             });
-            setError(null);
-        } catch (error) {
-            setError('Failed to update journey: ' + (error.toString() || 'Unknown error'));
+
+            stopLoading();
+        }
+        catch (error) {
+            setLoadingError('Failed to update journey: ' + (error.toString() || 'Unknown error'));
             console.error(error);
         }
     };
@@ -233,23 +275,29 @@ const JourneyManagement = ({ setActiveTab }) => {
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this journey?')) {
             try {
+                startLoading();
+
                 await journeyService.deleteJourney(id);
-                await fetchJourneys();
-                setError(null);
+
+                // Optimistic update: remove from local state immediately
+                setJourneys(prevJourneys => prevJourneys.filter(journey => journey.journeyID !== id));
+
+                stopLoading();
             } catch (error) {
-                setError('Failed to delete journey: ' + (error.toString() || 'Unknown error'));
+                setLoadingError('Failed to delete journey: ' + (error.toString() || 'Unknown error'));
                 console.error(error);
+                // If delete failed, refetch to ensure data consistency
+                await refetchJourneys();
             }
         }
     };
 
-    // Find station name by ID (helper function)
+    // Helper functions
     const getStationNameById = (id) => {
         const station = stations.find(s => s.stationID.toString() === id.toString());
         return station ? station.stationName : 'Unknown Station';
     };
 
-    // Helper function to display schedule information
     const getScheduleDisplayText = (scheduleID) => {
         const schedule = schedules.find(s => s.scheduleID.toString() === scheduleID.toString());
         if (schedule) {
@@ -258,29 +306,83 @@ const JourneyManagement = ({ setActiveTab }) => {
         return 'Unknown Schedule';
     };
 
-    if (loading) {
-        return <div className="p-4 text-center"><LoadingSpinner /></div>;
-    }
-
     return (
-        <div className="p-4 h-screen flex flex-col">
-            <div className="flex justify-between items-center mb-4">
-                <h1 className="text-2xl font-bold">Journey Management</h1>
-                <button
-                    onClick={handleAddNew}
-                    disabled={isAdding || editingId !== null}
-                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    <FaPlus className="mr-2" /> Add New Journey
-                </button>
-            </div>
-
-            {error && (
-                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
-                    <p>{error}</p>
+        <div className="p-4 h-screen flex flex-col journey-management relative">
+            {/* Only show operation loading overlay, not initial loading */}
+            {operationLoading && (
+                <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+                    <div className="flex flex-col items-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                        <p className="mt-2 text-sm text-gray-600">Processing...</p>
+                    </div>
                 </div>
             )}
 
+            <div className="flex justify-between items-center mb-4">
+                <h1 className="text-2xl font-bold">Journey Management</h1>
+                <div className="flex space-x-2">
+                    <button
+                        onClick={() => {
+                            refetchJourneys();
+                            refetchStations();
+                            refetchSchedules();
+                        }}
+                        disabled={isAdding || editingId || operationLoading}
+                        className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Refresh all data"
+                    >
+                        Refresh
+                    </button>
+                    <button
+                        onClick={handleAddNew}
+                        disabled={isAdding || editingId || operationLoading}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <FaPlus className="mr-2" />
+                        Add New Journey
+                    </button>
+                </div>
+            </div>
+
+            {/* Error message */}
+            {currentError && (
+                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="font-medium">
+                                {dataError ? 'Journey Data Error' :
+                                    stationsError ? 'Station Data Error' :
+                                        schedulesError ? 'Schedule Data Error' : 'Operation Error'}
+                            </p>
+                            <p className="mt-1">{currentError}</p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setOperationError(null);
+                                if (dataError) refetchJourneys();
+                                if (stationsError) refetchStations();
+                                if (schedulesError) refetchSchedules();
+                            }}
+                            className="text-red-500 hover:text-red-700 font-bold text-lg"
+                            title="Dismiss error"
+                        >
+                            ×
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Data status info */}
+            <div className="mb-4 text-sm text-gray-600">
+                <p>
+                    <strong>Journeys:</strong> {journeys.length} |
+                    <strong> Stations:</strong> {stations.length} |
+                    <strong> Schedules:</strong> {schedules.length} |
+                    <strong> Last updated:</strong> {new Date().toLocaleTimeString()}
+                </p>
+            </div>
+
+            {/* Table container */}
             <div className="flex-1 overflow-auto border border-gray-200 rounded-lg">
                 <table className="min-w-full bg-white">
                     <thead className="sticky top-0 bg-gray-50 z-10">
@@ -292,10 +394,11 @@ const JourneyManagement = ({ setActiveTab }) => {
                             <th className="px-4 py-2 border-b border-gray-200 text-left">Departure Time</th>
                             <th className="px-4 py-2 border-b border-gray-200 text-center">Actions</th>
                         </tr>
+                        {/* Add new journey row - sticky below header */}
                         {isAdding && (
                             <tr className="bg-blue-50 sticky top-[41px] z-10">
                                 <td className="px-4 py-2 border-b border-gray-200">
-                                    <div className="h-12 flex items-center"> {/* Changed to match other cells */}
+                                    <div className="h-12 flex items-center">
                                         <div className="flex items-center space-x-2 w-full">
                                             <input
                                                 type="text"
@@ -303,6 +406,7 @@ const JourneyManagement = ({ setActiveTab }) => {
                                                 value={formData.journeyID}
                                                 onChange={handleInputChange}
                                                 readOnly={!isJourneyIDManual}
+                                                disabled={operationLoading}
                                                 className={`flex-1 px-2 py-1 border rounded focus:outline-none h-8 ${isJourneyIDManual
                                                     ? 'focus:border-blue-500 bg-white'
                                                     : 'bg-gray-100 text-gray-600'
@@ -312,7 +416,8 @@ const JourneyManagement = ({ setActiveTab }) => {
                                             <button
                                                 type="button"
                                                 onClick={toggleJourneyIDEdit}
-                                                className="bg-blue-500 hover:bg-blue-700 text-white font-bold px-2 rounded flex items-center justify-center text-xs h-8 w-12 flex-shrink-0"
+                                                disabled={operationLoading}
+                                                className="bg-blue-500 hover:bg-blue-700 text-white font-bold px-2 rounded flex items-center justify-center text-xs h-8 w-12 flex-shrink-0 disabled:opacity-50"
                                                 title={isJourneyIDManual ? "Switch to auto-generate" : "Edit manually"}
                                             >
                                                 {isJourneyIDManual ? "Auto" : "Edit"}
@@ -321,11 +426,12 @@ const JourneyManagement = ({ setActiveTab }) => {
                                     </div>
                                 </td>
                                 <td className="px-4 py-2 border-b border-gray-200">
-                                    <div className="h-12 flex items-center"> {/* Fixed height container */}
+                                    <div className="h-12 flex items-center">
                                         <select
                                             name="scheduleID"
                                             value={formData.scheduleID}
                                             onChange={handleInputChange}
+                                            disabled={operationLoading}
                                             className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500 h-8"
                                         >
                                             <option value="">Select Schedule</option>
@@ -338,11 +444,12 @@ const JourneyManagement = ({ setActiveTab }) => {
                                     </div>
                                 </td>
                                 <td className="px-4 py-2 border-b border-gray-200">
-                                    <div className="h-12 flex items-center"> {/* Fixed height container */}
+                                    <div className="h-12 flex items-center">
                                         <select
                                             name="stationID"
                                             value={formData.stationID}
                                             onChange={handleInputChange}
+                                            disabled={operationLoading}
                                             className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500 h-8"
                                         >
                                             <option value="">Select Station</option>
@@ -355,38 +462,42 @@ const JourneyManagement = ({ setActiveTab }) => {
                                     </div>
                                 </td>
                                 <td className="px-4 py-2 border-b border-gray-200">
-                                    <div className="h-12 flex items-center"> {/* Fixed height container */}
+                                    <div className="h-12 flex items-center">
                                         <input
                                             type="time"
                                             name="arrivalTime"
                                             value={formData.arrivalTime}
                                             onChange={handleInputChange}
+                                            disabled={operationLoading}
                                             className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500 h-8"
                                         />
                                     </div>
                                 </td>
                                 <td className="px-4 py-2 border-b border-gray-200">
-                                    <div className="h-12 flex items-center"> {/* Fixed height container */}
+                                    <div className="h-12 flex items-center">
                                         <input
                                             type="time"
                                             name="departureTime"
                                             value={formData.departureTime}
                                             onChange={handleInputChange}
+                                            disabled={operationLoading}
                                             className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500 h-8"
                                         />
                                     </div>
                                 </td>
                                 <td className="px-4 py-2 border-b border-gray-200">
-                                    <div className="h-12 flex justify-center items-center space-x-2"> {/* Fixed height container */}
+                                    <div className="h-12 flex justify-center items-center space-x-2">
                                         <button
                                             onClick={handleSaveNew}
-                                            className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center h-8"
+                                            disabled={operationLoading}
+                                            className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center h-8 disabled:opacity-50"
                                         >
-                                            <FaSave className="mr-1" /> Save
+                                            <FaSave className="mr-1" /> {operationLoading ? 'Saving...' : 'Save'}
                                         </button>
                                         <button
                                             onClick={handleCancel}
-                                            className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center h-8"
+                                            disabled={operationLoading}
+                                            className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center h-8 disabled:opacity-50"
                                         >
                                             <FaTimes className="mr-1" /> Cancel
                                         </button>
@@ -408,6 +519,7 @@ const JourneyManagement = ({ setActiveTab }) => {
                                                 name="scheduleID"
                                                 value={formData.scheduleID}
                                                 onChange={handleInputChange}
+                                                disabled={operationLoading}
                                                 className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                             >
                                                 <option value="">Select Schedule</option>
@@ -427,6 +539,7 @@ const JourneyManagement = ({ setActiveTab }) => {
                                                 name="stationID"
                                                 value={formData.stationID}
                                                 onChange={handleInputChange}
+                                                disabled={operationLoading}
                                                 className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                             >
                                                 <option value="">Select Station</option>
@@ -448,6 +561,7 @@ const JourneyManagement = ({ setActiveTab }) => {
                                                     name="arrivalTime"
                                                     value={formData.arrivalTime}
                                                     onChange={handleInputChange}
+                                                    disabled={operationLoading}
                                                     className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500 h-8"
                                                 />
                                             </div>
@@ -463,6 +577,7 @@ const JourneyManagement = ({ setActiveTab }) => {
                                                     name="departureTime"
                                                     value={formData.departureTime}
                                                     onChange={handleInputChange}
+                                                    disabled={operationLoading}
                                                     className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500 h-8"
                                                 />
                                             </div>
@@ -476,13 +591,15 @@ const JourneyManagement = ({ setActiveTab }) => {
                                                 <>
                                                     <button
                                                         onClick={handleUpdate}
-                                                        className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                                        disabled={operationLoading}
+                                                        className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                                     >
-                                                        <FaSave className="mr-1" /> Save
+                                                        <FaSave className="mr-1" /> {operationLoading ? 'Saving...' : 'Save'}
                                                     </button>
                                                     <button
                                                         onClick={handleCancel}
-                                                        className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                                        disabled={operationLoading}
+                                                        className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                                     >
                                                         <FaTimes className="mr-1" /> Cancel
                                                     </button>
@@ -491,14 +608,14 @@ const JourneyManagement = ({ setActiveTab }) => {
                                                 <>
                                                     <button
                                                         onClick={() => handleEdit(journey)}
-                                                        disabled={isAdding || editingId !== null}
+                                                        disabled={isAdding || editingId !== null || operationLoading}
                                                         className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
                                                         <FaEdit className="mr-1" /> Edit
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(journey.journeyID)}
-                                                        disabled={isAdding || editingId !== null}
+                                                        disabled={isAdding || editingId !== null || operationLoading}
                                                         className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
                                                         <FaTrash className="mr-1" /> Delete

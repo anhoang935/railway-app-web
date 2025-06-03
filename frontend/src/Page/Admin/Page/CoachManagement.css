@@ -75,6 +75,15 @@
     font-weight: normal;
 }
 
+/* Tab button styling - ensure bold works */
+.coach-management button.bg-blue-600 {
+    font-weight: 700 !important; /* Force bold for active tabs */
+}
+
+.coach-management button.bg-gray-200 {
+    font-weight: 500; /* Medium weight for inactive tabs */
+}
+
 /* Form inputs */
 .coach-management input,
 .coach-management select {

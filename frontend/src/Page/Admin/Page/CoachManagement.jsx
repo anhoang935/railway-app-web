@@ -1,21 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaSave, FaTimes, FaTrain, FaCog, FaSync, FaExclamationTriangle, FaChartBar } from 'react-icons/fa';
+import React, { useState } from 'react';
+import { FaPlus, FaEdit, FaTrash, FaSave, FaTimes, FaTrain, FaCog, FaSync, FaExclamationTriangle, FaChartBar, FaRedo } from 'react-icons/fa';
 import coachService from '../../../data/Service/coachService';
 import coachTypeService from '../../../data/Service/coachTypeService';
 import trainService from '../../../data/Service/trainService';
-import './CoachManagement.css';
+import { useLoadingWithTimeout } from '../../../hooks/useLoadingWithTimeout';
+import { useAsyncData } from '../../../hooks/useAsyncData';
+import LoadingPage from '../../../components/LoadingPage';
 
 function CoachManagement() {
     const [activeTab, setActiveTab] = useState('coaches');
-    const [coaches, setCoaches] = useState([]);
-    const [coachTypes, setCoachTypes] = useState([]);
-    const [trains, setTrains] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [syncing, setSyncing] = useState(false);
     const [syncMessage, setSyncMessage] = useState(null);
 
-    // Coaches state
+    // Add missing state variables for coaches
     const [isAddingCoach, setIsAddingCoach] = useState(false);
     const [editingCoachId, setEditingCoachId] = useState(null);
     const [coachFormData, setCoachFormData] = useState({
@@ -24,7 +21,7 @@ function CoachManagement() {
         coach_typeID: ''
     });
 
-    // Coach Types state
+    // Add missing state variables for coach types
     const [isAddingCoachType, setIsAddingCoachType] = useState(false);
     const [editingCoachTypeId, setEditingCoachTypeId] = useState(null);
     const [coachTypeFormData, setCoachTypeFormData] = useState({
@@ -34,28 +31,78 @@ function CoachManagement() {
         capacity: ''
     });
 
-    useEffect(() => {
-        fetchData();
-    }, []);
+    // Use useAsyncData for all initial data fetching
+    const {
+        data: coaches,
+        loading: coachesLoading,
+        error: coachesError,
+        refetch: refetchCoaches,
+        setData: setCoaches
+    } = useAsyncData(() => coachService.getAllCoaches());
 
-    const fetchData = async () => {
+    const {
+        data: coachTypes,
+        loading: coachTypesLoading,
+        error: coachTypesError,
+        refetch: refetchCoachTypes,
+        setData: setCoachTypes
+    } = useAsyncData(() => coachTypeService.getAllCoachTypes());
+
+    const {
+        data: trains,
+        loading: trainsLoading,
+        error: trainsError,
+        refetch: refetchTrains,
+        setData: setTrains
+    } = useAsyncData(() => trainService.getAllTrains());
+
+    // Use useLoadingWithTimeout for operations
+    const {
+        loading: operationLoading,
+        error: operationError,
+        setError: setOperationError,
+        startLoading,
+        stopLoading,
+        setLoadingError
+    } = useLoadingWithTimeout();
+
+    // Show loading page while any initial data loads
+    const isInitialLoading = coachesLoading || coachTypesLoading || trainsLoading;
+
+    if (isInitialLoading) {
+        let loadingMessage = "Loading coach management...";
+        if (coachesLoading) loadingMessage = "Loading coaches...";
+        else if (coachTypesLoading) loadingMessage = "Loading coach types...";
+        else if (trainsLoading) loadingMessage = "Loading trains...";
+
+        return <LoadingPage message={loadingMessage} />;
+    }
+
+    // Combine error states
+    const currentError = coachesError || coachTypesError || trainsError || operationError;
+    const hasDataError = coachesError || coachTypesError || trainsError;
+
+    // Handle refresh/retry functionality
+    const handleRefreshData = async () => {
         try {
-            setLoading(true);
-            const [coachesData, coachTypesData, trainsData] = await Promise.all([
-                coachService.getAllCoaches(),
-                coachTypeService.getAllCoachTypes(),
-                trainService.getAllTrains()
-            ]);
+            startLoading();
 
-            setCoaches(coachesData);
-            setCoachTypes(coachTypesData);
-            setTrains(trainsData);
-            setError(null);
-        } catch (err) {
-            setError('Failed to load data. Please try again later.');
-            console.error(err);
-        } finally {
-            setLoading(false);
+            // Refresh all data sources
+            const refreshPromises = [];
+            if (coachesError) refreshPromises.push(refetchCoaches());
+            if (coachTypesError) refreshPromises.push(refetchCoachTypes());
+            if (trainsError) refreshPromises.push(refetchTrains());
+
+            // If no specific errors, refresh all
+            if (!hasDataError) {
+                refreshPromises.push(refetchCoaches(), refetchCoachTypes(), refetchTrains());
+            }
+
+            await Promise.all(refreshPromises);
+            setOperationError(null);
+
+        } catch (error) {
+            setLoadingError('Failed to refresh data: ' + error.toString());
         }
     };
 
@@ -65,11 +112,19 @@ function CoachManagement() {
             setSyncing(true);
             setSyncMessage(null);
 
-            // Call the sync API endpoint
-            const response = await coachService.syncAllCoachCounts();
+            // Call the sync API endpoint if available, otherwise manual sync
+            try {
+                await coachService.syncAllCoachCounts();
+            } catch (syncError) {
+                // Fallback to manual refresh if sync endpoint doesn't exist
+                console.warn('Sync endpoint not available, using manual refresh:', syncError);
+            }
 
             // Refresh data to show updated counts
-            await fetchData();
+            await Promise.all([
+                refetchCoaches(),
+                refetchTrains()
+            ]);
 
             setSyncMessage({
                 type: 'success',
@@ -80,7 +135,7 @@ function CoachManagement() {
             setTimeout(() => setSyncMessage(null), 5000);
 
         } catch (err) {
-            setError('Failed to sync coach counts: ' + err.toString());
+            setOperationError('Failed to sync coach counts: ' + err.toString());
             setSyncMessage({
                 type: 'error',
                 text: 'Failed to sync coach counts. Please try again.'
@@ -93,11 +148,13 @@ function CoachManagement() {
 
     // Count coaches per train for admin dashboard
     const getCoachCountForTrain = (trainID) => {
+        if (!coaches || !Array.isArray(coaches)) return 0;
         return coaches.filter(coach => coach.trainID === trainID).length;
     };
 
     // Check if train coach counts are out of sync
     const getOutOfSyncTrains = () => {
+        if (!trains || !Array.isArray(trains) || !coaches || !Array.isArray(coaches)) return [];
         return trains.filter(train => {
             const actualCount = getCoachCountForTrain(train.trainID);
             return actualCount !== train.coachTotal;
@@ -118,6 +175,7 @@ function CoachManagement() {
             trainID: '',
             coach_typeID: ''
         });
+        setOperationError(null);
     };
 
     const handleEditCoach = (coach) => {
@@ -128,24 +186,33 @@ function CoachManagement() {
             trainID: coach.trainID,
             coach_typeID: coach.coach_typeID
         });
+        setOperationError(null);
     };
 
     const handleSaveCoach = async () => {
         try {
-            if (!coachFormData.coachID || !coachFormData.trainID || !coachFormData.coach_typeID) {
-                setError('Please fill in all required fields');
+            startLoading();
+
+            if (!coachFormData.coachID?.trim() || !coachFormData.trainID || !coachFormData.coach_typeID) {
+                setLoadingError('Please fill in all required fields');
                 return;
             }
 
             if (isAddingCoach) {
-                await coachService.createCoach(coachFormData);
+                const newCoach = await coachService.createCoach(coachFormData);
+                // Optimistic update
+                setCoaches(prev => [...(prev || []), newCoach]);
             } else {
-                await coachService.updateCoach(editingCoachId, coachFormData);
+                const updatedCoach = await coachService.updateCoach(editingCoachId, coachFormData);
+                // Optimistic update
+                setCoaches(prev =>
+                    (prev || []).map(coach =>
+                        coach.coachID === editingCoachId ? updatedCoach : coach
+                    )
+                );
             }
 
-            await fetchData(); // This will automatically show updated coach counts
             handleCancelCoach();
-            setError(null);
 
             // Show success message
             setSyncMessage({
@@ -154,17 +221,24 @@ function CoachManagement() {
             });
             setTimeout(() => setSyncMessage(null), 3000);
 
+            stopLoading();
+
         } catch (err) {
-            setError(err.toString());
+            setLoadingError('Failed to save coach: ' + err.toString());
+            // Refresh data on error to ensure consistency
+            await refetchCoaches();
         }
     };
 
     const handleDeleteCoach = async (coachId) => {
         if (window.confirm('Are you sure you want to delete this coach? This will automatically update the train\'s coach count.')) {
             try {
+                startLoading();
+
                 await coachService.deleteCoach(coachId);
-                await fetchData(); // This will automatically show updated coach counts
-                setError(null);
+
+                // Optimistic update
+                setCoaches(prev => (prev || []).filter(coach => coach.coachID !== coachId));
 
                 setSyncMessage({
                     type: 'success',
@@ -172,8 +246,12 @@ function CoachManagement() {
                 });
                 setTimeout(() => setSyncMessage(null), 3000);
 
+                stopLoading();
+
             } catch (err) {
-                setError(err.toString());
+                setLoadingError('Failed to delete coach: ' + err.toString());
+                // Refresh data on error to ensure consistency
+                await refetchCoaches();
             }
         }
     };
@@ -186,6 +264,7 @@ function CoachManagement() {
             trainID: '',
             coach_typeID: ''
         });
+        setOperationError(null);
     };
 
     // Coach Type management functions
@@ -203,6 +282,7 @@ function CoachManagement() {
             price: '',
             capacity: ''
         });
+        setOperationError(null);
     };
 
     const handleEditCoachType = (coachType) => {
@@ -214,37 +294,71 @@ function CoachManagement() {
             price: coachType.price,
             capacity: coachType.capacity
         });
+        setOperationError(null);
     };
 
     const handleSaveCoachType = async () => {
         try {
-            if (!coachTypeFormData.coach_typeID || !coachTypeFormData.type || !coachTypeFormData.price) {
-                setError('Please fill in all required fields');
+            startLoading();
+
+            if (!coachTypeFormData.coach_typeID?.trim() || !coachTypeFormData.type?.trim() || !coachTypeFormData.price) {
+                setLoadingError('Please fill in all required fields');
                 return;
             }
 
             if (isAddingCoachType) {
-                await coachTypeService.createCoachType(coachTypeFormData);
+                const newCoachType = await coachTypeService.createCoachType(coachTypeFormData);
+                // Optimistic update
+                setCoachTypes(prev => [...(prev || []), newCoachType]);
             } else {
-                await coachTypeService.updateCoachType(editingCoachTypeId, coachTypeFormData);
+                const updatedCoachType = await coachTypeService.updateCoachType(editingCoachTypeId, coachTypeFormData);
+                // Optimistic update
+                setCoachTypes(prev =>
+                    (prev || []).map(coachType =>
+                        coachType.coach_typeID === editingCoachTypeId ? updatedCoachType : coachType
+                    )
+                );
             }
 
-            await fetchData();
             handleCancelCoachType();
-            setError(null);
+
+            setSyncMessage({
+                type: 'success',
+                text: isAddingCoachType ? 'Coach type added successfully!' : 'Coach type updated successfully!'
+            });
+            setTimeout(() => setSyncMessage(null), 3000);
+
+            stopLoading();
+
         } catch (err) {
-            setError(err.toString());
+            setLoadingError('Failed to save coach type: ' + err.toString());
+            // Refresh data on error to ensure consistency
+            await refetchCoachTypes();
         }
     };
 
     const handleDeleteCoachType = async (coachTypeId) => {
         if (window.confirm('Are you sure you want to delete this coach type?')) {
             try {
+                startLoading();
+
                 await coachTypeService.deleteCoachType(coachTypeId);
-                await fetchData();
-                setError(null);
+
+                // Optimistic update
+                setCoachTypes(prev => (prev || []).filter(coachType => coachType.coach_typeID !== coachTypeId));
+
+                setSyncMessage({
+                    type: 'success',
+                    text: 'Coach type deleted successfully!'
+                });
+                setTimeout(() => setSyncMessage(null), 3000);
+
+                stopLoading();
+
             } catch (err) {
-                setError(err.toString());
+                setLoadingError('Failed to delete coach type: ' + err.toString());
+                // Refresh data on error to ensure consistency
+                await refetchCoachTypes();
             }
         }
     };
@@ -258,38 +372,52 @@ function CoachManagement() {
             price: '',
             capacity: ''
         });
+        setOperationError(null);
     };
 
     const getTrainName = (trainID) => {
+        if (!trains || !Array.isArray(trains)) return 'Unknown';
         const train = trains.find(t => t.trainID === trainID);
         return train ? train.trainName : 'Unknown';
     };
 
     const getCoachTypeName = (coach_typeID) => {
+        if (!coachTypes || !Array.isArray(coachTypes)) return 'Unknown';
         const coachType = coachTypes.find(ct => ct.coach_typeID === coach_typeID);
         return coachType ? coachType.type : 'Unknown';
     };
 
-    if (loading) {
-        return (
-            <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-        );
-    }
-
     const outOfSyncTrains = getOutOfSyncTrains();
 
     return (
-        <div className="flex flex-col h-full bg-white rounded-lg shadow p-6 coach-management">
+        <div className="p-4 h-screen flex flex-col coach-management relative">
+            {/* Only show operation loading overlay */}
+            {operationLoading && (
+                <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+                    <div className="flex flex-col items-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                        <p className="mt-2 text-sm text-gray-600">Processing...</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Header */}
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-800">Coach Management</h1>
                 <div className="flex space-x-2">
                     <button
+                        onClick={handleRefreshData}
+                        disabled={operationLoading}
+                        className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Refresh all data"
+                    >
+                        Refresh
+                    </button>
+                    <button
                         onClick={() => setActiveTab('overview')}
-                        className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'overview'
+                        className={`px-4 py-2 rounded-lg transition-colors ${activeTab === 'overview'
                             ? 'bg-blue-600 text-white font-bold'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            : 'bg-gray-200 text-gray-700 font-medium hover:bg-gray-300'
                             }`}
                     >
                         <FaChartBar className="inline mr-2" />
@@ -297,9 +425,9 @@ function CoachManagement() {
                     </button>
                     <button
                         onClick={() => setActiveTab('coaches')}
-                        className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'coaches'
+                        className={`px-4 py-2 rounded-lg transition-colors ${activeTab === 'coaches'
                             ? 'bg-blue-600 text-white font-bold'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            : 'bg-gray-200 text-gray-700 font-medium hover:bg-gray-300'
                             }`}
                     >
                         <FaTrain className="inline mr-2" />
@@ -307,9 +435,9 @@ function CoachManagement() {
                     </button>
                     <button
                         onClick={() => setActiveTab('coach-types')}
-                        className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'coach-types'
+                        className={`px-4 py-2 rounded-lg transition-colors ${activeTab === 'coach-types'
                             ? 'bg-blue-600 text-white font-bold'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            : 'bg-gray-200 text-gray-700 font-medium hover:bg-gray-300'
                             }`}
                     >
                         <FaCog className="inline mr-2" />
@@ -318,12 +446,40 @@ function CoachManagement() {
                 </div>
             </div>
 
-            {error && (
+            {/* Error message */}
+            {currentError && (
                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
-                    <p>{error}</p>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="font-medium">
+                                {hasDataError ? 'Data Loading Error' : 'Operation Error'}
+                            </p>
+                            <p className="mt-1">{currentError}</p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setOperationError(null);
+                                if (hasDataError) handleRefreshData();
+                            }}
+                            className="text-red-500 hover:text-red-700 font-bold text-lg"
+                            title="Dismiss error"
+                        >
+                            ×
+                        </button>
+                    </div>
+                    {/* {hasDataError && (
+                        <button
+                            onClick={handleRefreshData}
+                            disabled={operationLoading}
+                            className="mt-2 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+                        >
+                            Retry Loading
+                        </button>
+                    )} */}
                 </div>
             )}
 
+            {/* Success message */}
             {syncMessage && (
                 <div className={`border-l-4 p-4 mb-4 ${syncMessage.type === 'success'
                     ? 'bg-green-100 border-green-500 text-green-700'
@@ -332,6 +488,16 @@ function CoachManagement() {
                     <p>{syncMessage.text}</p>
                 </div>
             )}
+
+            {/* Data status info */}
+            <div className="mb-4 text-sm text-gray-600">
+                <p>
+                    <strong>Coaches:</strong> {coaches?.length || 0} |
+                    <strong> Coach Types:</strong> {coachTypes?.length || 0} |
+                    <strong> Trains:</strong> {trains?.length || 0} |
+                    <strong> Last updated:</strong> {new Date().toLocaleTimeString()}
+                </p>
+            </div>
 
             {/* Admin Alert - fixed height */}
             {outOfSyncTrains.length > 0 && (
@@ -353,8 +519,8 @@ function CoachManagement() {
                         <h2 className="text-xl font-semibold">Administrative Overview</h2>
                         <button
                             onClick={handleSyncCoachCounts}
-                            disabled={syncing}
-                            className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center disabled:opacity-50"
+                            disabled={syncing || operationLoading}
+                            className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Synchronize coach counts in the train database"
                         >
                             <FaSync className={`mr-2 ${syncing ? 'animate-spin' : ''}`} />
@@ -364,9 +530,9 @@ function CoachManagement() {
 
                     {/* Train Statistics Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-                        {trains.map(train => {
+                        {trains && trains.length > 0 ? trains.map(train => {
                             const actualCount = getCoachCountForTrain(train.trainID);
-                            const registeredCount = train.coachTotal;
+                            const registeredCount = train.coachTotal || 0;
                             const isOutOfSync = actualCount !== registeredCount;
 
                             return (
@@ -408,22 +574,26 @@ function CoachManagement() {
                                     </div>
                                 </div>
                             );
-                        })}
+                        }) : (
+                            <div className="col-span-full text-center text-gray-500 py-8">
+                                No trains available. Please check your data connection.
+                            </div>
+                        )}
                     </div>
 
                     {/* Summary Statistics */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                         <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
                             <h4 className="text-lg font-semibold text-blue-800 mb-2">Total Trains</h4>
-                            <p className="text-3xl font-bold text-blue-600">{trains.length}</p>
+                            <p className="text-3xl font-bold text-blue-600">{trains?.length || 0}</p>
                         </div>
                         <div className="bg-green-50 p-6 rounded-lg border border-green-200">
                             <h4 className="text-lg font-semibold text-green-800 mb-2">Total Coaches</h4>
-                            <p className="text-3xl font-bold text-green-600">{coaches.length}</p>
+                            <p className="text-3xl font-bold text-green-600">{coaches?.length || 0}</p>
                         </div>
                         <div className="bg-purple-50 p-6 rounded-lg border border-purple-200">
                             <h4 className="text-lg font-semibold text-purple-800 mb-2">Coach Types</h4>
-                            <p className="text-3xl font-bold text-purple-600">{coachTypes.length}</p>
+                            <p className="text-3xl font-bold text-purple-600">{coachTypes?.length || 0}</p>
                         </div>
                     </div>
 
@@ -454,24 +624,13 @@ function CoachManagement() {
                 <div className="coach-tab">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-semibold">Coach Management</h2>
-                        <div className="flex space-x-2">
-                            <button
-                                onClick={handleSyncCoachCounts}
-                                disabled={syncing}
-                                className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center disabled:opacity-50"
-                                title="Synchronize coach counts in the train database"
-                            >
-                                <FaSync className={`mr-2 ${syncing ? 'animate-spin' : ''}`} />
-                                {syncing ? 'Syncing...' : 'Sync Coach Counts'}
-                            </button>
-                            <button
-                                onClick={handleAddNewCoach}
-                                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center"
-                                disabled={isAddingCoach}
-                            >
-                                <FaPlus className="mr-2" /> Add New Coach
-                            </button>
-                        </div>
+                        <button
+                            onClick={handleAddNewCoach}
+                            disabled={isAddingCoach || editingCoachId !== null || operationLoading}
+                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <FaPlus className="mr-2" /> Add New Coach
+                        </button>
                     </div>
 
                     <div className="flex-1 overflow-auto border border-gray-200 rounded-lg">
@@ -491,6 +650,7 @@ function CoachManagement() {
                                                 name="coachID"
                                                 value={coachFormData.coachID}
                                                 onChange={handleCoachChange}
+                                                disabled={operationLoading}
                                                 className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                                 placeholder="Coach ID"
                                             />
@@ -500,10 +660,11 @@ function CoachManagement() {
                                                 name="trainID"
                                                 value={coachFormData.trainID}
                                                 onChange={handleCoachChange}
+                                                disabled={operationLoading}
                                                 className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                             >
                                                 <option value="">Select Train</option>
-                                                {trains.map(train => (
+                                                {trains && trains.map(train => (
                                                     <option key={train.trainID} value={train.trainID}>
                                                         {train.trainName}
                                                     </option>
@@ -515,10 +676,11 @@ function CoachManagement() {
                                                 name="coach_typeID"
                                                 value={coachFormData.coach_typeID}
                                                 onChange={handleCoachChange}
+                                                disabled={operationLoading}
                                                 className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                             >
                                                 <option value="">Select Coach Type</option>
-                                                {coachTypes.map(coachType => (
+                                                {coachTypes && coachTypes.map(coachType => (
                                                     <option key={coachType.coach_typeID} value={coachType.coach_typeID}>
                                                         {coachType.type}
                                                     </option>
@@ -529,13 +691,15 @@ function CoachManagement() {
                                             <div className="action-buttons">
                                                 <button
                                                     onClick={handleSaveCoach}
-                                                    className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                                    disabled={operationLoading}
+                                                    className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                                 >
-                                                    <FaSave className="mr-1" /> Save
+                                                    <FaSave className="mr-1" /> {operationLoading ? 'Saving...' : 'Save'}
                                                 </button>
                                                 <button
                                                     onClick={handleCancelCoach}
-                                                    className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                                    disabled={operationLoading}
+                                                    className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                                 >
                                                     <FaTimes className="mr-1" /> Cancel
                                                 </button>
@@ -545,7 +709,7 @@ function CoachManagement() {
                                 )}
                             </thead>
                             <tbody>
-                                {coaches.length > 0 ? (
+                                {coaches && coaches.length > 0 ? (
                                     coaches.map((coach) => (
                                         <tr key={coach.coachID} className="hover:bg-gray-50">
                                             <td className="px-4 py-2 border-b border-gray-200">
@@ -555,8 +719,8 @@ function CoachManagement() {
                                                         name="coachID"
                                                         value={coachFormData.coachID}
                                                         onChange={handleCoachChange}
+                                                        disabled={operationLoading}
                                                         className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                                        disabled
                                                     />
                                                 ) : (
                                                     coach.coachID
@@ -568,10 +732,11 @@ function CoachManagement() {
                                                         name="trainID"
                                                         value={coachFormData.trainID}
                                                         onChange={handleCoachChange}
+                                                        disabled={operationLoading}
                                                         className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                                     >
                                                         <option value="">Select Train</option>
-                                                        {trains.map(train => (
+                                                        {trains && trains.map(train => (
                                                             <option key={train.trainID} value={train.trainID}>
                                                                 {train.trainName}
                                                             </option>
@@ -587,10 +752,11 @@ function CoachManagement() {
                                                         name="coach_typeID"
                                                         value={coachFormData.coach_typeID}
                                                         onChange={handleCoachChange}
+                                                        disabled={operationLoading}
                                                         className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                                     >
                                                         <option value="">Select Coach Type</option>
-                                                        {coachTypes.map(coachType => (
+                                                        {coachTypes && coachTypes.map(coachType => (
                                                             <option key={coachType.coach_typeID} value={coachType.coach_typeID}>
                                                                 {coachType.type}
                                                             </option>
@@ -606,13 +772,15 @@ function CoachManagement() {
                                                         <>
                                                             <button
                                                                 onClick={handleSaveCoach}
-                                                                className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                                                disabled={operationLoading}
+                                                                className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                                             >
-                                                                <FaSave className="mr-1" /> Save
+                                                                <FaSave className="mr-1" /> {operationLoading ? 'Saving...' : 'Save'}
                                                             </button>
                                                             <button
                                                                 onClick={handleCancelCoach}
-                                                                className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                                                disabled={operationLoading}
+                                                                className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                                             >
                                                                 <FaTimes className="mr-1" /> Cancel
                                                             </button>
@@ -621,14 +789,14 @@ function CoachManagement() {
                                                         <>
                                                             <button
                                                                 onClick={() => handleEditCoach(coach)}
-                                                                disabled={isAddingCoach || editingCoachId !== null}
+                                                                disabled={isAddingCoach || editingCoachId !== null || operationLoading}
                                                                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                                                             >
                                                                 <FaEdit className="mr-1" /> Edit
                                                             </button>
                                                             <button
                                                                 onClick={() => handleDeleteCoach(coach.coachID)}
-                                                                disabled={isAddingCoach || editingCoachId !== null}
+                                                                disabled={isAddingCoach || editingCoachId !== null || operationLoading}
                                                                 className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                                                             >
                                                                 <FaTrash className="mr-1" /> Delete
@@ -659,8 +827,8 @@ function CoachManagement() {
                         <h2 className="text-xl font-semibold">Coach Types</h2>
                         <button
                             onClick={handleAddNewCoachType}
-                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center"
-                            disabled={isAddingCoachType}
+                            disabled={isAddingCoachType || editingCoachTypeId !== null || operationLoading}
+                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <FaPlus className="mr-2" /> Add New Coach Type
                         </button>
@@ -684,6 +852,7 @@ function CoachManagement() {
                                                 name="coach_typeID"
                                                 value={coachTypeFormData.coach_typeID}
                                                 onChange={handleCoachTypeChange}
+                                                disabled={operationLoading}
                                                 className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                                 placeholder="Type ID"
                                             />
@@ -694,6 +863,7 @@ function CoachManagement() {
                                                 name="type"
                                                 value={coachTypeFormData.type}
                                                 onChange={handleCoachTypeChange}
+                                                disabled={operationLoading}
                                                 className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                                 placeholder="Coach Type Name"
                                             />
@@ -704,6 +874,7 @@ function CoachManagement() {
                                                 name="price"
                                                 value={coachTypeFormData.price}
                                                 onChange={handleCoachTypeChange}
+                                                disabled={operationLoading}
                                                 className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                                 placeholder="Price"
                                                 min="0"
@@ -715,6 +886,7 @@ function CoachManagement() {
                                                 name="capacity"
                                                 value={coachTypeFormData.capacity}
                                                 onChange={handleCoachTypeChange}
+                                                disabled={operationLoading}
                                                 className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                                 placeholder="Capacity"
                                                 min="1"
@@ -724,13 +896,15 @@ function CoachManagement() {
                                             <div className="action-buttons">
                                                 <button
                                                     onClick={handleSaveCoachType}
-                                                    className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                                    disabled={operationLoading}
+                                                    className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                                 >
-                                                    <FaSave className="mr-1" /> Save
+                                                    <FaSave className="mr-1" /> {operationLoading ? 'Saving...' : 'Save'}
                                                 </button>
                                                 <button
                                                     onClick={handleCancelCoachType}
-                                                    className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                                    disabled={operationLoading}
+                                                    className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                                 >
                                                     <FaTimes className="mr-1" /> Cancel
                                                 </button>
@@ -740,7 +914,7 @@ function CoachManagement() {
                                 )}
                             </thead>
                             <tbody>
-                                {coachTypes.length > 0 ? (
+                                {coachTypes && coachTypes.length > 0 ? (
                                     coachTypes.map((coachType) => (
                                         <tr key={coachType.coach_typeID} className="hover:bg-gray-50">
                                             <td className="px-4 py-2 border-b border-gray-200">
@@ -750,8 +924,8 @@ function CoachManagement() {
                                                         name="coach_typeID"
                                                         value={coachTypeFormData.coach_typeID}
                                                         onChange={handleCoachTypeChange}
+                                                        disabled={operationLoading}
                                                         className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                                        disabled
                                                     />
                                                 ) : (
                                                     coachType.coach_typeID
@@ -764,6 +938,7 @@ function CoachManagement() {
                                                         name="type"
                                                         value={coachTypeFormData.type}
                                                         onChange={handleCoachTypeChange}
+                                                        disabled={operationLoading}
                                                         className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                                     />
                                                 ) : (
@@ -777,6 +952,7 @@ function CoachManagement() {
                                                         name="price"
                                                         value={coachTypeFormData.price}
                                                         onChange={handleCoachTypeChange}
+                                                        disabled={operationLoading}
                                                         className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                                         min="0"
                                                     />
@@ -791,6 +967,7 @@ function CoachManagement() {
                                                         name="capacity"
                                                         value={coachTypeFormData.capacity}
                                                         onChange={handleCoachTypeChange}
+                                                        disabled={operationLoading}
                                                         className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                                         min="1"
                                                     />
@@ -804,13 +981,15 @@ function CoachManagement() {
                                                         <>
                                                             <button
                                                                 onClick={handleSaveCoachType}
-                                                                className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                                                disabled={operationLoading}
+                                                                className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                                             >
-                                                                <FaSave className="mr-1" /> Save
+                                                                <FaSave className="mr-1" /> {operationLoading ? 'Saving...' : 'Save'}
                                                             </button>
                                                             <button
                                                                 onClick={handleCancelCoachType}
-                                                                className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                                                disabled={operationLoading}
+                                                                className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                                             >
                                                                 <FaTimes className="mr-1" /> Cancel
                                                             </button>
@@ -819,14 +998,14 @@ function CoachManagement() {
                                                         <>
                                                             <button
                                                                 onClick={() => handleEditCoachType(coachType)}
-                                                                disabled={isAddingCoachType || editingCoachTypeId !== null}
+                                                                disabled={isAddingCoachType || editingCoachTypeId !== null || operationLoading}
                                                                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                                                             >
                                                                 <FaEdit className="mr-1" /> Edit
                                                             </button>
                                                             <button
                                                                 onClick={() => handleDeleteCoachType(coachType.coach_typeID)}
-                                                                disabled={isAddingCoachType || editingCoachTypeId !== null}
+                                                                disabled={isAddingCoachType || editingCoachTypeId !== null || operationLoading}
                                                                 className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                                                             >
                                                                 <FaTrash className="mr-1" /> Delete
