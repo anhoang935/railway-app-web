@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import Map from './Map';
 import '../styles/timetable.css';
 import { FaTrain, FaMapMarkerAlt, FaClock, FaAngleRight } from 'react-icons/fa';
-import LoadingSpinner from './Admin/Components/LoadingSpinner';
 import timetableService from '../data/Service/timetableService';
 
 const Timetable = () => {
@@ -512,7 +511,14 @@ const Timetable = () => {
         </div>
       )}
       
-      {loading && <div className="loading-container"><LoadingSpinner /></div>}
+      {loading && (
+        <div className="loading-container">
+          <div className="flex flex-col items-center justify-center p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      )}
       
       {renderTrainOptions()}
       
