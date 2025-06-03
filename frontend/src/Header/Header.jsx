@@ -153,14 +153,6 @@ const Header = () => {
                                                     <CreditCard size={16} className="item-icon" />
                                                     <span>My Bookings</span>
                                                 </Link>
-                                                <Link to="/travel-history" className="dropdown-item" onClick={() => setDropdownOpen(false)}>
-                                                    <History size={16} className="item-icon" />
-                                                    <span>Travel History</span>
-                                                </Link>
-                                                <Link to="/notifications" className="dropdown-item" onClick={() => setDropdownOpen(false)}>
-                                                    <Bell size={16} className="item-icon" />
-                                                    <span>Notifications</span>
-                                                </Link>
                                                 <div className="dropdown-divider"></div>
                                                 <button className="dropdown-item logout-item" onClick={handleLogout}>
                                                     <LogOut size={16} className="item-icon" />
@@ -228,14 +220,6 @@ const Header = () => {
                                             <Link to="/my-bookings" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
                                                 <CreditCard size={16} className="mr-2" />
                                                 My Bookings
-                                            </Link>
-                                            <Link to="/travel-history" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
-                                                <History size={16} className="mr-2" />
-                                                Travel History
-                                            </Link>
-                                            <Link to="/notifications" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
-                                                <Bell size={16} className="mr-2" />
-                                                Notifications
                                             </Link>
                                             <button
                                                 className="mobile-nav-link text-red-500"

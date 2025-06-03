@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FaEdit, FaTrash, FaPlus, FaSave, FaTimes } from 'react-icons/fa';
 import trackService from '../../../data/Service/trackService';
 import stationService from '../../../data/Service/stationService';
+import { useLoadingWithTimeout } from '../../../hooks/useLoadingWithTimeout';
+import { useAsyncData } from '../../../hooks/useAsyncData';
+import LoadingPage from '../../../components/LoadingPage';
 
 const TrackManagement = () => {
-    const [tracks, setTracks] = useState([]);
-    const [stations, setStations] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [editingId, setEditingId] = useState(null);
     const [isAdding, setIsAdding] = useState(false);
     const [formData, setFormData] = useState({
@@ -16,40 +15,46 @@ const TrackManagement = () => {
         distance: ''
     });
 
-    // Fetch tracks and stations on component mount
-    useEffect(() => {
-        fetchTrackAndStationData();
-    }, []);
+    // Use useAsyncData for initial data fetching
+    const {
+        data: tracks,
+        loading: tracksLoading,
+        error: tracksError,
+        refetch: refetchTracks,
+        setData: setTracks
+    } = useAsyncData(() => trackService.getAllTracks());
 
-    const fetchTrackAndStationData = async () => {
-        try {
-            setLoading(true);
-            const [tracksData, stationsData] = await Promise.all([
-                trackService.getAllTracks(),
-                stationService.getAllStations()
-            ]);
+    const {
+        data: stations,
+        loading: stationsLoading,
+        error: stationsError,
+        refetch: refetchStations
+    } = useAsyncData(() => stationService.getAllStations());
 
-            setTracks(tracksData);
-            setStations(stationsData);
-            setError(null);
-        } catch (err) {
-            setError('Failed to load data. Please try again later.');
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Use useLoadingWithTimeout for operations
+    const {
+        loading: operationLoading,
+        error: operationError,
+        setError: setOperationError,
+        startLoading,
+        stopLoading,
+        setLoadingError
+    } = useLoadingWithTimeout();
 
-    const fetchTracks = async () => {
-        try {
-            const tracksData = await trackService.getAllTracks();
-            setTracks(tracksData);
-            setError(null);
-        } catch (err) {
-            setError('Failed to load tracks. Please try again later.');
-            console.error(err);
-        }
-    };
+    // Show loading page while initial data loads
+    const isInitialLoading = tracksLoading || stationsLoading;
+
+    if (isInitialLoading) {
+        let loadingMessage = "Loading track management...";
+        if (tracksLoading) loadingMessage = "Loading tracks...";
+        else if (stationsLoading) loadingMessage = "Loading stations...";
+
+        return <LoadingPage message={loadingMessage} />;
+    }
+
+    // Combine error states
+    const currentError = tracksError || stationsError || operationError;
+    const hasDataError = tracksError || stationsError;
 
     // Handle form input changes
     const handleChange = (e) => {
@@ -80,6 +85,7 @@ const TrackManagement = () => {
             station2ID: '',
             distance: ''
         });
+        setOperationError(null);
     };
 
     // Start editing an existing track
@@ -91,6 +97,7 @@ const TrackManagement = () => {
             station2ID: track.station2ID,
             distance: track.distance
         });
+        setOperationError(null);
     };
 
     // Cancel adding/editing
@@ -102,25 +109,25 @@ const TrackManagement = () => {
             station2ID: '',
             distance: ''
         });
+        setOperationError(null);
     };
 
     // Validate form data
     const validateForm = () => {
-        // Log the form data to help with debugging
         console.log("Validating form data:", formData);
 
         if (!formData.station1ID) {
-            setError('Please select station 1');
+            setOperationError('Please select station 1');
             return false;
         }
 
         if (!formData.station2ID) {
-            setError('Please select station 2');
+            setOperationError('Please select station 2');
             return false;
         }
 
         if (formData.station1ID === formData.station2ID) {
-            setError('Station 1 and station 2 cannot be the same');
+            setOperationError('Station 1 and station 2 cannot be the same');
             return false;
         }
 
@@ -129,7 +136,7 @@ const TrackManagement = () => {
             formData.distance === undefined ||
             isNaN(Number(formData.distance)) ||
             Number(formData.distance) <= 0) {
-            setError('Please enter a valid positive number for distance');
+            setOperationError('Please enter a valid positive number for distance');
             return false;
         }
 
@@ -141,6 +148,8 @@ const TrackManagement = () => {
         try {
             if (!validateForm()) return;
 
+            startLoading();
+
             // Create a clean object with values properly formatted
             const trackToCreate = {
                 station1ID: formData.station1ID,
@@ -151,17 +160,21 @@ const TrackManagement = () => {
             console.log("Creating track with data:", trackToCreate);
 
             await trackService.createTrack(trackToCreate);
-            await fetchTracks();
+
+            // Refresh data to get updated list
+            await refetchTracks();
+
             setIsAdding(false);
             setFormData({
                 station1ID: '',
                 station2ID: '',
                 distance: ''
             });
-            setError(null);
-        }
-        catch (err) {
-            setError('Failed to create track: ' + (err.toString() || 'Unknown error'));
+            setOperationError(null);
+
+            stopLoading();
+        } catch (err) {
+            setLoadingError('Failed to create track: ' + (err.toString() || 'Unknown error'));
             console.error(err);
         }
     };
@@ -170,6 +183,8 @@ const TrackManagement = () => {
     const handleUpdate = async () => {
         try {
             if (!validateForm()) return;
+
+            startLoading();
 
             // Create a clean object with values properly formatted
             const trackToUpdate = {
@@ -181,17 +196,21 @@ const TrackManagement = () => {
             console.log("Updating track ID:", editingId, "with data:", trackToUpdate);
 
             await trackService.updateTrack(editingId, trackToUpdate);
-            await fetchTracks();
+
+            // Refresh data to get updated list
+            await refetchTracks();
+
             setEditingId(null);
             setFormData({
                 station1ID: '',
                 station2ID: '',
                 distance: ''
             });
-            setError(null);
-        }
-        catch (err) {
-            setError('Failed to update track: ' + (err.toString() || 'Unknown error'));
+            setOperationError(null);
+
+            stopLoading();
+        } catch (err) {
+            setLoadingError('Failed to update track: ' + (err.toString() || 'Unknown error'));
             console.error(err);
         }
     };
@@ -200,11 +219,17 @@ const TrackManagement = () => {
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this track?')) {
             try {
+                startLoading();
+
                 await trackService.deleteTrack(id);
-                await fetchTracks();
-                setError(null);
+
+                // Refresh data to get updated list
+                await refetchTracks();
+
+                setOperationError(null);
+                stopLoading();
             } catch (err) {
-                setError('Failed to delete track: ' + (err.toString() || 'Unknown error'));
+                setLoadingError('Failed to delete track: ' + (err.toString() || 'Unknown error'));
                 console.error(err);
             }
         }
@@ -212,42 +237,106 @@ const TrackManagement = () => {
 
     // Get station name by ID for display
     const getStationName = (stationID) => {
+        if (!stations) return 'Unknown Station';
         const station = stations.find(s => s.stationID === stationID);
         return station ? station.stationName : 'Unknown Station';
     };
 
-    if (loading) {
-        return (
-            <div className="flex justify-center items-center h-full">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-        );
-    }
+    // Handle refresh/retry functionality
+    const handleRefreshData = async () => {
+        try {
+            startLoading();
+
+            // Refresh data sources that have errors
+            const refreshPromises = [];
+            if (tracksError) refreshPromises.push(refetchTracks());
+            if (stationsError) refreshPromises.push(refetchStations());
+
+            // If no specific errors, refresh all
+            if (!hasDataError) {
+                refreshPromises.push(refetchTracks(), refetchStations());
+            }
+
+            await Promise.all(refreshPromises);
+            setOperationError(null);
+            stopLoading();
+        } catch (error) {
+            setLoadingError('Failed to refresh data: ' + error.toString());
+        }
+    };
 
     return (
-        <div className="flex flex-col h-full bg-white rounded-lg shadow p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-800">Track Management</h1>
-                <button
-                    onClick={handleAddNew}
-                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center"
-                    disabled={isAdding}
-                >
-                    <FaPlus className="mr-2" /> Add New Track
-                </button>
-            </div>
-
-            {error && (
-                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
-                    <p>{error}</p>
+        <div className="p-4 h-screen flex flex-col track-management relative">
+            {/* Only show operation loading overlay */}
+            {operationLoading && (
+                <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+                    <div className="flex flex-col items-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                        <p className="mt-2 text-sm text-gray-600">Processing...</p>
+                    </div>
                 </div>
             )}
 
-            {/* Scrollable table container with fixed height */}
+            <div className="flex justify-between items-center mb-4">
+                <h1 className="text-2xl font-bold">Track Management</h1>
+                <div className="flex space-x-2">
+                    <button
+                        onClick={handleRefreshData}
+                        disabled={isAdding || editingId !== null || operationLoading}
+                        className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Refresh all data"
+                    >
+                        Refresh
+                    </button>
+                    <button
+                        onClick={handleAddNew}
+                        disabled={isAdding || editingId !== null || operationLoading}
+                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <FaPlus className="mr-2" /> Add New Track
+                    </button>
+                </div>
+            </div>
+
+            {/* Error message */}
+            {currentError && (
+                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="font-medium">
+                                {hasDataError ? 'Data Loading Error' : 'Operation Error'}
+                            </p>
+                            <p className="mt-1">{currentError}</p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setOperationError(null);
+                                if (hasDataError) handleRefreshData();
+                            }}
+                            className="text-red-500 hover:text-red-700 font-bold text-lg"
+                            title="Dismiss error"
+                        >
+                            ×
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Data status info */}
+            <div className="mb-4 text-sm text-gray-600">
+                <p>
+                    <strong>Tracks:</strong> {tracks?.length || 0} |
+                    <strong> Stations:</strong> {stations?.length || 0} |
+                    <strong> Last updated:</strong> {new Date().toLocaleTimeString()}
+                </p>
+            </div>
+
+            {/* Table container */}
             <div className="flex-1 overflow-auto border border-gray-200 rounded-lg">
                 <table className="min-w-full bg-white">
                     <thead className="sticky top-0 bg-gray-50 z-10">
                         <tr>
+                            <th className="px-4 py-2 border-b border-gray-200 text-left">Track ID</th>
                             <th className="px-4 py-2 border-b border-gray-200 text-left">Station 1</th>
                             <th className="px-4 py-2 border-b border-gray-200 text-left">Station 2</th>
                             <th className="px-4 py-2 border-b border-gray-200 text-left">Distance (km)</th>
@@ -257,14 +346,18 @@ const TrackManagement = () => {
                         {isAdding && (
                             <tr className="bg-blue-50 sticky top-[41px] z-10">
                                 <td className="px-4 py-2 border-b border-gray-200">
+                                    <span className="text-gray-500 italic">Auto-generated</span>
+                                </td>
+                                <td className="px-4 py-2 border-b border-gray-200">
                                     <select
                                         name="station1ID"
                                         value={formData.station1ID}
                                         onChange={handleChange}
+                                        disabled={operationLoading}
                                         className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                     >
                                         <option value="">Select Station 1</option>
-                                        {stations.map(station => (
+                                        {stations && stations.map(station => (
                                             <option key={station.stationID} value={station.stationID}>
                                                 {station.stationName}
                                             </option>
@@ -276,10 +369,11 @@ const TrackManagement = () => {
                                         name="station2ID"
                                         value={formData.station2ID}
                                         onChange={handleChange}
+                                        disabled={operationLoading}
                                         className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                     >
                                         <option value="">Select Station 2</option>
-                                        {stations.map(station => (
+                                        {stations && stations.map(station => (
                                             <option key={station.stationID} value={station.stationID}>
                                                 {station.stationName}
                                             </option>
@@ -292,6 +386,7 @@ const TrackManagement = () => {
                                         name="distance"
                                         value={formData.distance}
                                         onChange={handleChange}
+                                        disabled={operationLoading}
                                         className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                         placeholder="Distance in km"
                                         min="1"
@@ -302,13 +397,15 @@ const TrackManagement = () => {
                                     <div className="flex justify-center space-x-2">
                                         <button
                                             onClick={handleSaveNew}
-                                            className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                            disabled={operationLoading}
+                                            className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                         >
-                                            <FaSave className="mr-1" /> Save
+                                            <FaSave className="mr-1" /> {operationLoading ? 'Saving...' : 'Save'}
                                         </button>
                                         <button
                                             onClick={handleCancel}
-                                            className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                            disabled={operationLoading}
+                                            className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                         >
                                             <FaTimes className="mr-1" /> Cancel
                                         </button>
@@ -319,18 +416,22 @@ const TrackManagement = () => {
                     </thead>
                     <tbody>
                         {/* Track list rows */}
-                        {tracks.length > 0 ? (
+                        {tracks && tracks.length > 0 ? (
                             tracks.map((track) => (
                                 <tr key={track.trackID} className={editingId === track.trackID ? 'bg-yellow-50' : 'hover:bg-gray-50'}>
+                                    <td className="px-4 py-2 border-b border-gray-200 font-medium">
+                                        {track.trackID}
+                                    </td>
                                     <td className="px-4 py-2 border-b border-gray-200">
                                         {editingId === track.trackID ? (
                                             <select
                                                 name="station1ID"
                                                 value={formData.station1ID}
                                                 onChange={handleChange}
+                                                disabled={operationLoading}
                                                 className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                             >
-                                                {stations.map(station => (
+                                                {stations && stations.map(station => (
                                                     <option key={station.stationID} value={station.stationID}>
                                                         {station.stationName}
                                                     </option>
@@ -346,9 +447,10 @@ const TrackManagement = () => {
                                                 name="station2ID"
                                                 value={formData.station2ID}
                                                 onChange={handleChange}
+                                                disabled={operationLoading}
                                                 className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                             >
-                                                {stations.map(station => (
+                                                {stations && stations.map(station => (
                                                     <option key={station.stationID} value={station.stationID}>
                                                         {station.stationName}
                                                     </option>
@@ -365,6 +467,7 @@ const TrackManagement = () => {
                                                 name="distance"
                                                 value={formData.distance}
                                                 onChange={handleChange}
+                                                disabled={operationLoading}
                                                 className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                                 min="1"
                                                 step="1"
@@ -379,13 +482,15 @@ const TrackManagement = () => {
                                                 <>
                                                     <button
                                                         onClick={handleUpdate}
-                                                        className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                                        disabled={operationLoading}
+                                                        className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                                     >
-                                                        <FaSave className="mr-1" /> Save
+                                                        <FaSave className="mr-1" /> {operationLoading ? 'Saving...' : 'Save'}
                                                     </button>
                                                     <button
                                                         onClick={handleCancel}
-                                                        className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                                        disabled={operationLoading}
+                                                        className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                                     >
                                                         <FaTimes className="mr-1" /> Cancel
                                                     </button>
@@ -394,14 +499,14 @@ const TrackManagement = () => {
                                                 <>
                                                     <button
                                                         onClick={() => handleEdit(track)}
-                                                        disabled={isAdding || editingId !== null}
+                                                        disabled={isAdding || editingId !== null || operationLoading}
                                                         className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
                                                         <FaEdit className="mr-1" /> Edit
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(track.trackID)}
-                                                        disabled={isAdding || editingId !== null}
+                                                        disabled={isAdding || editingId !== null || operationLoading}
                                                         className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
                                                         <FaTrash className="mr-1" /> Delete
@@ -414,7 +519,7 @@ const TrackManagement = () => {
                             ))
                         ) : (
                             <tr>
-                                <td colSpan="4" className="px-4 py-8 border-b border-gray-200 text-center text-gray-500">
+                                <td colSpan="5" className="px-4 py-8 border-b border-gray-200 text-center text-gray-500">
                                     No tracks found. Add a new track to get started.
                                 </td>
                             </tr>

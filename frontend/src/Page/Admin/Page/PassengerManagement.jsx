@@ -1,14 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Edit, Trash2, Ticket, BookOpen, ChevronDown, ChevronUp, X, Check, Plus } from 'lucide-react';
 import { FaSave, FaTimes } from 'react-icons/fa';
 import passengerService from '../../../data/Service/passengerService';
-import LoadingSpinner from '../Components/LoadingSpinner';
-import './PassengerManagement.css';
+import { useLoadingWithTimeout } from '../../../hooks/useLoadingWithTimeout';
+import { useAsyncData } from '../../../hooks/useAsyncData';
+import LoadingPage from '../../../components/LoadingPage';
 
 function PassengerManagement() {
-    const [passengers, setPassengers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All Status');
     const [expandedRow, setExpandedRow] = useState(null);
@@ -24,39 +22,56 @@ function PassengerManagement() {
         status: 'active'
     });
 
-    useEffect(() => {
-        fetchPassengers();
-    }, []);
+    // Use useAsyncData for initial data fetching
+    const {
+        data: passengers,
+        loading: dataLoading,
+        error: dataError,
+        refetch: refetchPassengers,
+        setData: setPassengers
+    } = useAsyncData(() => passengerService.getAllPassengers());
 
-    const fetchPassengers = async () => {
-        try {
-            setLoading(true);
-            const data = await passengerService.getAllPassengers();
-            setPassengers(data);
-            setError(null);
-        } catch (err) {
-            console.error('Error fetching passengers:', err);
-            setError('Failed to load passengers. Please try again later.');
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Use useLoadingWithTimeout for operations
+    const {
+        loading: operationLoading,
+        error: operationError,
+        setError: setOperationError,
+        startLoading,
+        stopLoading,
+        setLoadingError
+    } = useLoadingWithTimeout();
+
+    // Show loading page during initial data fetch
+    if (dataLoading) {
+        return <LoadingPage message="Loading passengers..." />;
+    }
+
+    // Combine error states
+    const currentError = dataError || operationError;
 
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this passenger?')) {
             try {
+                startLoading();
+
                 await passengerService.deletePassenger(id);
-                setPassengers(passengers.filter(passenger => passenger.passengerID !== id));
-            } catch (err) {
-                console.error('Error deleting passenger:', err);
-                alert('Failed to delete passenger. Please try again later.');
+
+                // Optimistic update
+                setPassengers(prevPassengers => prevPassengers.filter(passenger => passenger.passengerID !== id));
+
+                stopLoading();
+            } catch (error) {
+                setLoadingError('Failed to delete passenger: ' + (error.toString() || 'Unknown error'));
+                console.error(error);
+                // If delete failed, refetch to ensure data consistency
+                await refetchPassengers();
             }
         }
     };
 
     const handleEdit = (id) => {
         console.log('Edit passenger', id);
-        // Implement edit functionality
+        setOperationError('Edit functionality not yet implemented');
     };
 
     const handleViewTickets = async (passengerID) => {
@@ -73,14 +88,20 @@ function PassengerManagement() {
             setExpandedContentLoading(true);
 
             const tickets = await passengerService.getPassengerTickets(passengerID);
-            setPassengers(passengers.map(passenger =>
-                passenger.passengerID === passengerID
-                    ? { ...passenger, tickets }
-                    : passenger
-            ));
-        } catch (err) {
-            console.error('Error fetching passenger tickets:', err);
-            alert('Failed to load tickets. Please try again later.');
+
+            // Update the specific passenger with tickets
+            setPassengers(prevPassengers =>
+                prevPassengers.map(passenger =>
+                    passenger.passengerID === passengerID
+                        ? { ...passenger, tickets }
+                        : passenger
+                )
+            );
+        } catch (error) {
+            console.error('Error fetching passenger tickets:', error);
+            setOperationError('Failed to load tickets. Please try again later.');
+            setExpandedRow(null);
+            setExpandedContent(null);
         } finally {
             setExpandedContentLoading(false);
         }
@@ -100,14 +121,20 @@ function PassengerManagement() {
             setExpandedContentLoading(true);
 
             const bookings = await passengerService.getPassengerBookings(passengerID);
-            setPassengers(passengers.map(passenger =>
-                passenger.passengerID === passengerID
-                    ? { ...passenger, bookings }
-                    : passenger
-            ));
-        } catch (err) {
-            console.error('Error fetching passenger bookings:', err);
-            alert('Failed to load bookings. Please try again later.');
+
+            // Update the specific passenger with bookings
+            setPassengers(prevPassengers =>
+                prevPassengers.map(passenger =>
+                    passenger.passengerID === passengerID
+                        ? { ...passenger, bookings }
+                        : passenger
+                )
+            );
+        } catch (error) {
+            console.error('Error fetching passenger bookings:', error);
+            setOperationError('Failed to load bookings. Please try again later.');
+            setExpandedRow(null);
+            setExpandedContent(null);
         } finally {
             setExpandedContentLoading(false);
         }
@@ -149,7 +176,8 @@ function PassengerManagement() {
         if (expandedContentLoading) {
             return (
                 <div className="p-4 text-center">
-                    <LoadingSpinner />
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+                    <p className="mt-2 text-sm text-gray-600">Loading...</p>
                 </div>
             );
         }
@@ -266,34 +294,55 @@ function PassengerManagement() {
             status: 'active'
         });
         setIsAdding(true);
+        setOperationError(null);
     };
 
     const handleCancel = () => {
         setIsAdding(false);
+        setOperationError(null);
+    };
+
+    const validateForm = () => {
+        if (!formData.fullname?.trim()) {
+            setOperationError('Full name is required.');
+            return false;
+        }
+        if (!formData.email?.trim()) {
+            setOperationError('Email address is required.');
+            return false;
+        }
+        if (!formData.phone_number?.trim()) {
+            setOperationError('Phone number is required.');
+            return false;
+        }
+        return true;
     };
 
     const handleSaveNew = async () => {
         try {
-            // Validate the form
-            if (!formData.fullname || !formData.email || !formData.phone_number) {
-                alert('Please fill in all required fields.');
-                return;
+            if (!validateForm()) return;
+
+            startLoading();
+
+            const passengerToCreate = {
+                fullname: formData.fullname.trim(),
+                email: formData.email.trim(),
+                phone_number: formData.phone_number.trim(),
+                id_number: formData.id_number?.trim() || null,
+                address: formData.address?.trim() || null,
+                status: formData.status
+            };
+
+            const newPassenger = await passengerService.createPassenger(passengerToCreate);
+
+            // Optimistic update
+            if (newPassenger) {
+                setPassengers(prevPassengers => [...prevPassengers, newPassenger]);
+            } else {
+                await refetchPassengers();
             }
 
-            // Create the new passenger
-            const newPassenger = await passengerService.createPassenger({
-                fullname: formData.fullname,
-                email: formData.email,
-                phone_number: formData.phone_number,
-                id_number: formData.id_number,
-                address: formData.address,
-                status: formData.status
-            });
-
-            // Update the list with the new passenger
-            setPassengers([...passengers, newPassenger]);
-
-            // Reset the form and exit adding mode
+            // Reset form and state
             setIsAdding(false);
             setFormData({
                 fullname: '',
@@ -304,48 +353,98 @@ function PassengerManagement() {
                 status: 'active'
             });
 
+            stopLoading();
         } catch (error) {
-            console.error('Error creating passenger:', error);
-            alert('Failed to create passenger. Please try again.');
+            setLoadingError('Failed to create passenger: ' + (error.toString() || 'Unknown error'));
+            console.error(error);
         }
     };
 
-    if (loading) {
-        return <div className="p-4 flex justify-center"><LoadingSpinner /></div>;
-    }
-
-    if (error) {
-        return <div className="p-4 text-red-500 text-center">{error}</div>;
-    }
-
     return (
-        <div className="p-4 h-screen flex flex-col passenger-management">
+        <div className="p-4 h-screen flex flex-col passenger-management relative">
+            {/* Only show operation loading overlay */}
+            {operationLoading && (
+                <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+                    <div className="flex flex-col items-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                        <p className="mt-2 text-sm text-gray-600">Processing...</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Header */}
             <div className="flex justify-between items-center mb-4">
                 <h1 className="text-2xl font-bold">Passenger Management</h1>
-                <button
-                    onClick={handleAddNew}
-                    disabled={isAdding}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    <span className="mr-2">+</span>
-                    Add New Passenger
-                </button>
+                <div className="flex space-x-2">
+                    <button
+                        onClick={refetchPassengers}
+                        disabled={isAdding || operationLoading}
+                        className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Refresh passengers"
+                    >
+                        Refresh
+                    </button>
+                    <button
+                        onClick={handleAddNew}
+                        disabled={isAdding || operationLoading}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <Plus size={16} className="mr-2" />
+                        Add New Passenger
+                    </button>
+                </div>
             </div>
 
-            <div className="search-filter-container">
-                <div className="search-input-container">
-                    <input
-                        type="text"
-                        placeholder="Search passengers..."
-                        className="search-input"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    <span className="search-icon">🔍</span>
+            {/* Error message */}
+            {currentError && (
+                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="font-medium">
+                                {dataError ? 'Data Loading Error' : 'Operation Error'}
+                            </p>
+                            <p className="mt-1">{currentError}</p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setOperationError(null);
+                                if (dataError) refetchPassengers();
+                            }}
+                            className="text-red-500 hover:text-red-700 font-bold text-lg"
+                            title="Dismiss error"
+                        >
+                            ×
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Data status info */}
+            <div className="mb-4 text-sm text-gray-600">
+                <p>
+                    <strong>Passengers:</strong> {passengers.length} |
+                    <strong> Filtered:</strong> {filteredPassengers.length} |
+                    <strong> Last updated:</strong> {new Date().toLocaleTimeString()}
+                </p>
+            </div>
+
+            {/* Search and filter controls */}
+            <div className="mb-4 flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                    <div className="relative">
+                        <input
+                            type="text"
+                            placeholder="Search passengers..."
+                            className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">🔍</span>
+                    </div>
                 </div>
 
                 <select
-                    className="filter-select"
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
                 >
@@ -356,173 +455,193 @@ function PassengerManagement() {
                 </select>
             </div>
 
-            <div className="flex-1 overflow-auto passenger-table-container">
-                <table className="min-w-full bg-white passenger-table">
-                    <thead>
+            {/* Passenger table */}
+            <div className="flex-1 overflow-auto border border-gray-200 rounded-lg">
+                <table className="min-w-full bg-white">
+                    <thead className="sticky top-0 bg-gray-50 z-10">
                         <tr>
-                            <th>Passenger ID</th>
-                            <th>Full Name</th>
-                            <th>Phone</th>
-                            <th>Email</th>
-                            <th>Status</th>
-                            <th>Actions</th>
+                            <th className="px-4 py-2 border-b border-gray-200 text-left">Passenger ID</th>
+                            <th className="px-4 py-2 border-b border-gray-200 text-left">Full Name</th>
+                            <th className="px-4 py-2 border-b border-gray-200 text-left">Phone</th>
+                            <th className="px-4 py-2 border-b border-gray-200 text-left">Email</th>
+                            <th className="px-4 py-2 border-b border-gray-200 text-left">Status</th>
+                            <th className="px-4 py-2 border-b border-gray-200 text-center">Actions</th>
                         </tr>
-                    </thead>
-                    <tbody>
                         {/* Add New Row Form */}
                         {isAdding && (
-                            <tr className="bg-blue-50">
-                                <td>Auto-generated</td>
-                                <td>
-                                    <input
-                                        type="text"
-                                        name="fullname"
-                                        value={formData.fullname}
-                                        onChange={handleInputChange}
-                                        className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                        placeholder="Full Name"
-                                    />
-                                </td>
-                                <td>
-                                    <input
-                                        type="text"
-                                        name="phone_number"
-                                        value={formData.phone_number}
-                                        onChange={handleInputChange}
-                                        className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                        placeholder="Phone Number"
-                                    />
-                                </td>
-                                <td>
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        value={formData.email}
-                                        onChange={handleInputChange}
-                                        className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                        placeholder="Email Address"
-                                    />
-                                </td>
-                                <td>
-                                    <select
-                                        name="status"
-                                        value={formData.status}
-                                        onChange={handleInputChange}
-                                        className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                    >
-                                        <option value="active">Active</option>
-                                        <option value="inactive">Inactive</option>
-                                        <option value="pending">Pending</option>
-                                    </select>
-                                </td>
-                                <td>
-                                    <div className="flex space-x-2 justify-center">
-                                        <button
-                                            onClick={handleSaveNew}
-                                            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded flex items-center font-bold transition-colors duration-200"
+                            <>
+                                <tr className="bg-blue-50 sticky top-[41px] z-10">
+                                    <td className="px-4 py-2 border-b border-gray-200">
+                                        <span className="text-gray-500 italic">Auto-generated</span>
+                                    </td>
+                                    <td className="px-4 py-2 border-b border-gray-200">
+                                        <input
+                                            type="text"
+                                            name="fullname"
+                                            value={formData.fullname}
+                                            onChange={handleInputChange}
+                                            disabled={operationLoading}
+                                            className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                                            placeholder="Full Name*"
+                                        />
+                                    </td>
+                                    <td className="px-4 py-2 border-b border-gray-200">
+                                        <input
+                                            type="text"
+                                            name="phone_number"
+                                            value={formData.phone_number}
+                                            onChange={handleInputChange}
+                                            disabled={operationLoading}
+                                            className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                                            placeholder="Phone Number*"
+                                        />
+                                    </td>
+                                    <td className="px-4 py-2 border-b border-gray-200">
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value={formData.email}
+                                            onChange={handleInputChange}
+                                            disabled={operationLoading}
+                                            className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                                            placeholder="Email Address*"
+                                        />
+                                    </td>
+                                    <td className="px-4 py-2 border-b border-gray-200">
+                                        <select
+                                            name="status"
+                                            value={formData.status}
+                                            onChange={handleInputChange}
+                                            disabled={operationLoading}
+                                            className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                         >
-                                            <FaSave className="mr-1" /> Save
-                                        </button>
-                                        <button
-                                            onClick={handleCancel}
-                                            className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded flex items-center font-bold transition-colors duration-200"
-                                        >
-                                            <FaTimes className="mr-1" /> Cancel
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        )}
-
-                        {/* Hidden row for additional fields */}
-                        {isAdding && (
-                            <tr className="bg-blue-50">
-                                <td colSpan="6" className="px-4 py-2">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">ID Number</label>
-                                            <input
-                                                type="text"
-                                                name="id_number"
-                                                value={formData.id_number}
-                                                onChange={handleInputChange}
-                                                className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                                placeholder="ID Number"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700">Address</label>
-                                            <textarea
-                                                name="address"
-                                                value={formData.address}
-                                                onChange={handleInputChange}
-                                                className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                                rows="2"
-                                                placeholder="Address"
-                                            />
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
-                        )}
-
-                        {/* Existing passenger rows - keep this part */}
-                        {filteredPassengers.map(passenger => (
-                            <React.Fragment key={passenger.passengerID}>
-                                <tr>
-                                    <td>{passenger.passengerID}</td>
-                                    <td>{passenger.fullname}</td>
-                                    <td>{passenger.phone_number}</td>
-                                    <td>{passenger.email}</td>
-                                    <td>{getStatusBadge(passenger.status)}</td>
-                                    <td>
-                                        <div className="action-buttons">
+                                            <option value="active">Active</option>
+                                            <option value="inactive">Inactive</option>
+                                            <option value="pending">Pending</option>
+                                        </select>
+                                    </td>
+                                    <td className="px-4 py-2 border-b border-gray-200">
+                                        <div className="flex justify-center space-x-2">
                                             <button
-                                                onClick={() => handleEdit(passenger.passengerID)}
-                                                className="btn-edit"
-                                                title="Edit passenger"
+                                                onClick={handleSaveNew}
+                                                disabled={operationLoading}
+                                                className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                             >
-                                                <Edit size={14} />
+                                                <FaSave className="mr-1" /> {operationLoading ? 'Saving...' : 'Save'}
                                             </button>
                                             <button
-                                                onClick={() => handleViewTickets(passenger.passengerID)}
-                                                className={`btn-tickets ${expandedRow === passenger.passengerID && expandedContent === 'tickets' ? 'active' : ''}`}
-                                                title="View tickets"
+                                                onClick={handleCancel}
+                                                disabled={operationLoading}
+                                                className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                             >
-                                                <Ticket size={14} />
-                                                {expandedRow === passenger.passengerID && expandedContent === 'tickets' ?
-                                                    <ChevronUp size={14} className="ml-1" /> :
-                                                    <ChevronDown size={14} className="ml-1" />}
-                                            </button>
-                                            <button
-                                                onClick={() => handleViewBookings(passenger.passengerID)}
-                                                className={`btn-bookings ${expandedRow === passenger.passengerID && expandedContent === 'bookings' ? 'active' : ''}`}
-                                                title="View bookings"
-                                            >
-                                                <BookOpen size={14} />
-                                                {expandedRow === passenger.passengerID && expandedContent === 'bookings' ?
-                                                    <ChevronUp size={14} className="ml-1" /> :
-                                                    <ChevronDown size={14} className="ml-1" />}
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(passenger.passengerID)}
-                                                className="btn-delete"
-                                                title="Delete passenger"
-                                            >
-                                                <Trash2 size={14} />
+                                                <FaTimes className="mr-1" /> Cancel
                                             </button>
                                         </div>
                                     </td>
                                 </tr>
-                                {expandedRow === passenger.passengerID && (
-                                    <tr className="expanded-row">
-                                        <td colSpan="6" className="p-0 border-b-0">
-                                            {renderExpandedContent(passenger)}
+                                {/* Additional form fields row */}
+                                <tr className="bg-blue-50 sticky top-[82px] z-10">
+                                    <td colSpan="6" className="px-4 py-2 border-b border-gray-200">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">ID Number</label>
+                                                <input
+                                                    type="text"
+                                                    name="id_number"
+                                                    value={formData.id_number}
+                                                    onChange={handleInputChange}
+                                                    disabled={operationLoading}
+                                                    className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                                                    placeholder="ID Number (Optional)"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                                                <textarea
+                                                    name="address"
+                                                    value={formData.address}
+                                                    onChange={handleInputChange}
+                                                    disabled={operationLoading}
+                                                    className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                                                    rows="2"
+                                                    placeholder="Address (Optional)"
+                                                />
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </>
+                        )}
+                    </thead>
+                    <tbody>
+                        {filteredPassengers.length > 0 ? (
+                            filteredPassengers.map(passenger => (
+                                <React.Fragment key={passenger.passengerID}>
+                                    <tr className="hover:bg-gray-50">
+                                        <td className="px-4 py-2 border-b border-gray-200 font-medium">{passenger.passengerID}</td>
+                                        <td className="px-4 py-2 border-b border-gray-200">{passenger.fullname}</td>
+                                        <td className="px-4 py-2 border-b border-gray-200">{passenger.phone_number}</td>
+                                        <td className="px-4 py-2 border-b border-gray-200">{passenger.email}</td>
+                                        <td className="px-4 py-2 border-b border-gray-200">{getStatusBadge(passenger.status)}</td>
+                                        <td className="px-4 py-2 border-b border-gray-200">
+                                            <div className="flex justify-center space-x-2">
+                                                <button
+                                                    onClick={() => handleEdit(passenger.passengerID)}
+                                                    disabled={isAdding || operationLoading}
+                                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    title="Edit passenger"
+                                                >
+                                                    <Edit size={14} className="mr-1" /> Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => handleViewTickets(passenger.passengerID)}
+                                                    disabled={isAdding || operationLoading}
+                                                    className={`${expandedRow === passenger.passengerID && expandedContent === 'tickets' ? 'bg-orange-500 hover:bg-orange-700' : 'bg-purple-500 hover:bg-purple-700'} text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed`}
+                                                    title="View tickets"
+                                                >
+                                                    <Ticket size={14} className="mr-1" />
+                                                    {expandedRow === passenger.passengerID && expandedContent === 'tickets' ?
+                                                        <ChevronUp size={14} /> :
+                                                        <ChevronDown size={14} />}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleViewBookings(passenger.passengerID)}
+                                                    disabled={isAdding || operationLoading}
+                                                    className={`${expandedRow === passenger.passengerID && expandedContent === 'bookings' ? 'bg-orange-500 hover:bg-orange-700' : 'bg-indigo-500 hover:bg-indigo-700'} text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed`}
+                                                    title="View bookings"
+                                                >
+                                                    <BookOpen size={14} className="mr-1" />
+                                                    {expandedRow === passenger.passengerID && expandedContent === 'bookings' ?
+                                                        <ChevronUp size={14} /> :
+                                                        <ChevronDown size={14} />}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(passenger.passengerID)}
+                                                    disabled={isAdding || operationLoading}
+                                                    className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    title="Delete passenger"
+                                                >
+                                                    <Trash2 size={14} className="mr-1" /> Delete
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
-                                )}
-                            </React.Fragment>
-                        ))}
+                                    {expandedRow === passenger.passengerID && (
+                                        <tr>
+                                            <td colSpan="6" className="p-0 border-b-0">
+                                                {renderExpandedContent(passenger)}
+                                            </td>
+                                        </tr>
+                                    )}
+                                </React.Fragment>
+                            ))
+                        ) : (
+                            <tr>
+                                <td colSpan="6" className="px-4 py-8 border-b border-gray-200 text-center text-gray-500">
+                                    No passengers found. Add a new passenger to get started.
+                                </td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>

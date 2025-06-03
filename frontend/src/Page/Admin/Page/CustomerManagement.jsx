@@ -1,23 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   UserPlus, Search, Edit, Trash2,
   CheckCircle, XCircle, RefreshCw, Filter, Download, UserCheck
 } from 'lucide-react';
-// If you need these icons for the edit/delete buttons like in TrainManagement
 import { FaEdit, FaTrash, FaSave, FaTimes } from 'react-icons/fa';
 import userService from '../../../data/Service/userService';
+import { useLoadingWithTimeout } from '../../../hooks/useLoadingWithTimeout';
+import { useAsyncData } from '../../../hooks/useAsyncData';
+import LoadingPage from '../../../components/LoadingPage';
 
 const StaffUsers = ({ setActiveTab }) => {
-  const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
-  
+
   // Modal state
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create', 'edit'
   const [currentUser, setCurrentUser] = useState(null);
-  
+
   // Form data
   const [formData, setFormData] = useState({
     UserName: '',
@@ -30,34 +29,33 @@ const StaffUsers = ({ setActiveTab }) => {
     Status: 'pending',
     Role: 'Customer'
   });
-  
+
   // Filter and search
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [usersPerPage] = useState(10);
 
-  // Fetch all users (only customers)
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const allUsers = await userService.getAllUsers();
-      // Filter for Customer role only
-      const customerUsers = allUsers.filter(user => user.Role === 'Customer');
-      setCustomers(customerUsers);
-      setError(null);
-    } catch (err) {
-      setError(`Error loading users: ${err.toString()}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Use useAsyncData for initial data fetching
+  const {
+    data: allUsers,
+    loading: dataLoading,
+    error: dataError,
+    refetch: refetchUsers,
+    setData: setAllUsers
+  } = useAsyncData(() => userService.getAllUsers());
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  // Use useLoadingWithTimeout for operations
+  const {
+    loading: operationLoading,
+    error: operationError,
+    setError: setOperationError,
+    startLoading,
+    stopLoading,
+    setLoadingError
+  } = useLoadingWithTimeout();
 
-  // Clear messages after 5 seconds
+  // Clear messages after 5 seconds - MOVED BEFORE EARLY RETURN
   useEffect(() => {
     if (successMessage) {
       const timer = setTimeout(() => {
@@ -67,14 +65,16 @@ const StaffUsers = ({ setActiveTab }) => {
     }
   }, [successMessage]);
 
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => {
-        setError(null);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
+  // Show loading page during initial data fetch
+  if (dataLoading) {
+    return <LoadingPage message="Loading customers..." />;
+  }
+
+  // Filter for Customer role only
+  const customers = allUsers ? allUsers.filter(user => user.Role === 'Customer') : [];
+
+  // Combine error states
+  const currentError = dataError || operationError;
 
   // Handle form input changes
   const handleInputChange = (e) => {
@@ -97,69 +97,92 @@ const StaffUsers = ({ setActiveTab }) => {
     });
     setModalMode('create');
     setShowModal(true);
+    setOperationError(null);
   };
 
   const openEditModal = (user) => {
-    // Don't include password when editing
     setFormData({
       UserName: user.UserName || '',
       Email: user.Email || '',
       Gender: user.Gender || '',
       PhoneNumber: user.PhoneNumber || '',
-      DateOfBirth: user.DateOfBirth ? user.DateOfBirth.substring(0, 10) : '', // Format date
+      DateOfBirth: user.DateOfBirth ? user.DateOfBirth.substring(0, 10) : '',
       Address: user.Address || '',
       Status: user.Status || 'pending',
-      Role: user.Role || 'Customer', // Use the user's actual role
-      // Password is empty for editing
+      Role: user.Role || 'Customer',
       Password: ''
     });
     setCurrentUser(user);
     setModalMode('edit');
     setShowModal(true);
+    setOperationError(null);
   };
 
   // Form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     try {
+      startLoading();
+
       if (modalMode === 'create') {
-        await userService.createUser({
+        const newUser = await userService.createUser({
           ...formData,
-          Role: formData.Role // Explicitly include Role
+          Role: formData.Role
         });
-        setSuccessMessage("User created successfully");
+
+        // Optimistic update
+        if (newUser) {
+          setAllUsers(prevUsers => [...prevUsers, newUser]);
+        } else {
+          await refetchUsers();
+        }
+
+        setSuccessMessage("Customer created successfully");
       } else if (modalMode === 'edit') {
-        // Only send non-empty fields for update
         const updateData = {
           ...formData,
-          Role: formData.Role // Ensure Role is explicitly included
+          Role: formData.Role
         };
         if (!updateData.Password) delete updateData.Password;
-                
+
         await userService.updateUser(currentUser.userID, updateData);
-        
-        // Simple success message without redirection
-        setSuccessMessage(`User updated successfully. Role changed to: ${formData.Role}`);
+
+        // Optimistic update
+        setAllUsers(prevUsers =>
+          prevUsers.map(user =>
+            user.userID === currentUser.userID
+              ? { ...user, ...updateData }
+              : user
+          )
+        );
+
+        setSuccessMessage(`Customer updated successfully`);
       }
-      
+
       setShowModal(false);
-      fetchUsers(); // Refresh the list
+      stopLoading();
     } catch (err) {
-      console.error('Error during user update:', err);
-      setError(`Operation failed: ${err.toString()}`);
+      setLoadingError(`Operation failed: ${err.toString()}`);
+      console.error('Error during user operation:', err);
     }
   };
 
   // Delete user
   const handleDeleteUser = async (userId) => {
-    if (window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) {
+    if (window.confirm("Are you sure you want to delete this customer? This action cannot be undone.")) {
       try {
+        startLoading();
+
         await userService.deleteUser(userId);
-        setSuccessMessage("User deleted successfully");
-        fetchUsers();
+
+        // Optimistic update
+        setAllUsers(prevUsers => prevUsers.filter(user => user.userID !== userId));
+
+        setSuccessMessage("Customer deleted successfully");
+        stopLoading();
       } catch (err) {
-        setError(`Failed to delete user: ${err.toString()}`);
+        setLoadingError(`Failed to delete customer: ${err.toString()}`);
       }
     }
   };
@@ -167,11 +190,9 @@ const StaffUsers = ({ setActiveTab }) => {
   // Export to CSV
   const exportToCSV = () => {
     const csvRows = [];
-    // Add header row
     const headers = ['ID', 'Username', 'Email', 'Phone', 'Gender', 'Date of Birth', 'Address', 'Status', 'Role'];
     csvRows.push(headers.join(','));
-    
-    // Add data rows
+
     filteredUsers.forEach(user => {
       const values = [
         user.userID,
@@ -180,22 +201,19 @@ const StaffUsers = ({ setActiveTab }) => {
         user.PhoneNumber || '',
         user.Gender || '',
         user.DateOfBirth ? user.DateOfBirth.substring(0, 10) : '',
-        (user.Address || '').replace(/,/g, ' '), // Replace commas to avoid CSV issues
+        (user.Address || '').replace(/,/g, ' '),
         user.Status || '',
         user.Role || ''
       ];
       csvRows.push(values.join(','));
     });
-    
-    // Create CSV content
+
     const csvContent = csvRows.join('\n');
-    
-    // Create download link
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `customers_export_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute('download', `customers_export_${new Date().toISOString().slice(0, 10)}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -204,13 +222,13 @@ const StaffUsers = ({ setActiveTab }) => {
 
   // Apply filters
   const filteredUsers = customers.filter(user => {
-    const matchesSearch = 
-      user.UserName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchesSearch =
+      user.UserName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.Email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.PhoneNumber?.includes(searchTerm);
-    
+
     const matchesStatus = statusFilter === 'all' || user.Status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
@@ -224,10 +242,20 @@ const StaffUsers = ({ setActiveTab }) => {
   const totalPages = Math.ceil(sortedUsers.length / usersPerPage);
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md flex flex-col min-h-[800px]">
+    <div className="p-6 bg-white rounded-lg shadow-md flex flex-col min-h-[800px] customer-management relative">
+      {/* Only show operation loading overlay */}
+      {operationLoading && (
+        <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+          <div className="flex flex-col items-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            <p className="mt-2 text-sm text-gray-600">Processing...</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Customer Management</h1>
-        
+
         <div className="flex space-x-3">
           <div className="relative">
             <input
@@ -241,7 +269,7 @@ const StaffUsers = ({ setActiveTab }) => {
               <Search size={16} />
             </div>
           </div>
-          
+
           <div className="relative">
             <select
               className="pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none"
@@ -256,27 +284,30 @@ const StaffUsers = ({ setActiveTab }) => {
               <Filter size={16} />
             </div>
           </div>
-          
+
           <button
-            onClick={fetchUsers}
-            className="flex items-center justify-center p-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+            onClick={refetchUsers}
+            disabled={operationLoading}
+            className="flex items-center justify-center p-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Refresh"
           >
-            <RefreshCw size={16} />
+            <RefreshCw size={16} className={operationLoading ? 'animate-spin' : ''} />
           </button>
-          
+
           <button
             onClick={exportToCSV}
-            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+            disabled={operationLoading}
+            className="flex items-center px-4 py-2 bg-green-600 text-white font-bold rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="Export to CSV"
           >
             <Download size={16} className="mr-2" />
             Export
           </button>
-          
+
           <button
             onClick={openCreateModal}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            disabled={operationLoading}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white font-bold rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <UserPlus size={16} className="mr-2" />
             Add Customer
@@ -295,95 +326,113 @@ const StaffUsers = ({ setActiveTab }) => {
       )}
 
       {/* Error message */}
-      {error && (
-        <div className="mb-4 p-3 bg-red-100 border-l-4 border-red-500 text-red-700 flex justify-between items-center">
-          <p>{error}</p>
-          <button onClick={() => setError(null)} className="text-red-700">
-            <XCircle size={16} />
-          </button>
+      {currentError && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="font-medium">
+                {dataError ? 'Data Loading Error' : 'Operation Error'}
+              </p>
+              <p className="mt-1">{currentError}</p>
+            </div>
+            <button
+              onClick={() => {
+                setOperationError(null);
+                if (dataError) refetchUsers();
+              }}
+              className="text-red-500 hover:text-red-700 font-bold text-lg"
+              title="Dismiss error"
+            >
+              ×
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Loading state */}
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      ) : (
-        <div className="overflow-x-auto flex-grow">
-          <table className="min-w-full bg-white border border-gray-200">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">ID</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Username</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Email</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Phone</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Gender</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Status</th>
-                <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Actions</th>
+      {/* Data status info */}
+      <div className="mb-4 text-sm text-gray-600">
+        <p>
+          <strong>Customers:</strong> {customers.length} |
+          <strong> Filtered:</strong> {filteredUsers.length} |
+          <strong> Last updated:</strong> {new Date().toLocaleTimeString()}
+        </p>
+      </div>
+
+      <div className="overflow-x-auto flex-grow">
+        <table className="min-w-full bg-white border border-gray-200">
+          <thead>
+            <tr className="bg-gray-50">
+              <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">ID</th>
+              <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Username</th>
+              <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Email</th>
+              <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Phone</th>
+              <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Gender</th>
+              <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Status</th>
+              <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {currentUsers.length === 0 ? (
+              <tr>
+                <td colSpan="7" className="px-4 py-4 text-center text-sm text-gray-500">
+                  No customers found
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {currentUsers.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="px-4 py-4 text-center text-sm text-gray-500">
-                    No customers found
+            ) : (
+              currentUsers.map((user, index) => (
+                <tr key={user.userID} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm text-gray-900">{user.userID}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900">{user.UserName}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900">{user.Email}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900">{user.PhoneNumber || "-"}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900">{user.Gender || "-"}</td>
+                  <td className="px-4 py-3 text-sm">
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${user.Status === 'verified'
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                      {user.Status || "pending"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    <div className="flex justify-center space-x-2">
+                      <button
+                        onClick={() => openEditModal(user)}
+                        disabled={operationLoading}
+                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Edit"
+                      >
+                        <FaEdit className="mr-1" /> Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(user.userID)}
+                        disabled={operationLoading}
+                        className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Delete"
+                      >
+                        <FaTrash className="mr-1" /> Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
-              ) : (
-                currentUsers.map((user, index) => (
-                  <tr key={user.userID} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-900">{user.userID}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{user.UserName}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{user.Email}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{user.PhoneNumber || "-"}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{user.Gender || "-"}</td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        user.Status === 'verified'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {user.Status || "pending"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <div className="flex justify-center space-x-2">
-                        <button 
-                          onClick={() => openEditModal(user)}
-                          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded flex items-center"
-                          title="Edit"
-                        >
-                          <FaEdit className="mr-1" /> Edit
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteUser(user.userID)}
-                          className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded flex items-center"
-                          title="Delete"
-                        >
-                          <FaTrash className="mr-1" /> Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {/* Modal for create/edit */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+          <div className="bg-white font-bold rounded-lg shadow-xl w-full max-w-2xl">
             <div className="px-6 py-4 border-b flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">
                 {modalMode === 'create' ? 'Add New Customer' : 'Edit Customer'}
               </h3>
-              <button 
+              <button
                 onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-gray-500"
+                disabled={operationLoading}
+                className="text-gray-400 hover:text-gray-500 disabled:opacity-50"
               >
                 <XCircle size={24} />
               </button>
@@ -398,7 +447,8 @@ const StaffUsers = ({ setActiveTab }) => {
                     name="UserName"
                     value={formData.UserName}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={operationLoading}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
                     required
                   />
                 </div>
@@ -410,7 +460,8 @@ const StaffUsers = ({ setActiveTab }) => {
                     name="Email"
                     value={formData.Email}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={operationLoading}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
                     required
                   />
                 </div>
@@ -424,7 +475,8 @@ const StaffUsers = ({ setActiveTab }) => {
                     name="Password"
                     value={formData.Password}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={operationLoading}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
                     required={modalMode === 'create'}
                   />
                 </div>
@@ -436,7 +488,8 @@ const StaffUsers = ({ setActiveTab }) => {
                     name="PhoneNumber"
                     value={formData.PhoneNumber}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={operationLoading}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
                   />
                 </div>
 
@@ -446,7 +499,8 @@ const StaffUsers = ({ setActiveTab }) => {
                     name="Gender"
                     value={formData.Gender}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={operationLoading}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
                   >
                     <option value="">Select Gender</option>
                     <option value="Male">Male</option>
@@ -462,7 +516,8 @@ const StaffUsers = ({ setActiveTab }) => {
                     name="DateOfBirth"
                     value={formData.DateOfBirth}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={operationLoading}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
                   />
                 </div>
 
@@ -472,7 +527,8 @@ const StaffUsers = ({ setActiveTab }) => {
                     name="Status"
                     value={formData.Status}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={operationLoading}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
                   >
                     <option value="pending">Pending</option>
                     <option value="verified">Verified</option>
@@ -485,7 +541,8 @@ const StaffUsers = ({ setActiveTab }) => {
                     name="Role"
                     value={formData.Role}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={operationLoading}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
                   >
                     <option value="Customer">Customer</option>
                     <option value="Admin">Admin</option>
@@ -498,8 +555,9 @@ const StaffUsers = ({ setActiveTab }) => {
                     name="Address"
                     value={formData.Address}
                     onChange={handleInputChange}
+                    disabled={operationLoading}
                     rows={3}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -508,16 +566,25 @@ const StaffUsers = ({ setActiveTab }) => {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                  disabled={operationLoading}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
 
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  disabled={operationLoading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                 >
-                  {modalMode === 'create' ? 'Create' : 'Update'}
+                  {operationLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                      Processing...
+                    </>
+                  ) : (
+                    modalMode === 'create' ? 'Create' : 'Update'
+                  )}
                 </button>
               </div>
             </form>
@@ -525,10 +592,10 @@ const StaffUsers = ({ setActiveTab }) => {
         </div>
       )}
       <div className="flex-grow"></div>
-      
+
       {/* Pagination - at the bottom of the page with more spacing */}
       <div className="mt-8 border-t pt-6 bg-gray-50 -mx-6 px-6 pb-6 rounded-b-lg">
-        {!loading && sortedUsers.length > 0 && (
+        {sortedUsers.length > 0 && (
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-600">
               Showing {indexOfFirstUser + 1}-{Math.min(indexOfLastUser, sortedUsers.length)} of {sortedUsers.length} customers
@@ -536,38 +603,38 @@ const StaffUsers = ({ setActiveTab }) => {
             <div className="flex space-x-1">
               <button
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className={`px-3 py-1 rounded-md ${
-                  currentPage === 1
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
+                disabled={currentPage === 1 || operationLoading}
+                className={`px-3 py-1 rounded-md ${currentPage === 1 || operationLoading
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
               >
                 Previous
               </button>
-              
+
               {[...Array(totalPages)].map((_, i) => (
                 <button
                   key={i}
                   onClick={() => setCurrentPage(i + 1)}
-                  className={`px-3 py-1 rounded-md ${
-                    currentPage === i + 1
-                      ? 'bg-blue-600 text-white'
+                  disabled={operationLoading}
+                  className={`px-3 py-1 rounded-md ${currentPage === i + 1
+                    ? 'bg-blue-600 text-white'
+                    : operationLoading
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
+                    }`}
                 >
                   {i + 1}
                 </button>
               ))}
-              
+
               <button
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className={`px-3 py-1 rounded-md ${
-                  currentPage === totalPages
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
+                disabled={currentPage === totalPages || operationLoading}
+                className={`px-3 py-1 rounded-md ${currentPage === totalPages || operationLoading
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
               >
                 Next
               </button>

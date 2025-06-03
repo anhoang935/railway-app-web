@@ -1,19 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import scheduleService from '../../../data/Service/scheduleService';
 import stationService from '../../../data/Service/stationService';
-import trainService from '../../../data/Service/trainService'; // Assuming this exists
-import LoadingSpinner from '../Components/LoadingSpinner';
+import trainService from '../../../data/Service/trainService';
+import { useLoadingWithTimeout } from '../../../hooks/useLoadingWithTimeout';
+import { useAsyncData } from '../../../hooks/useAsyncData';
+import LoadingPage from '../../../components/LoadingPage';
 import { FaEdit, FaTrash, FaPlus, FaSave, FaTimes, FaClock, FaTrain } from 'react-icons/fa';
-import './Scheduling.css';
 
 const Scheduling = ({ setActiveTab }) => {
-    const [schedules, setSchedules] = useState([]);
-    const [stations, setStations] = useState([]);
-    const [trains, setTrains] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState(null);
-    const [error, setError] = useState(null);
     const [formData, setFormData] = useState({
         scheduleID: '',
         trainID: '',
@@ -21,55 +17,56 @@ const Scheduling = ({ setActiveTab }) => {
         end_stationID: '',
         departureTime: '',
         arrivalTime: '',
-        scheduleStatus: 'on-time'  // Changed from 'Active' to 'on-time'
+        scheduleStatus: 'on-time'
     });
 
-    useEffect(() => {
-        fetchSchedules();
-        fetchStations();
-        fetchTrains();
-    }, []);
+    // Use useAsyncData for initial data fetching
+    const {
+        data: schedules,
+        loading: schedulesLoading,
+        error: schedulesError,
+        refetch: refetchSchedules,
+        setData: setSchedules
+    } = useAsyncData(() => scheduleService.getAllSchedules());
 
-    const fetchSchedules = async () => {
-        try {
-            setLoading(true);
-            const data = await scheduleService.getAllSchedules();
-            setSchedules(data);
-            setError(null);
-        } catch (error) {
-            console.error('Error fetching schedules:', error);
-            setError('Failed to load schedule data. Please try again.');
-        } finally {
-            setLoading(false);
-        }
-    };
+    const {
+        data: stations,
+        loading: stationsLoading,
+        error: stationsError,
+        refetch: refetchStations
+    } = useAsyncData(() => stationService.getAllStations());
 
-    const fetchStations = async () => {
-        try {
-            const data = await stationService.getAllStations();
-            setStations(data);
-        } catch (error) {
-            console.error('Error fetching stations:', error);
-            setError('Failed to load station data. Please try again.');
-        }
-    };
+    const {
+        data: trains,
+        loading: trainsLoading,
+        error: trainsError,
+        refetch: refetchTrains
+    } = useAsyncData(() => trainService.getAllTrains());
 
-    const fetchTrains = async () => {
-        try {
-            const data = await trainService.getAllTrains();
-            setTrains(data);
-        } catch (error) {
-            console.error('Error fetching trains:', error);
-            setError('Failed to load train data. Please try again.');
+    // Use useLoadingWithTimeout for operations
+    const {
+        loading: operationLoading,
+        error: operationError,
+        setError: setOperationError,
+        startLoading,
+        stopLoading,
+        setLoadingError
+    } = useLoadingWithTimeout();
 
-            // Fallback to mock data if service fails
-            setTrains([
-                { trainID: 'SE1', trainName: 'SE1 Express' },
-                { trainID: 'SE2', trainName: 'SE2 Express' },
-                { trainID: 'SE3', trainName: 'SE3 Express' }
-            ]);
-        }
-    };
+    // Show loading page while initial data loads
+    const isInitialLoading = schedulesLoading || stationsLoading || trainsLoading;
+
+    if (isInitialLoading) {
+        let loadingMessage = "Loading scheduling data...";
+        if (schedulesLoading) loadingMessage = "Loading schedules...";
+        else if (stationsLoading) loadingMessage = "Loading stations...";
+        else if (trainsLoading) loadingMessage = "Loading trains...";
+
+        return <LoadingPage message={loadingMessage} />;
+    }
+
+    // Combine error states
+    const currentError = schedulesError || stationsError || trainsError || operationError;
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -85,9 +82,9 @@ const Scheduling = ({ setActiveTab }) => {
             const endStation = newFormData.end_stationID ? newFormData.end_stationID.toString() : '';
 
             if (startStation && endStation && startStation === endStation) {
-                setError('Start and end stations cannot be the same.');
-            } else if (error && error.includes('cannot be the same')) {
-                setError(null);
+                setOperationError('Start and end stations cannot be the same.');
+            } else if (operationError && operationError.includes('cannot be the same')) {
+                setOperationError(null);
             }
         }
 
@@ -112,8 +109,9 @@ const Scheduling = ({ setActiveTab }) => {
             end_stationID: '',
             departureTime: '',
             arrivalTime: '',
-            scheduleStatus: 'Active'
+            scheduleStatus: 'on-time'
         });
+        setOperationError(null);
     };
 
     const handleEdit = (schedule) => {
@@ -126,8 +124,9 @@ const Scheduling = ({ setActiveTab }) => {
             end_stationID: schedule.end_stationID,
             departureTime: schedule.departureTime || '',
             arrivalTime: schedule.arrivalTime || '',
-            scheduleStatus: schedule.scheduleStatus || 'Active'
+            scheduleStatus: schedule.scheduleStatus || 'on-time'
         });
+        setOperationError(null);
     };
 
     const handleCancel = () => {
@@ -140,24 +139,22 @@ const Scheduling = ({ setActiveTab }) => {
             end_stationID: '',
             departureTime: '',
             arrivalTime: '',
-            scheduleStatus: 'on-time'  // Changed from 'Active' to 'on-time'
+            scheduleStatus: 'on-time'
         });
+        setOperationError(null);
     };
 
     const validateForm = () => {
-        // Clear previous error
-        setError(null);
-
         if (!formData.trainID) {
-            setError('Train is required.');
+            setOperationError('Train is required.');
             return false;
         }
         if (!formData.start_stationID) {
-            setError('Start station is required.');
+            setOperationError('Start station is required.');
             return false;
         }
         if (!formData.end_stationID) {
-            setError('End station is required.');
+            setOperationError('End station is required.');
             return false;
         }
 
@@ -166,12 +163,12 @@ const Scheduling = ({ setActiveTab }) => {
         const endStationStr = formData.end_stationID.toString();
 
         if (startStationStr === endStationStr) {
-            setError('Start and end stations cannot be the same. Please select different stations.');
+            setOperationError('Start and end stations cannot be the same. Please select different stations.');
             return false;
         }
 
         if (!formData.departureTime || !formData.arrivalTime) {
-            setError('Both departure and arrival times are required.');
+            setOperationError('Both departure and arrival times are required.');
             return false;
         }
         return true;
@@ -180,6 +177,8 @@ const Scheduling = ({ setActiveTab }) => {
     const handleSaveNew = async () => {
         try {
             if (!validateForm()) return;
+
+            startLoading();
 
             const scheduleToCreate = {
                 start_stationID: formData.start_stationID,
@@ -190,8 +189,15 @@ const Scheduling = ({ setActiveTab }) => {
                 trainID: formData.trainID
             };
 
-            await scheduleService.createSchedule(scheduleToCreate);
-            await fetchSchedules();
+            const newSchedule = await scheduleService.createSchedule(scheduleToCreate);
+
+            // Optimistic update
+            if (newSchedule) {
+                setSchedules(prevSchedules => [...prevSchedules, newSchedule]);
+            } else {
+                await refetchSchedules();
+            }
+
             setIsAdding(false);
             setFormData({
                 scheduleID: '',
@@ -200,11 +206,12 @@ const Scheduling = ({ setActiveTab }) => {
                 end_stationID: '',
                 departureTime: '',
                 arrivalTime: '',
-                scheduleStatus: 'on-time'  // Changed from 'Active' to 'on-time'
+                scheduleStatus: 'on-time'
             });
-            setError(null);
+
+            stopLoading();
         } catch (error) {
-            setError('Failed to create schedule: ' + (error.toString() || 'Unknown error'));
+            setLoadingError('Failed to create schedule: ' + (error.toString() || 'Unknown error'));
             console.error(error);
         }
     };
@@ -212,6 +219,8 @@ const Scheduling = ({ setActiveTab }) => {
     const handleUpdate = async () => {
         try {
             if (!validateForm()) return;
+
+            startLoading();
 
             const scheduleToUpdate = {
                 start_stationID: formData.start_stationID,
@@ -223,7 +232,16 @@ const Scheduling = ({ setActiveTab }) => {
             };
 
             await scheduleService.updateSchedule(editingId, scheduleToUpdate);
-            await fetchSchedules();
+
+            // Optimistic update
+            setSchedules(prevSchedules =>
+                prevSchedules.map(schedule =>
+                    schedule.scheduleID === editingId
+                        ? { ...schedule, ...scheduleToUpdate }
+                        : schedule
+                )
+            );
+
             setEditingId(null);
             setFormData({
                 scheduleID: '',
@@ -232,11 +250,12 @@ const Scheduling = ({ setActiveTab }) => {
                 end_stationID: '',
                 departureTime: '',
                 arrivalTime: '',
-                scheduleStatus: 'on-time'  // Changed from 'Active' to 'on-time'
+                scheduleStatus: 'on-time'
             });
-            setError(null);
+
+            stopLoading();
         } catch (error) {
-            setError('Failed to update schedule: ' + (error.toString() || 'Unknown error'));
+            setLoadingError('Failed to update schedule: ' + (error.toString() || 'Unknown error'));
             console.error(error);
         }
     };
@@ -244,12 +263,19 @@ const Scheduling = ({ setActiveTab }) => {
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this schedule?')) {
             try {
+                startLoading();
+
                 await scheduleService.deleteSchedule(id);
-                await fetchSchedules();
-                setError(null);
+
+                // Optimistic update
+                setSchedules(prevSchedules => prevSchedules.filter(schedule => schedule.scheduleID !== id));
+
+                stopLoading();
             } catch (error) {
-                setError('Failed to delete schedule: ' + (error.toString() || 'Unknown error'));
+                setLoadingError('Failed to delete schedule: ' + (error.toString() || 'Unknown error'));
                 console.error(error);
+                // If delete failed, refetch to ensure data consistency
+                await refetchSchedules();
             }
         }
     };
@@ -283,33 +309,83 @@ const Scheduling = ({ setActiveTab }) => {
         );
     };
 
-    if (loading) {
-        return <div className="p-4 text-center"><LoadingSpinner /></div>;
-    }
-
     return (
-        <div className="p-4 h-screen flex flex-col">
-            <div className="flex justify-between items-center mb-4">
-                <div>
-                    <h1 className="text-2xl font-bold">
-                        Train Scheduling
-                    </h1>
-                </div>
-                <button
-                    onClick={handleAddNew}
-                    disabled={isAdding || editingId !== null}
-                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    <FaPlus className="mr-2" /> Add New Schedule
-                </button>
-            </div>
-
-            {error && (
-                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
-                    <p>{error}</p>
+        <div className="p-4 h-screen flex flex-col scheduling-management relative">
+            {/* Only show operation loading overlay */}
+            {operationLoading && (
+                <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+                    <div className="flex flex-col items-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                        <p className="mt-2 text-sm text-gray-600">Processing...</p>
+                    </div>
                 </div>
             )}
 
+            <div className="flex justify-between items-center mb-4">
+                <h1 className="text-2xl font-bold">Scheduling Management</h1>
+                <div className="flex space-x-2">
+                    <button
+                        onClick={() => {
+                            refetchSchedules();
+                            refetchStations();
+                            refetchTrains();
+                        }}
+                        disabled={isAdding || editingId || operationLoading}
+                        className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Refresh all data"
+                    >
+                        Refresh
+                    </button>
+                    <button
+                        onClick={handleAddNew}
+                        disabled={isAdding || operationLoading}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <FaPlus className="mr-2" />
+                        Add New Schedule
+                    </button>
+                </div>
+            </div>
+
+            {/* Error message */}
+            {currentError && (
+                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="font-medium">
+                                {schedulesError ? 'Schedule Data Error' :
+                                    stationsError ? 'Station Data Error' :
+                                        trainsError ? 'Train Data Error' : 'Operation Error'}
+                            </p>
+                            <p className="mt-1">{currentError}</p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setOperationError(null);
+                                if (schedulesError) refetchSchedules();
+                                if (stationsError) refetchStations();
+                                if (trainsError) refetchTrains();
+                            }}
+                            className="text-red-500 hover:text-red-700 font-bold text-lg"
+                            title="Dismiss error"
+                        >
+                            ×
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Data status info */}
+            <div className="mb-4 text-sm text-gray-600">
+                <p>
+                    <strong>Schedules:</strong> {schedules.length} |
+                    <strong> Stations:</strong> {stations.length} |
+                    <strong> Trains:</strong> {trains.length} |
+                    <strong> Last updated:</strong> {new Date().toLocaleTimeString()}
+                </p>
+            </div>
+
+            {/* Table container */}
             <div className="flex-1 overflow-auto border border-gray-200 rounded-lg">
                 <table className="min-w-full bg-white">
                     <thead className="sticky top-0 bg-gray-50 z-10">
@@ -322,6 +398,7 @@ const Scheduling = ({ setActiveTab }) => {
                             <th className="px-4 py-2 border-b border-gray-200 text-left">Status</th>
                             <th className="px-4 py-2 border-b border-gray-200 text-center">Actions</th>
                         </tr>
+                        {/* Add new schedule row - sticky below header */}
                         {isAdding && (
                             <tr className="bg-blue-50 sticky top-[41px] z-10">
                                 <td className="px-4 py-2 border-b border-gray-200">
@@ -332,6 +409,7 @@ const Scheduling = ({ setActiveTab }) => {
                                         name="trainID"
                                         value={formData.trainID}
                                         onChange={handleInputChange}
+                                        disabled={operationLoading}
                                         className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                     >
                                         <option value="">Select Train</option>
@@ -348,6 +426,7 @@ const Scheduling = ({ setActiveTab }) => {
                                             name="start_stationID"
                                             value={formData.start_stationID}
                                             onChange={handleInputChange}
+                                            disabled={operationLoading}
                                             className={`w-1/2 px-2 py-1 border rounded focus:outline-none focus:border-blue-500 ${formData.start_stationID === formData.end_stationID && formData.start_stationID
                                                 ? 'border-red-500 bg-red-50'
                                                 : ''
@@ -365,6 +444,7 @@ const Scheduling = ({ setActiveTab }) => {
                                             name="end_stationID"
                                             value={formData.end_stationID}
                                             onChange={handleInputChange}
+                                            disabled={operationLoading}
                                             className={`w-1/2 px-2 py-1 border rounded focus:outline-none focus:border-blue-500 ${formData.start_stationID === formData.end_stationID && formData.end_stationID
                                                 ? 'border-red-500 bg-red-50'
                                                 : ''
@@ -389,6 +469,7 @@ const Scheduling = ({ setActiveTab }) => {
                                         name="departureTime"
                                         value={formData.departureTime}
                                         onChange={handleInputChange}
+                                        disabled={operationLoading}
                                         className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                     />
                                 </td>
@@ -398,6 +479,7 @@ const Scheduling = ({ setActiveTab }) => {
                                         name="arrivalTime"
                                         value={formData.arrivalTime}
                                         onChange={handleInputChange}
+                                        disabled={operationLoading}
                                         className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                     />
                                 </td>
@@ -406,6 +488,7 @@ const Scheduling = ({ setActiveTab }) => {
                                         name="scheduleStatus"
                                         value={formData.scheduleStatus}
                                         onChange={handleInputChange}
+                                        disabled={operationLoading}
                                         className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                     >
                                         <option value="on-time">On Time</option>
@@ -417,13 +500,15 @@ const Scheduling = ({ setActiveTab }) => {
                                     <div className="flex justify-center space-x-2">
                                         <button
                                             onClick={handleSaveNew}
-                                            className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                            disabled={operationLoading}
+                                            className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                         >
-                                            <FaSave className="mr-1" /> Save
+                                            <FaSave className="mr-1" /> {operationLoading ? 'Saving...' : 'Save'}
                                         </button>
                                         <button
                                             onClick={handleCancel}
-                                            className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                            disabled={operationLoading}
+                                            className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                         >
                                             <FaTimes className="mr-1" /> Cancel
                                         </button>
@@ -445,6 +530,7 @@ const Scheduling = ({ setActiveTab }) => {
                                                 name="trainID"
                                                 value={formData.trainID}
                                                 onChange={handleInputChange}
+                                                disabled={operationLoading}
                                                 className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                             >
                                                 <option value="">Select Train</option>
@@ -468,6 +554,7 @@ const Scheduling = ({ setActiveTab }) => {
                                                     name="start_stationID"
                                                     value={formData.start_stationID}
                                                     onChange={handleInputChange}
+                                                    disabled={operationLoading}
                                                     className={`w-1/2 px-2 py-1 border rounded focus:outline-none focus:border-blue-500 ${formData.start_stationID === formData.end_stationID && formData.start_stationID
                                                         ? 'border-red-500 bg-red-50'
                                                         : ''
@@ -485,6 +572,7 @@ const Scheduling = ({ setActiveTab }) => {
                                                     name="end_stationID"
                                                     value={formData.end_stationID}
                                                     onChange={handleInputChange}
+                                                    disabled={operationLoading}
                                                     className={`w-1/2 px-2 py-1 border rounded focus:outline-none focus:border-blue-500 ${formData.start_stationID === formData.end_stationID && formData.end_stationID
                                                         ? 'border-red-500 bg-red-50'
                                                         : ''
@@ -515,6 +603,7 @@ const Scheduling = ({ setActiveTab }) => {
                                                 name="departureTime"
                                                 value={formData.departureTime}
                                                 onChange={handleInputChange}
+                                                disabled={operationLoading}
                                                 className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                             />
                                         ) : (
@@ -528,6 +617,7 @@ const Scheduling = ({ setActiveTab }) => {
                                                 name="arrivalTime"
                                                 value={formData.arrivalTime}
                                                 onChange={handleInputChange}
+                                                disabled={operationLoading}
                                                 className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                             />
                                         ) : (
@@ -540,6 +630,7 @@ const Scheduling = ({ setActiveTab }) => {
                                                 name="scheduleStatus"
                                                 value={formData.scheduleStatus}
                                                 onChange={handleInputChange}
+                                                disabled={operationLoading}
                                                 className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
                                             >
                                                 <option value="on-time">On Time</option>
@@ -547,7 +638,7 @@ const Scheduling = ({ setActiveTab }) => {
                                                 <option value="cancelled">Cancelled</option>
                                             </select>
                                         ) : (
-                                            getStatusBadge(schedule.scheduleStatus || 'Active')
+                                            getStatusBadge(schedule.scheduleStatus || 'on-time')
                                         )}
                                     </td>
                                     <td className="px-4 py-2 border-b border-gray-200">
@@ -556,13 +647,15 @@ const Scheduling = ({ setActiveTab }) => {
                                                 <>
                                                     <button
                                                         onClick={handleUpdate}
-                                                        className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                                        disabled={operationLoading}
+                                                        className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                                     >
-                                                        <FaSave className="mr-1" /> Save
+                                                        <FaSave className="mr-1" /> {operationLoading ? 'Saving...' : 'Save'}
                                                     </button>
                                                     <button
                                                         onClick={handleCancel}
-                                                        className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center"
+                                                        disabled={operationLoading}
+                                                        className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
                                                     >
                                                         <FaTimes className="mr-1" /> Cancel
                                                     </button>
@@ -571,14 +664,14 @@ const Scheduling = ({ setActiveTab }) => {
                                                 <>
                                                     <button
                                                         onClick={() => handleEdit(schedule)}
-                                                        disabled={isAdding || editingId !== null}
+                                                        disabled={isAdding || editingId !== null || operationLoading}
                                                         className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
                                                         <FaEdit className="mr-1" /> Edit
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(schedule.scheduleID)}
-                                                        disabled={isAdding || editingId !== null}
+                                                        disabled={isAdding || editingId !== null || operationLoading}
                                                         className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
                                                         <FaTrash className="mr-1" /> Delete
@@ -592,10 +685,7 @@ const Scheduling = ({ setActiveTab }) => {
                         ) : (
                             <tr>
                                 <td colSpan="7" className="px-4 py-8 border-b border-gray-200 text-center text-gray-500">
-                                    <div className="flex flex-col items-center">
-                                        <FaClock className="text-4xl text-gray-300 mb-2" />
-                                        <p>No schedules found. Add a new schedule to get started.</p>
-                                    </div>
+                                    No schedules found. Add a new schedule to get started.
                                 </td>
                             </tr>
                         )}
