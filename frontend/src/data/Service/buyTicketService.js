@@ -3,9 +3,9 @@ import axios from "axios";
 
 const getBaseUrl = () => {
     if (window.location.hostname === 'localhost') {
-        return 'http://localhost:5000/api/v1/search';
+        return 'http://localhost:5000/api/v1/buy-ticket';
     }
-    return `${window.location.protocol}//${window.location.hostname}:5000/api/v1/search`;
+    return `${window.location.protocol}//${window.location.hostname}:5000/api/v1/buy-ticket`;
 };
 
 const BASE_URL = getBaseUrl();
@@ -19,7 +19,7 @@ const buyTicketService = {
                 arrivalStation,
                 arrivalTime: timeToUse
             });
-            const response = await axios.get(`${BASE_URL}?${params.toString()}`);
+            const response = await axios.get(`${BASE_URL}/search?${params.toString()}`);
             return {
                 success: true,
                 data: response.data.data,
