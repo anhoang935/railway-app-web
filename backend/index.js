@@ -16,7 +16,7 @@ import authRoutes from './routes/auth.js';
 import buyTicket from './routes/buy_ticket.js';
 import trackRoutes from './routes/track.js';
 import timetableRoutes from './routes/timetable.js';
-import './utils/ticketExpireService.js';
+// import './utils/ticketExpireService.js';
 
 dotenv.config();
 
