@@ -310,7 +310,7 @@ const StaffUsers = ({ setActiveTab }) => {
             className="flex items-center px-4 py-2 bg-blue-600 text-white font-bold rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <UserPlus size={16} className="mr-2" />
-            Add Customer
+            Add a Customer
           </button>
         </div>
       </div>

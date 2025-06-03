@@ -419,7 +419,7 @@ const TrackManagement = () => {
                         {tracks && tracks.length > 0 ? (
                             tracks.map((track) => (
                                 <tr key={track.trackID} className={editingId === track.trackID ? 'bg-yellow-50' : 'hover:bg-gray-50'}>
-                                    <td className="px-4 py-2 border-b border-gray-200 font-medium">
+                                    <td className="px-4 py-2 border-b border-gray-200 font-bold">
                                         {track.trackID}
                                     </td>
                                     <td className="px-4 py-2 border-b border-gray-200">

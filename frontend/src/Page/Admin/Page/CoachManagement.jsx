@@ -492,9 +492,9 @@ function CoachManagement() {
             {/* Data status info */}
             <div className="mb-4 text-sm text-gray-600">
                 <p>
-                    <strong>Coaches:</strong> {coaches?.length || 0} |
+                    {/* <strong>Coaches:</strong> {coaches?.length || 0} |
                     <strong> Coach Types:</strong> {coachTypes?.length || 0} |
-                    <strong> Trains:</strong> {trains?.length || 0} |
+                    <strong> Trains:</strong> {trains?.length || 0} | */}
                     <strong> Last updated:</strong> {new Date().toLocaleTimeString()}
                 </p>
             </div>
@@ -516,7 +516,7 @@ function CoachManagement() {
             {activeTab === 'overview' && (
                 <div className="overview-tab">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-xl font-semibold">Administrative Overview</h2>
+                        <h2 className="text-xl font-bold">Administrative Overview</h2>
                         <button
                             onClick={handleSyncCoachCounts}
                             disabled={syncing || operationLoading}
@@ -623,7 +623,7 @@ function CoachManagement() {
             {activeTab === 'coaches' && (
                 <div className="coach-tab">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-semibold">Coach Management</h2>
+                        <h2 className="text-xl font-bold">Coaches</h2>
                         <button
                             onClick={handleAddNewCoach}
                             disabled={isAddingCoach || editingCoachId !== null || operationLoading}
@@ -645,15 +645,7 @@ function CoachManagement() {
                                 {isAddingCoach && (
                                     <tr className="bg-blue-50 sticky top-[41px] z-10">
                                         <td className="px-4 py-2 border-b border-gray-200">
-                                            <input
-                                                type="text"
-                                                name="coachID"
-                                                value={coachFormData.coachID}
-                                                onChange={handleCoachChange}
-                                                disabled={operationLoading}
-                                                className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
-                                                placeholder="Coach ID"
-                                            />
+                                            <span className="text-gray-500 italic">Auto-generated</span>
                                         </td>
                                         <td className="px-4 py-2 border-b border-gray-200">
                                             <select
@@ -688,7 +680,7 @@ function CoachManagement() {
                                             </select>
                                         </td>
                                         <td className="px-4 py-2 border-b border-gray-200 text-center">
-                                            <div className="action-buttons">
+                                            <div className="flex justify-center space-x-2">
                                                 <button
                                                     onClick={handleSaveCoach}
                                                     disabled={operationLoading}
@@ -712,7 +704,7 @@ function CoachManagement() {
                                 {coaches && coaches.length > 0 ? (
                                     coaches.map((coach) => (
                                         <tr key={coach.coachID} className="hover:bg-gray-50">
-                                            <td className="px-4 py-2 border-b border-gray-200">
+                                            <td className="px-4 py-2 border-b border-gray-200 font-bold">
                                                 {editingCoachId === coach.coachID ? (
                                                     <input
                                                         type="text"
@@ -767,7 +759,7 @@ function CoachManagement() {
                                                 )}
                                             </td>
                                             <td className="px-4 py-2 border-b border-gray-200 text-center">
-                                                <div className="action-buttons">
+                                                <div className="flex justify-center space-x-2">
                                                     {editingCoachId === coach.coachID ? (
                                                         <>
                                                             <button
@@ -824,7 +816,7 @@ function CoachManagement() {
             {activeTab === 'coach-types' && (
                 <div className="coach-type-tab">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-semibold">Coach Types</h2>
+                        <h2 className="text-xl font-bold">Coach Types</h2>
                         <button
                             onClick={handleAddNewCoachType}
                             disabled={isAddingCoachType || editingCoachTypeId !== null || operationLoading}
@@ -893,7 +885,7 @@ function CoachManagement() {
                                             />
                                         </td>
                                         <td className="px-4 py-2 border-b border-gray-200 text-center">
-                                            <div className="action-buttons">
+                                            <div className="flex justify-center space-x-2">
                                                 <button
                                                     onClick={handleSaveCoachType}
                                                     disabled={operationLoading}
@@ -917,7 +909,7 @@ function CoachManagement() {
                                 {coachTypes && coachTypes.length > 0 ? (
                                     coachTypes.map((coachType) => (
                                         <tr key={coachType.coach_typeID} className="hover:bg-gray-50">
-                                            <td className="px-4 py-2 border-b border-gray-200">
+                                            <td className="px-4 py-2 border-b border-gray-200 font-bold">
                                                 {editingCoachTypeId === coachType.coach_typeID ? (
                                                     <input
                                                         type="text"
@@ -976,7 +968,7 @@ function CoachManagement() {
                                                 )}
                                             </td>
                                             <td className="px-4 py-2 border-b border-gray-200 text-center">
-                                                <div className="action-buttons">
+                                                <div className="flex justify-center space-x-2">
                                                     {editingCoachTypeId === coachType.coach_typeID ? (
                                                         <>
                                                             <button

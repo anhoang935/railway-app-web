@@ -578,7 +578,7 @@ function PassengerManagement() {
                             filteredPassengers.map(passenger => (
                                 <React.Fragment key={passenger.passengerID}>
                                     <tr className="hover:bg-gray-50">
-                                        <td className="px-4 py-2 border-b border-gray-200 font-medium">{passenger.passengerID}</td>
+                                        <td className="px-4 py-2 border-b border-gray-200 font-bold">{passenger.passengerID}</td>
                                         <td className="px-4 py-2 border-b border-gray-200">{passenger.fullname}</td>
                                         <td className="px-4 py-2 border-b border-gray-200">{passenger.phone_number}</td>
                                         <td className="px-4 py-2 border-b border-gray-200">{passenger.email}</td>

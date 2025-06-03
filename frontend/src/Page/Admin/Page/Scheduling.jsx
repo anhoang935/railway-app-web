@@ -521,7 +521,7 @@ const Scheduling = ({ setActiveTab }) => {
                         {schedules.length > 0 ? (
                             schedules.map((schedule) => (
                                 <tr key={schedule.scheduleID} className={editingId === schedule.scheduleID ? 'bg-yellow-50' : 'hover:bg-gray-50'}>
-                                    <td className="px-4 py-2 border-b border-gray-200 font-medium">
+                                    <td className="px-4 py-2 border-b border-gray-200 font-bold">
                                         {schedule.scheduleID}
                                     </td>
                                     <td className="px-4 py-2 border-b border-gray-200">
