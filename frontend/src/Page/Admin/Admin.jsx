@@ -11,11 +11,11 @@ import Dashboard from './Page/Dashboard';
 import TrainManagement from './Page/TrainManagement';
 import StationManagement from './Page/StationManagement';
 import JourneyManagement from './Page/JourneyManagement';
-import UsersManagement from './Page/UsersManagement';
+// import UsersManagement from './Page/UsersManagement';
 import StaffUsers from './Page/CustomerManagement';
 import StaffMembers from './Page/AdminManagement';
 import Scheduling from './Page/Scheduling';
-import AdminSettings from './Page/AdminSettings';
+// import AdminSettings from './Page/AdminSettings';
 import BookingManagement from './Page/BookingManagement';
 import PassengerManagement from './Page/PassengerManagement';
 import TrackManagement from './Page/TrackManagement';
@@ -133,8 +133,8 @@ export default function AdminPanel() {
                 return <StaffUsers setActiveTab={setActiveTab} />;
             case "staff-members":
                 return <StaffMembers setActiveTab={setActiveTab} />;
-            case "settings":
-                return <AdminSettings setActiveTab={setActiveTab} />;
+            // case "settings":
+            //     return <AdminSettings setActiveTab={setActiveTab} />;
             case "tracks":
                 return <TrackManagement setActiveTab={setActiveTab} />;
             default:
@@ -264,7 +264,7 @@ export default function AdminPanel() {
                         />
 
                         {/* Settings */}
-                        <div className="mt-4">
+                        {/* <div className="mt-4">
                             <NavItem
                                 icon={<Settings size={20} />}
                                 label="Settings"
@@ -272,7 +272,7 @@ export default function AdminPanel() {
                                 expanded={sidebarOpen}
                                 onClick={() => setActiveTab("settings")}
                             />
-                        </div>
+                        </div> */}
                     </div>
                 </nav>
 

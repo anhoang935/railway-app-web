@@ -546,7 +546,7 @@ const Dashboard = () => {
                 <div className="px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center">
                         <h2 className="text-xl font-bold text-gray-800">Dashboard</h2>
-                        <span className="ml-3 text-sm text-gray-500">{formattedDateTime}</span>
+                        <span className="ml-3 text-sm text-gray-500 leading-none">{formattedDateTime}</span>
                     </div>
 
                     <div className="flex items-center space-x-4">
