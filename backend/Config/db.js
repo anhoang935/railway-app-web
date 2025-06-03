@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 
 dotenv.config();
-const caCert = Buffer.from(process.env.DB_CA_CERT, 'base64');
+// const caCert = Buffer.from(process.env.DB_CA_CERT, 'base64');
 
 // Create connection pool
 const pool = mysql.createPool({
@@ -15,7 +15,7 @@ const pool = mysql.createPool({
   ssl: {
       rejectUnauthorized: true,
       // You can download the CA certificate from Aiven dashboard and provide the path here:
-      ca: caCert, 
+      ca: process.env.DB_CA_CERT, 
     },
 });
 
