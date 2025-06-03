@@ -275,7 +275,7 @@ const StationManagement = ({ setActiveTab }) => {
                         {stations && stations.length > 0 ? (
                             stations.map((station) => (
                                 <tr key={station.stationID} className={editingId === station.stationID ? 'bg-yellow-50' : 'hover:bg-gray-50'}>
-                                    <td className="px-4 py-2 border-b border-gray-200 font-medium">
+                                    <td className="px-4 py-2 border-b border-gray-200 font-bold">
                                         {station.stationID}
                                     </td>
                                     <td className="px-4 py-2 border-b border-gray-200">

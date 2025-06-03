@@ -510,7 +510,7 @@ const JourneyManagement = ({ setActiveTab }) => {
                         {journeys.length > 0 ? (
                             journeys.map((journey) => (
                                 <tr key={journey.journeyID} className={editingId === journey.journeyID ? 'bg-yellow-50' : 'hover:bg-gray-50'}>
-                                    <td className="px-4 py-2 border-b border-gray-200">
+                                    <td className="px-4 py-2 border-b border-gray-200 font-bold">
                                         {journey.journeyID}
                                     </td>
                                     <td className="px-4 py-2 border-b border-gray-200">

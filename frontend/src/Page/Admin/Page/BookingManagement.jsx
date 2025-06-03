@@ -484,7 +484,7 @@ function BookingManagement() {
                             filteredBookings.map(booking => (
                                 <React.Fragment key={booking.bookingID}>
                                     <tr className="hover:bg-gray-50">
-                                        <td className="px-4 py-2 border-b border-gray-200 font-medium">{booking.bookingID}</td>
+                                        <td className="px-4 py-2 border-b border-gray-200 font-bold">{booking.bookingID}</td>
                                         <td className="px-4 py-2 border-b border-gray-200">{booking.passengerName}</td>
                                         <td className="px-4 py-2 border-b border-gray-200">{new Date(booking.bookingDate).toLocaleDateString()}</td>
                                         <td className="px-4 py-2 border-b border-gray-200">

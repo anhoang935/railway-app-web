@@ -62,7 +62,7 @@ const Home = () => {
                 Travel Comfortably with
                 <div className="relative inline-block ml-2 sm:ml-3 md:ml-4">
                   <span className="text-gradient">
-                    TAB
+                    TABB
                   </span>
                   <motion.div
                     className="TAB__element"

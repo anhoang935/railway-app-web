@@ -392,7 +392,7 @@ const TrainManagement = () => {
                         {trains.length > 0 ? (
                             trains.map((train) => (
                                 <tr key={train.trainID} className={editingId === train.trainID ? 'bg-yellow-50' : 'hover:bg-gray-50'}>
-                                    <td className="px-4 py-2 border-b border-gray-200">
+                                    <td className="px-4 py-2 border-b border-gray-200 font-bold">
                                         {train.trainID}
                                     </td>
                                     <td className="px-4 py-2 border-b border-gray-200">
