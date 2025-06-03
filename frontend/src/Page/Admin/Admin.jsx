@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     BarChart3, Train, Users, Calendar, Settings, MapPin,
     LogOut, ArrowLeftToLine, Menu, ChevronDown, ChevronRight,
-    Route, CreditCard, UserCheck, Ticket, User
+    Route, CreditCard, UserCheck, Ticket, User, Bus
 } from 'lucide-react';
 import "./admin.css";
 
@@ -19,6 +19,7 @@ import AdminSettings from './Page/AdminSettings';
 import BookingManagement from './Page/BookingManagement';
 import PassengerManagement from './Page/PassengerManagement';
 import TrackManagement from './Page/TrackManagement';
+import CoachManagement from './Page/CoachManagement';
 
 import NavItem from './Components/NavItem';
 
@@ -116,6 +117,8 @@ export default function AdminPanel() {
                 return <Dashboard />;
             case "trains":
                 return <TrainManagement setActiveTab={setActiveTab} />;
+            case "coaches":
+                return <CoachManagement setActiveTab={setActiveTab} />;
             case "stations":
                 return <StationManagement setActiveTab={setActiveTab} />;
             case "journey":
@@ -185,6 +188,13 @@ export default function AdminPanel() {
                         active={activeTab === "trains"}
                         expanded={sidebarOpen}
                         onClick={() => setActiveTab("trains")}
+                    />
+                    <NavItem
+                        icon={<Bus size={20} />}
+                        label="Coaches"
+                        active={activeTab === "coaches"}
+                        expanded={sidebarOpen}
+                        onClick={() => setActiveTab("coaches")}
                     />
                     <NavItem
                         icon={<MapPin size={20} />}

@@ -5,7 +5,9 @@ import {
     getCoachesByTrain,
     createCoach,
     updateCoach,
-    deleteCoach
+    deleteCoach,
+    syncCoachCounts,
+    syncTrainCoachCount
 } from '../controllers/coachController.js';
 
 const router = express.Router();
@@ -19,5 +21,9 @@ router.get('/train/:trainId', getCoachesByTrain);
 router.post('/', createCoach);
 router.put('/:id', updateCoach);
 router.delete('/:id', deleteCoach);
+
+// Sync routes
+router.post('/sync/all', syncCoachCounts);
+router.post('/sync/train/:trainId', syncTrainCoachCount);
 
 export default router;

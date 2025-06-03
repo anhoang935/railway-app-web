@@ -69,6 +69,27 @@ const coachService = {
             console.error('Error deleting coach:', error);
             throw error.response?.data?.message || error.message || 'Failed to delete coach';
         }
+    },
+
+    // Admin sync functions
+    syncAllCoachCounts: async () => {
+        try {
+            const response = await axios.post(`${BASE_URL}/sync/all`);
+            return response.data;
+        } catch (error) {
+            console.error('Error syncing all coach counts:', error);
+            throw error.response?.data?.message || error.message || 'Failed to sync coach counts';
+        }
+    },
+
+    syncTrainCoachCount: async (trainId) => {
+        try {
+            const response = await axios.post(`${BASE_URL}/sync/train/${trainId}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error syncing train coach count:', error);
+            throw error.response?.data?.message || error.message || 'Failed to sync train coach count';
+        }
     }
 };
 
