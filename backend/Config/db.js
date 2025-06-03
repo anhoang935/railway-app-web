@@ -14,7 +14,7 @@ const pool = mysql.createPool({
   ssl: {
       rejectUnauthorized: true,
       // You can download the CA certificate from Aiven dashboard and provide the path here:
-      ca: fs.readFileSync('Config/ca.pem'), 
+      ca: fs.readFileSync('./Config/ca.pem'), 
     },
 });
 
