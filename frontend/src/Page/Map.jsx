@@ -6,7 +6,7 @@ const Map = ({ stations, fromStation, toStation }) => {
     return (
       <div className="map-container">
         <div className="simple-map">
-          <div className="station-marker start">Loading...</div>
+          <div className="station-marker loading">Loading...</div>
         </div>
       </div>
     );
@@ -16,25 +16,50 @@ const Map = ({ stations, fromStation, toStation }) => {
   const fromStationId = parseInt(fromStation);
   const toStationId = parseInt(toStation);
   
+  // Find indices of departure and arrival stations
+  const departureIndex = stations.findIndex(s => parseInt(s.id) === fromStationId);
+  const arrivalIndex = stations.findIndex(s => parseInt(s.id) === toStationId);
+  
+  // Determine direction - true if departure is before arrival
+  const isForwardDirection = departureIndex < arrivalIndex;
+  
   return (
     <div className="map-container">
       <div className="detailed-map">
-        {stations.map((station, index) => (
-          <React.Fragment key={station.id}>
-            <div 
-              className={`station-marker ${parseInt(station.id) === fromStationId ? 'start' : parseInt(station.id) === toStationId ? 'end' : ''}`}
-            >
-              <div className="station-dot"></div>
-              <div className="station-name">{station.name}</div>
-              {station.isEndpoint && (
-                <div className="station-badge">
-                  {parseInt(station.id) === fromStationId ? 'Departure' : 'Arrival'}
+        {stations.map((station, index) => {
+          const stationId = parseInt(station.id);
+          const isDeparture = stationId === fromStationId;
+          const isArrival = stationId === toStationId;
+          
+          // Determine if this station is between departure and arrival stations
+          const isInRoute = (isForwardDirection && 
+                            index >= departureIndex && 
+                            index <= arrivalIndex) ||
+                           (!isForwardDirection && 
+                            index >= arrivalIndex && 
+                            index <= departureIndex);
+          
+          // Set classes based on station type - keeping all stations the same size
+          let stationClassName = "station-marker";
+          if (isDeparture) stationClassName += " departure";
+          if (isArrival) stationClassName += " arrival";
+          if (isInRoute && !isDeparture && !isArrival) stationClassName += " in-route";
+          
+          return (
+            <div key={station.id} className="station-wrapper">
+              <div className={stationClassName}>
+                <div className="station-dot"></div>
+                <div className="station-name">{station.name}</div>
+              </div>
+              
+              {/* Add connecting line after each station except the last one */}
+              {index < stations.length - 1 && (
+                <div className={`connecting-line ${isInRoute && index >= Math.min(departureIndex, arrivalIndex) && index < Math.max(departureIndex, arrivalIndex) ? 'active-route' : ''}`}>
                 </div>
               )}
             </div>
-            {index < stations.length - 1 && <div className="map-line-segment"></div>}
-          </React.Fragment>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
