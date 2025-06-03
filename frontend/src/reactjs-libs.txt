@@ -1,12 +1,12 @@
 how to set up:
 npx create-react-app frontend
 then cd .\frontend\
-then npm install
+then 
 
 Libraries:
+npm install
 npm install -D tailwindcss@3 
 npm install -D postcss autoprefixer
-npx tailwindcss init // No need
 npm i lucide-react
 npm install bootstrap remixicon slick-carousel react-router-dom
 npm i reactstrap

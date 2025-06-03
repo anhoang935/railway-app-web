@@ -1,0 +1,4 @@
+git pull upstream main --allow-unrelated-histories
+git checkout --theirs .
+git add .
+git commit -m "Accepted all incoming changes from upstream"
