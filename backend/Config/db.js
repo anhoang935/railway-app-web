@@ -10,7 +10,7 @@ const pool = mysql.createPool({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  port: process.env.PORT || 25422,
+  port: process.env.DB_PORT || 25422,
   ssl: {
       rejectUnauthorized: true,
       // You can download the CA certificate from Aiven dashboard and provide the path here:
