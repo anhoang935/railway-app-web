@@ -193,28 +193,8 @@ const Buy_Ticket = () => {
         const transformedTrains = result.data.map(train => {
           const scheduleID = train['Train Name'];
           const baseDate = new Date(departureDate);
-          const stationDates = new Map(); // Track date for each station
-          
-          // Helper function to get proper date for a station's time
-          const getStationDate = (stationTime, prevStation) => {
-            if (!prevStation) return baseDate; // First station uses base date
-
-            const currentTime = stationTime;
-            const prevTime = prevStation.departureTime || prevStation.arrivalTime;
-            const prevDate = stationDates.get(prevStation.stationId);
-
-            // Create new date based on previous station's date
-            const newDate = new Date(prevDate);
-
-            // If current time is less than previous time, it's next day
-            if (!isTimeAfter(currentTime, prevTime)) {
-              newDate.setDate(newDate.getDate() + 1);
-            }
-            
-            return newDate;
-          };
-
-          // Get all journey points for this train
+          const stationDates = new Map(); // stationID -> date
+          const lastDepartureTimeMap = new Map(); // For comparing time shifts per train
           const journeyPoints = Object.entries(train.journey || {})
             .sort(([a], [b]) => parseInt(a) - parseInt(b))
             .map(([_, station]) => ({
@@ -224,36 +204,26 @@ const Buy_Ticket = () => {
             }));
 
           let currentDate = new Date(baseDate);
-          let lastDepartureTime = null;
 
-          // Calculate dates for each station
           journeyPoints.forEach((point, index) => {
-            const departureTime = point.departureTime;
-            
-            if (index === 0) {
-              // First station always uses the base date
-              stationDates.set(point.stationId, new Date(currentDate));
-            } else {
-              // Check if we need to move to next day
-              const currentTime = departureTime.split(':').map(Number);
-              const lastTime = lastDepartureTime.split(':').map(Number);
-              
-              // Convert to minutes for easier comparison
-              const currentMinutes = currentTime[0] * 60 + currentTime[1];
-              const lastMinutes = lastTime[0] * 60 + lastTime[1];
-              
-              // If current time is earlier than last time, it's a new day
-              if (currentMinutes < lastMinutes) {
-                currentDate.setDate(currentDate.getDate() + 1);
-              }
-              
-              stationDates.set(point.stationId, new Date(currentDate));
+            const { stationId, departureTime } = point;
+
+            // Parse current and last departure times
+            const currentTimeParts = departureTime.split(':').map(Number);
+            const currentMinutes = currentTimeParts[0] * 60 + currentTimeParts[1];
+
+            const lastTime = lastDepartureTimeMap.get(scheduleID);
+            if (lastTime !== undefined && currentMinutes < lastTime) {
+              // Time is earlier than the previous one — next day
+              currentDate.setDate(currentDate.getDate() + 1);
             }
-            
-            lastDepartureTime = departureTime;
+
+            // Update map and time tracker
+            stationDates.set(stationId, new Date(currentDate));
+            lastDepartureTimeMap.set(scheduleID, currentMinutes);
           });
 
-          // Get departure and arrival dates
+          // Final transformation
           const departureStationDate = stationDates.get(fromId) || baseDate;
           const arrivalStationDate = stationDates.get(toId) || baseDate;
 
@@ -269,12 +239,12 @@ const Buy_Ticket = () => {
             distance: calculateDistance(fromId, toId),
             departureDate: departureStationDate.toISOString().split('T')[0],
             arrivalDate: arrivalStationDate.toISOString().split('T')[0],
-            returnDate: calculateReturnDate(arrivalStationDate.toISOString().split('T')[0], distance),
+            returnDate: calculateReturnDate(arrivalStationDate.toISOString().split('T')[0], calculateDistance(fromId, toId)),
             availableCapacity: train['Available Capacity'],
             stationDates: Object.fromEntries([...stationDates].map(([id, date]) => [
-              id, 
+              id,
               date.toISOString().split('T')[0]
-            ])), // Convert Map to object for easier access
+            ])),
             journey: journeyPoints.reduce((acc, point) => ({
               ...acc,
               [point.stationId]: {
@@ -284,6 +254,7 @@ const Buy_Ticket = () => {
             }), {})
           };
         });
+
 
         setAvailableTrains(transformedTrains);
 
