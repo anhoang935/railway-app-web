@@ -1,14 +1,9 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
 import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const caPath = path.join(__dirname, 'Config', 'ca.pem');
 dotenv.config();
+const caCert = Buffer.from(process.env.DB_CA_CERT, 'base64');
 
 // Create connection pool
 const pool = mysql.createPool({
@@ -20,7 +15,7 @@ const pool = mysql.createPool({
   ssl: {
       rejectUnauthorized: true,
       // You can download the CA certificate from Aiven dashboard and provide the path here:
-      ca: fs.readFileSync(caPath), 
+      ca: caCert, 
     },
 });
 
