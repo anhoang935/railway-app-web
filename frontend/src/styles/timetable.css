@@ -1,0 +1,567 @@
+/**
+ * RAILWAY TIMETABLE CSS
+ * Organized into logical sections
+ */
+
+/* -----------------------------
+ * 1. BASE LAYOUT & CONTAINERS
+ * ----------------------------- */
+.timetable-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 20px;
+  gap: 24px;
+  background-color: #f0f7ff;
+}
+
+.content-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 800px;
+}
+
+.error-message {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border-left: 4px solid #ef4444;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+/* -----------------------------
+ * 2. ROUTE SELECTION FORM
+ * ----------------------------- */
+.route-selection {
+  background: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
+}
+
+.route-selection:hover {
+  box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+}
+
+.route-selection h2 {
+  margin-bottom: 24px;
+  color: #009cff;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.route-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 24px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: #006bb3;
+  font-size: 0.9rem;
+}
+
+.form-group select,
+.form-group input {
+  padding: 10px 14px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  background-color: white;
+}
+
+.form-group select:hover,
+.form-group input:hover {
+  border-color: #cbd5e0;
+}
+
+.form-group select:focus,
+.form-group input:focus {
+  border-color: #009cff;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 156, 255, 0.15);
+}
+
+.search-button {
+  background-color: #009cff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-top: 22px;
+  width: 100%;
+}
+
+.search-button:hover {
+  background-color: #0081d1;
+}
+
+.search-button:disabled {
+  background-color: #a0aec0;
+  cursor: not-allowed;
+}
+
+/* -----------------------------
+ * 3. TRAIN OPTIONS SECTION
+ * ----------------------------- */
+.train-options {
+  background: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  margin-bottom: 24px;
+}
+
+.train-options h3 {
+  color: #009cff;
+  margin-bottom: 16px;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.train-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.train-option {
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.train-option:hover {
+  border-color: #4299e1;
+  transform: translateY(-2px);
+  background: rgba(0, 156, 255, 0.02);
+}
+
+.train-option.selected {
+  border-color: #4299e1;
+  background: rgba(0, 156, 255, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 156, 255, 0.1);
+}
+
+.train-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.train-header h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+}
+
+.train-header .icon {
+  margin-right: 6px;
+  color: #009cff;
+}
+
+.capacity {
+  font-size: 0.8rem;
+  color: #718096;
+  background: #f7fafc;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.train-schedule {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.departure, .arrival {
+  display: flex;
+  flex-direction: column;
+}
+
+.time {
+  font-weight: bold;
+  color: #2d3748;
+}
+
+.station {
+  font-size: 0.8rem;
+  color: #718096;
+}
+
+.journey-line {
+  flex-grow: 1;
+  text-align: center;
+  color: #a0aec0;
+}
+
+/* -----------------------------
+ * 4. MAP SECTION - FIXED
+ * ----------------------------- */
+.map-section {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  padding: 24px;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 800px;
+}
+
+.map-section:hover {
+  box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+}
+
+.map-section h3 {
+  color: #009cff;
+  margin-bottom: 16px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  text-align: left;
+}
+
+/* Map container */
+.map-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Detailed map */
+.detailed-map {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+  padding: 10px 0;
+}
+
+.detailed-map::-webkit-scrollbar {
+  width: 4px;
+}
+
+.detailed-map::-webkit-scrollbar-track {
+  background: #f7fafc;
+}
+
+.detailed-map::-webkit-scrollbar-thumb {
+  background-color: #cbd5e0;
+  border-radius: 4px;
+}
+
+/* Station wrapper - contains both station and connecting line */
+.station-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  position: relative;
+}
+
+/* Station marker styling - ALL STATIONS SAME SIZE */
+.station-marker {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+
+/* Station marker styling */
+.station-marker {
+  display: flex;
+  align-items: center;
+  padding: 6px 0;
+  position: relative;
+  z-index: 2;
+  margin: 3px 0;
+}
+
+.station-dot {
+  width: 12px;
+  height: 12px;
+  background-color: #3498db;
+  border-radius: 50%;
+  margin-right: 12px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 3;
+}
+
+.station-name {
+  font-size: 0.9rem;
+  color: #2d3748;
+  transition: color 0.2s ease;
+  font-weight: 500;
+}
+
+/* Departure station styling */
+.station-marker.departure .station-dot {
+  background-color: #38a169;
+}
+
+.station-marker.departure .station-name {
+  font-weight: 600;
+  color: #38a169;
+}
+
+/* Arrival station styling */
+.station-marker.arrival .station-dot {
+  background-color: #e53e3e;
+}
+
+.station-marker.arrival .station-name {
+  font-weight: 600;
+  color: #e53e3e;
+}
+
+/* In-route stations styling */
+.station-marker.in-route .station-dot {
+  background-color: #4299e1;
+}
+
+/* Connecting line between stations */
+.connecting-line {
+  width: 2px;
+  height: 20px;
+  background-color: #cbd5e0;
+  margin-left: 5px;
+  position: relative;
+  z-index: 1;
+  transition: background-color 0.3s ease;
+}
+
+/* Active route line styling */
+.connecting-line.active-route {
+  background-color: #4299e1;
+}
+
+/* Connection container - FIXED */
+.connection-container {
+  position: absolute;
+  height: 24px;
+  left: 5px;
+  z-index: 1;
+  top: 16px;
+}
+
+/* Line segments between stations - FIXED */
+.map-line-segment {
+  width: 2px;
+  height: 100%;
+  background-color: #cbd5e0; 
+  position: absolute;
+  left: 5px
+}
+
+/* Active route line styling */
+.map-line-segment.active-route {
+  background-color: #4299e1; /* Blue for active route */
+}
+
+/* Hover effects */
+.station-marker:hover .station-dot {
+  transform: scale(1.2);
+}
+
+.station-marker:hover .station-name {
+  font-weight: 600;
+}
+
+.station-marker.departure:hover .station-dot,
+.station-marker.arrival:hover .station-dot {
+  transform: scale(1.1);
+}
+
+/* -----------------------------
+ * 5. INFO SECTION
+ * ----------------------------- */
+.info-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* -----------------------------
+ * 6. TIMETABLE
+ * ----------------------------- */
+.timetable,
+.coach-types {
+  background: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
+}
+
+.timetable:hover,
+.coach-types:hover {
+  box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+}
+
+.timetable h3,
+.coach-types h3 {
+  color: #009cff;
+  margin-bottom: 16px;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.timetable table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.timetable th,
+.timetable td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.timetable th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #4a5568;
+  position: sticky;
+  top: 0;
+}
+
+.timetable tr:hover {
+  background: #f8fafc;
+}
+
+.timetable .highlighted-row {
+  background-color: #ebf8ff;
+}
+
+.timetable .highlighted-row:hover {
+  background-color: #e6fffa;
+}
+
+.timetable .highlighted-row td:first-child {
+  border-left: 3px solid #009cff;
+}
+
+/* -----------------------------
+ * 7. COACH TYPES
+ * ----------------------------- */
+.coach-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.coach-option {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.coach-option:hover {
+  border-color: #009cff;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.coach-option h4 {
+  margin: 0;
+  color: #2d3748;
+  font-weight: 600;
+}
+
+.coach-option p {
+  margin: 0;
+  color: #4a5568;
+}
+
+.coach-option .text-sm {
+  font-size: 0.875rem;
+}
+
+.coach-option .text-gray-500 {
+  color: #718096;
+}
+
+/* -----------------------------
+ * 8. RESPONSIVE DESIGNS
+ * ----------------------------- */
+@media (max-width: 768px) {
+  .map-section {
+    order: 2;
+  }
+  
+  .info-section {
+    order: 1;
+  }
+  
+  .route-form {
+    grid-template-columns: 1fr;
+  }
+
+  .train-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .coach-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 1024px) {
+  .content-section {
+    flex-direction: row;
+  }
+  
+  .map-section {
+    width: 25%;
+    min-width: 200px;
+    max-width: 300px;
+  }
+  
+  .info-section {
+    width: 75%;
+  }
+}

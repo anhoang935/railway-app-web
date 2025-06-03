@@ -1,0 +1,117 @@
+@startuml BackendComponentDiagram
+
+hide empty members
+skinparam linetype ortho
+skinparam monochrome false
+
+' Entity style
+skinparam class {
+  BackgroundColor white
+  BorderColor black
+  ArrowColor black
+}
+
+class user {
+  userID: int <<PK>>
+  UserName: varchar
+  Email: varchar
+  Password: varchar
+  Gender: varchar
+  PhoneNumber: varchar
+  DateOfBirth: date
+  Address: varchar
+  VerifyCode: varchar
+  Status: varchar
+  OTP: varchar
+  OTPExpiry: datetime
+}
+
+class train {
+  trainID: int <<PK>>
+  trainName: varchar
+  trainType: varchar
+  coachTotal: int
+}
+
+class coach {
+  coachID: int <<PK>>
+  coach_typeID: int <<FK>>
+  trainID: int <<FK>>
+}
+
+class coach_type {
+  coach_typeID: int <<PK>>
+  type: varchar
+  price: decimal
+  capacity: int
+}
+
+class station {
+  stationID: int <<PK>>
+  stationName: varchar
+}
+
+class schedule {
+  scheduleID: int <<PK>>
+  start_stationID: int <<FK>>
+  end_stationID: int <<FK>>
+  departureTime: datetime
+  arrivalTime: datetime
+  scheduleStatus: varchar
+  trainID: int <<FK>>
+}
+
+class passenger {
+  passengerID: int <<PK>>
+  fullname: varchar
+  phone_number: varchar
+  email: varchar
+  status: varchar
+}
+
+class ticket {
+  ticketID: int <<PK>>
+  bookingID: int <<FK>>
+  trainID: int <<FK>>
+  coachID: int <<FK>>
+  departure_stationID: int <<FK>>
+  arrival_stationID: int <<FK>>
+  seatNumber: varchar
+  departureTime: datetime
+  departureDate: date
+  ticketPrice: decimal
+}
+
+class journey {
+  journeyID: int <<PK>>
+  scheduleID: int <<FK>>
+  stationID: int <<FK>>
+  arrivalTime: datetime
+  departureTime: datetime
+}
+
+class booking {
+  bookingID: int <<PK>>
+  userID: int <<FK>>
+  passengerID: int <<FK>>
+  bookingDate: datetime
+  totalPrice: decimal
+  status: varchar
+}
+
+' Relationships
+train "1" -- "many" coach
+coach "many" -- "1" coach_type
+train "1" -- "many" schedule
+station "1" -- "many" schedule : is start of >
+station "1" -- "many" schedule : is end of >
+schedule "1" -- "many" journey
+passenger "1" -- "many" booking
+user "1" -- "many" booking
+booking "1" -- "many" ticket
+train "1" -- "many" ticket
+coach "1" -- "many" ticket
+station "1" -- "many" ticket : departure >
+station "1" -- "many" ticket : arrival >
+
+@enduml

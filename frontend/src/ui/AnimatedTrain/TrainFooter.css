@@ -1,0 +1,44 @@
+.footer-bg {
+    background-color: #f8f8f8;
+    width: 100%;
+    height: 250px; /* Ensure it has height */
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .train-footer {
+    width: 100%;
+    height: 100%; /* Ensure it covers the parent */
+    position: relative;
+  }
+  
+  .marquee-wrap {
+    display: flex;
+    overflow: hidden;
+    white-space: nowrap;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+  }
+  
+  .marquee-content {
+    display: flex;
+    align-items: center;
+    animation: marquee 15s linear infinite reverse;
+  }
+  
+  .marquee-item img {
+    height: 30px; /* Adjust to desired size */
+    width: auto; /* Maintain aspect ratio */
+    object-fit: contain; /* Prevents stretching */
+  }
+  
+  @keyframes marquee {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(-100%);
+    }
+  }
+  

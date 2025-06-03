@@ -1,0 +1,117 @@
+.container {
+    max-width: 3xl;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+
+  .space-y-6 > *:not(:last-child) {
+    margin-bottom: 1.5rem; /* This is equivalent to 6 * 0.25rem (6 spacing units in Tailwind) */
+}
+  
+  .tab-navigation {
+    display: flex;
+    justify-content: space-around;
+    border-bottom: 2px solid #e5e5e5;
+  }
+  
+  .tab-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-bottom: 2px solid transparent;
+    color: #4a4a4a;
+    font-weight: 400;
+  }
+  
+  .tab-button.active {
+    border-bottom: 2px solid #3182ce;
+    font-weight: 600;
+    color: #3182ce;
+  }
+  
+  .tab-button:hover {
+    color: #3182ce;
+  }
+  
+  .form-container {
+    background-color: #fff;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 0.375rem;
+    padding: 1.5rem;
+  }
+  
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  
+  .form-label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+  }
+  
+  .form-input {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    border: 1px solid #ddd;
+    border-radius: 0.375rem;
+  }
+  
+  .form-textarea {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    border: 1px solid #ddd;
+    border-radius: 0.375rem;
+    resize: vertical;
+  }
+  
+  .select-input {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    border: 1px solid #ddd;
+    border-radius: 0.375rem;
+  }
+  
+  .button-container {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 1rem;
+  }
+  
+  .button {
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .save-button {
+    background-color: #3182ce;
+    color: white;
+  }
+  
+  .save-button:hover {
+    background-color: #2b6cb0;
+  }
+  
+  .edit-button {
+    background-color: #38a169;
+    color: white;
+  }
+  
+  .edit-button:hover {
+    background-color: #2f855a;
+  }
+  
+  .grid {
+    display: grid;
+    gap: 1rem;
+  }
+  
+  .icon {
+    width: 1rem;
+    height: 1rem;
+  }
+  

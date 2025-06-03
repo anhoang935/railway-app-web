@@ -1,0 +1,59 @@
+.metro-map {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  padding: 15px;
+  box-sizing: border-box;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.metro-map h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #333;
+  text-align: center;
+}
+
+.svg-container {
+  width: 100%;
+  height: calc(100% - 50px); /* Account for the h3 height */
+  position: relative;
+}
+
+.responsive-svg {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+.station-circle {
+  cursor: pointer;
+  transition: r 0.2s ease-in-out, fill 0.2s ease-in-out;
+}
+
+.station-circle:hover {
+  r: 10;
+}
+
+.station-name {
+  font-family: Arial, sans-serif;
+  font-weight: bold;
+  fill: #333;
+  pointer-events: none;
+}
+
+.selected-station {
+  r: 10;
+  fill: #ff6600;
+}
+
+.selected-station-text {
+  font-size: 14px;
+  fill: #ff6600;
+}
+
