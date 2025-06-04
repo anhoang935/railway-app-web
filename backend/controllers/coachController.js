@@ -3,7 +3,15 @@ import pool from '../Config/db.js';
 
 export const getAllCoaches = async (req, res) => {
     try {
-        const coaches = await Coach.findAll();
+        // Add timeout for database query
+        const queryTimeout = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Database query timed out')), 8000)
+        );
+
+        const coaches = await Promise.race([
+            Coach.findAll(),
+            queryTimeout
+        ]);
 
         res.status(200).json({
             success: true,
@@ -11,6 +19,13 @@ export const getAllCoaches = async (req, res) => {
             data: coaches
         });
     } catch (error) {
+        console.error('getAllCoaches error:', error);
+        if (error.message === 'Database query timed out') {
+            return res.status(408).json({
+                success: false,
+                message: 'Request timed out. Please try again.'
+            });
+        }
         res.status(500).json({
             success: false,
             message: error.message
@@ -21,7 +36,15 @@ export const getAllCoaches = async (req, res) => {
 export const getCoach = async (req, res) => {
     try {
         const { id } = req.params;
-        const coach = await Coach.findById(id);
+
+        const queryTimeout = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Database query timed out')), 5000)
+        );
+
+        const coach = await Promise.race([
+            Coach.findById(id),
+            queryTimeout
+        ]);
 
         if (!coach) {
             return res.status(404).json({
@@ -35,6 +58,13 @@ export const getCoach = async (req, res) => {
             data: coach
         });
     } catch (error) {
+        console.error('getCoach error:', error);
+        if (error.message === 'Database query timed out') {
+            return res.status(408).json({
+                success: false,
+                message: 'Request timed out. Please try again.'
+            });
+        }
         res.status(500).json({
             success: false,
             message: error.message
@@ -45,7 +75,15 @@ export const getCoach = async (req, res) => {
 export const getCoachesByTrain = async (req, res) => {
     try {
         const { trainId } = req.params;
-        const coaches = await Coach.findByTrainId(trainId);
+
+        const queryTimeout = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Database query timed out')), 5000)
+        );
+
+        const coaches = await Promise.race([
+            Coach.findByTrainId(trainId),
+            queryTimeout
+        ]);
 
         res.status(200).json({
             success: true,
