@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Form, Alert } from "reactstrap";
 import { Link, useNavigate } from 'react-router-dom';
-import { Gift, User, Lock, Mail, Eye, EyeOff, Phone, Calendar, Home } from 'lucide-react';
+import { User, Lock, Mail, Eye, EyeOff, Phone, Calendar, Home } from 'lucide-react';
 import authService from '../data/Service/authService';
 import '../styles/register.css';
 
@@ -192,7 +192,6 @@ const Register = () => {
       >
         <div className="text-center mb-6">
           <div className="flex justify-center items-center mb-4">
-            <Gift className="text-blue-600 mr-2" size={40} />
             <h1 className="text-3xl font-bold text-blue-800">Create Account</h1>
           </div>
           <p className="text-blue-600">Welcome to the TABB Railways Corporation</p>
@@ -288,7 +287,6 @@ const Register = () => {
               type="submit"
               className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors duration-300 flex items-center justify-center"
             >
-              <Gift className="mr-2" size={20} />
               Create Account
             </motion.button>
           </div>
