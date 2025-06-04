@@ -118,18 +118,59 @@ const Timetable = () => {
   }, []);
   
   // Calculate distance between two station IDs using the track data
-  const calculateDistance = (startStationId, endStationId) => {
-    // If we have track data, use it
+  const calculateDistance = (fromStationId, toStationId) => {
+    // Convert input values to numbers
+    const start = Number(fromStationId);
+    const end = Number(toStationId);
+    
+    if (start === end) return 0;
+
+    // Get indices to determine direction
+    const fromIndex = stations.findIndex(s => Number(s.stationID) === start);
+    const toIndex = stations.findIndex(s => Number(s.stationID) === end);
+    
+    if (fromIndex === -1 || toIndex === -1) {
+      // Fallback: calculate approximate distance based on station IDs
+      return Math.abs(start - end) * 45; // Adjusted multiplier for more realistic distances
+    }
+
+    // Get all station IDs between start and end (inclusive)
+    const stationRange = stations
+      .slice(Math.min(fromIndex, toIndex), Math.max(fromIndex, toIndex) + 1)
+      .map(s => Number(s.stationID));
+
+    // If we have track data, use it for accurate calculation
     if (tracks.length > 0) {
-      const track = tracks.find(t => 
-        (t.station1ID === startStationId && t.station2ID === endStationId) || 
-        (t.station1ID === endStationId && t.station2ID === startStationId)
-      );
-      if (track) return track.distance;
+      let totalDistance = 0;
+      
+      for (let i = 0; i < stationRange.length - 1; i++) {
+        const currentStation = stationRange[i];
+        const nextStation = stationRange[i + 1];
+        
+        // Find track between these stations (in either direction)
+        const track = tracks.find(t => 
+          (t.station1ID === currentStation && t.station2ID === nextStation) ||
+          (t.station2ID === currentStation && t.station1ID === nextStation)
+        );
+        
+        if (track) {
+          totalDistance += track.distance;
+        } else {
+          // Fallback distance if track not found
+          totalDistance += 45; // Average distance between stations
+        }
+      }
+      
+      return totalDistance;
     }
     
-    // Fallback: calculate approximate distance based on station IDs
-    return Math.abs(startStationId - endStationId) * 100;
+    // Fallback: calculate approximate distance based on station positions
+    // Ha Noi (ID: 1) to Sai Gon (ID: 38) should be 1726 km
+    const totalStations = 38;
+    const totalDistance = 1726;
+    const avgDistancePerStation = totalDistance / (totalStations - 1);
+    
+    return Math.round(Math.abs(end - start) * avgDistancePerStation);
   };
   
   // Search trains function
@@ -202,6 +243,13 @@ const Timetable = () => {
       setLoading(false);
     }
   };
+
+  // Helper function to convert time string to minutes
+  const timeToMinutes = (timeStr) => {
+    if (!timeStr) return 0;
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
   
   // Handle train selection
   const handleSelectTrain = async (train) => {
@@ -235,8 +283,11 @@ const Timetable = () => {
         return parseInt(a.journeyID) - parseInt(b.journeyID);
       });
       
-      // Format timetable data
+      // Format timetable data with date handling
       let cumulativeDistance = 0;
+      let currentDate = new Date(departureDate);
+      let lastDepartureTime = null;
+      
       const stationData = journeys.map((journey, index) => {
         const stationObj = stations.find(s => parseInt(s.stationID) === parseInt(journey.stationID));
         
@@ -249,11 +300,28 @@ const Timetable = () => {
           cumulativeDistance += distanceFromPrevious;
         }
         
+        // Handle date changes when crossing midnight
+        if (index > 0 && lastDepartureTime && journey.departureTime) {
+          const lastTimeMinutes = timeToMinutes(lastDepartureTime);
+          const currentTimeMinutes = timeToMinutes(journey.departureTime);
+          
+          // If current time is earlier than last time, we've crossed midnight
+          if (currentTimeMinutes < lastTimeMinutes) {
+            currentDate = new Date(currentDate);
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+        }
+        
+        // Update last departure time for next iteration
+        if (journey.departureTime) {
+          lastDepartureTime = journey.departureTime;
+        }
+        
         return {
           station: stationObj?.stationName || 'Unknown Station',
           stationID: journey.stationID,
           distance: cumulativeDistance.toString(),
-          date: new Date(departureDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' }),
+          date: currentDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' }),
           arrival: journey.arrivalTime || (index === 0 ? '-' : ''),
           departure: journey.departureTime || (index === journeys.length - 1 ? '-' : '')
         };
@@ -300,15 +368,31 @@ const Timetable = () => {
             };
           });
         
-        // Set mock route data for all stations
-        setTimetableData(mockJourneys.map((journey, index) => ({
-          station: journey.stationName,
-          stationID: journey.stationID,
-          distance: journey.distance.toString(),
-          date: new Date(departureDate || new Date()).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' }),
-          arrival: journey.arrival || (index === 0 ? '-' : ''),
-          departure: journey.departure || (index === mockJourneys.length - 1 ? '-' : '')
-        })));
+        // Set mock route data for all stations with date handling
+        let mockCurrentDate = new Date(departureDate || new Date());
+        let mockLastDepartureHour = null;
+        
+        setTimetableData(mockJourneys.map((journey, index) => {
+          // Handle date changes for mock data too
+          if (index > 0 && mockLastDepartureHour !== null) {
+            const currentHour = parseInt(journey.departure.split(':')[0]);
+            if (currentHour < mockLastDepartureHour) {
+              mockCurrentDate = new Date(mockCurrentDate);
+              mockCurrentDate.setDate(mockCurrentDate.getDate() + 1);
+            }
+          }
+          
+          mockLastDepartureHour = parseInt(journey.departure.split(':')[0]);
+          
+          return {
+            station: journey.stationName,
+            stationID: journey.stationID,
+            distance: journey.distance.toString(),
+            date: mockCurrentDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' }),
+            arrival: journey.arrival || (index === 0 ? '-' : ''),
+            departure: journey.departure || (index === mockJourneys.length - 1 ? '-' : '')
+          };
+        }));
         
         // Set route stations data for the map
         setRouteStations(mockJourneys.map(j => ({

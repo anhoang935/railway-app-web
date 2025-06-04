@@ -35,7 +35,7 @@ const Buy_Ticket = () => {
   const [stationError, setStationError] = useState(null);
   const [loadingTrains, setLoadingTrains] = useState(false);
   const [trainSearchError, setTrainSearchError] = useState(null);
-
+  const [tracks, setTracks] = useState([]);
   // Static train and coach types (for fallback or testing)
   const trainTypes = [
     { id: 'SE1', direction: 'Bắc-Nam', startTime: '12:00', endTime: '04:00', duration: 16 },
@@ -73,6 +73,9 @@ const Buy_Ticket = () => {
         setStationError(null);
         const stationData = await stationService.getAllStations();
         setStations(stationData);
+
+        const trackData = await trackService.getAllTracks();
+        setTracks(trackData);
       } catch (error) {
         console.error('Failed to fetch stations:', error);
         setStationError('Failed to load stations. Please try again.');
@@ -85,6 +88,7 @@ const Buy_Ticket = () => {
           { id: 'saigon', name: 'Sài Gòn' },
         ];
         setStations(fallbackStations);
+        setTracks([]);
       } finally {
         setLoadingStations(false);
       }
@@ -93,13 +97,46 @@ const Buy_Ticket = () => {
   }, []);
 
   // Calculate distance between stations
-  const calculateDistance = (from, to) => {
-    const stationIndices = {};
-    stations.forEach((station, index) => {
-      stationIndices[station.id || station.stationID] = index;
-    });
-    if (stationIndices[from] === stationIndices[to]) return 0;
-    return Math.abs(stationIndices[from] - stationIndices[to]) * 200;
+  const calculateDistance = (fromStationId, toStationId) => {
+    // Convert input values to numbers
+    const start = Number(fromStationId);
+    const end = Number(toStationId);
+    
+    if (start === end) return 0;
+
+    // Get indices to determine direction
+    const fromIndex = stations.findIndex(s => Number(s.stationID) === start);
+    const toIndex = stations.findIndex(s => Number(s.stationID) === end);
+    
+    if (fromIndex === -1 || toIndex === -1) return 0;
+
+    // Determine direction of travel
+    const isForward = fromIndex < toIndex;
+    
+    // Get all station IDs between start and end (inclusive)
+    const stationRange = stations
+      .slice(Math.min(fromIndex, toIndex), Math.max(fromIndex, toIndex) + 1)
+      .map(s => Number(s.stationID));
+
+    // Calculate total distance by summing up track segments
+    let totalDistance = 0;
+    
+    for (let i = 0; i < stationRange.length - 1; i++) {
+      const currentStation = stationRange[i];
+      const nextStation = stationRange[i + 1];
+      
+      // Find track between these stations (in either direction)
+      const track = tracks.find(t => 
+        (t.station1ID === currentStation && t.station2ID === nextStation) ||
+        (t.station2ID === currentStation && t.station1ID === nextStation)
+      );
+      
+      if (track) {
+        totalDistance += track.distance;
+      }
+    }
+
+    return totalDistance;
   };
 
   // Calculate return date based on distance
@@ -108,6 +145,12 @@ const Buy_Ticket = () => {
     const days = Math.ceil((distance / 500) * 5); // 1 day per 500km
     date.setDate(date.getDate() + days);
     return date.toISOString().split('T')[0];
+  };
+
+  const isTimeAfter = (time1, time2) => {
+    const [h1, m1, s1] = time1.split(':').map(Number);
+    const [h2, m2, s2] = time2.split(':').map(Number);
+    return h1 > h2 || (h1 === h2 && (m1 > m2 || (m1 === m2 && s1 > s2)));
   };
 
   // Search trains with date correction for overnight journeys
@@ -145,44 +188,73 @@ const Buy_Ticket = () => {
 
       if (result.success) {
         const distance = calculateDistance(fromId, toId);
-        const currentDatePerSchedule = {};
-        const lastDepartureTimePerSchedule = {};
-
+        
+        // Create maps to track dates and times
         const transformedTrains = result.data.map(train => {
           const scheduleID = train['Train Name'];
-          const departureTime = new Date(`2000-01-01T${train['Departure Time']}`);
-          const arrivalTime = new Date(`2000-01-01T${train['Arrival Time']}`);
+          const baseDate = new Date(departureDate);
+          const stationDates = new Map(); // stationID -> date
+          const lastDepartureTimeMap = new Map(); // For comparing time shifts per train
+          const journeyPoints = Object.entries(train.journey || {})
+            .sort(([a], [b]) => parseInt(a) - parseInt(b))
+            .map(([_, station]) => ({
+              stationId: station.stationID,
+              arrivalTime: station.arrivalTime,
+              departureTime: station.departureTime
+            }));
 
-          if (!currentDatePerSchedule[scheduleID]) {
-            currentDatePerSchedule[scheduleID] = new Date(departureDate);
-          }
+          let currentDate = new Date(baseDate);
 
-          let adjustedArrivalDate = new Date(currentDatePerSchedule[scheduleID]);
-          if (arrivalTime < departureTime) {
-            adjustedArrivalDate.setDate(adjustedArrivalDate.getDate() + 1);
-          }
+          journeyPoints.forEach((point, index) => {
+            const { stationId, departureTime } = point;
 
-          let duration = (arrivalTime - departureTime) / (1000 * 60 * 60);
-          if (duration < 0) {
-            duration += 24;
-          }
+            // Parse current and last departure times
+            const currentTimeParts = departureTime.split(':').map(Number);
+            const currentMinutes = currentTimeParts[0] * 60 + currentTimeParts[1];
 
-          lastDepartureTimePerSchedule[scheduleID] = departureTime;
-          const returnDate = calculateReturnDate(adjustedArrivalDate.toISOString().split('T')[0], distance);
+            const lastTime = lastDepartureTimeMap.get(scheduleID);
+            if (lastTime !== undefined && currentMinutes < lastTime) {
+              // Time is earlier than the previous one — next day
+              currentDate.setDate(currentDate.getDate() + 1);
+            }
+
+            // Update map and time tracker
+            stationDates.set(stationId, new Date(currentDate));
+            lastDepartureTimeMap.set(scheduleID, currentMinutes);
+          });
+
+          // Final transformation
+          const departureStationDate = stationDates.get(fromId) || baseDate;
+          const arrivalStationDate = stationDates.get(toId) || baseDate;
 
           return {
             id: scheduleID,
             direction: calculateDirection(fromId, toId),
             startTime: train['Departure Time'],
             endTime: train['Arrival Time'],
-            duration: Math.round(duration),
-            distance,
-            returnDate,
-            departureDate: currentDatePerSchedule[scheduleID].toISOString().split('T')[0],
-            arrivalDate: adjustedArrivalDate.toISOString().split('T')[0],
+            duration: calculateDuration(
+              `${departureStationDate.toISOString().split('T')[0]}T${train['Departure Time']}`,
+              `${arrivalStationDate.toISOString().split('T')[0]}T${train['Arrival Time']}`
+            ),
+            distance: calculateDistance(fromId, toId),
+            departureDate: departureStationDate.toISOString().split('T')[0],
+            arrivalDate: arrivalStationDate.toISOString().split('T')[0],
+            returnDate: calculateReturnDate(arrivalStationDate.toISOString().split('T')[0], calculateDistance(fromId, toId)),
             availableCapacity: train['Available Capacity'],
+            stationDates: Object.fromEntries([...stationDates].map(([id, date]) => [
+              id,
+              date.toISOString().split('T')[0]
+            ])),
+            journey: journeyPoints.reduce((acc, point) => ({
+              ...acc,
+              [point.stationId]: {
+                ...point,
+                date: stationDates.get(point.stationId).toISOString().split('T')[0]
+              }
+            }), {})
           };
         });
+
 
         setAvailableTrains(transformedTrains);
 
@@ -200,6 +272,13 @@ const Buy_Ticket = () => {
     }
   };
 
+  const calculateDuration = (startDateTime, endDateTime) => {
+    const start = new Date(startDateTime);
+    const end = new Date(endDateTime);
+    let duration = (end - start) / (1000 * 60 * 60); // Convert to hours
+    if (duration < 0) duration += 24;
+    return Math.round(duration);
+  };
   // Calculate direction based on station indices
   const calculateDirection = (fromId, toId) => {
     const fromIndex = stations.findIndex(s => (s.id || s.stationID) === fromId);
@@ -210,23 +289,10 @@ const Buy_Ticket = () => {
   // Handle form input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => {
-      const newData = { ...prev, [name]: value };
-
-      if ((name === 'from' || name === 'to') && newData.from && newData.to && newData.from !== newData.to) {
-        const distance = calculateDistance(newData.from, newData.to);
-        if (newData.departureDate) {
-          newData.returnDate = calculateReturnDate(newData.departureDate, distance);
-        }
-      }
-
-      if (name === 'departureDate' && newData.from && newData.to) {
-        const distance = calculateDistance(newData.from, newData.to);
-        newData.returnDate = calculateReturnDate(value, distance);
-      }
-
-      return newData;
-    });
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   // Train and coach selection handlers
@@ -562,8 +628,10 @@ const Buy_Ticket = () => {
                   type="date"
                   name="returnDate"
                   value={formData.returnDate}
-                  disabled
-                  className="field-input disabled"
+                  onChange={handleInputChange}
+                  min={formData.departureDate || today}
+                  className="field-input"
+                  required
                 />
                 <p className="text-xs mt-1">The return date is automatically calculated based on the distance</p>
               </div>
@@ -627,10 +695,12 @@ const Buy_Ticket = () => {
                       <div>
                         <div className="font-semibold text-lg">{formatTime(train.startTime)}</div>
                         <div className="text-gray-500">
-                          {new Date(train.departureDate).toLocaleDateString('vi-VN')} -{' '}
-                          {formData.from &&
-                            (stations.find(s => (s.id || s.stationID) === formData.from)?.name ||
-                             stations.find(s => (s.id || s.stationID) === formData.from)?.stationName)}
+                          {train.journey && train.journey[formData.from] ? 
+                            new Date(train.journey[formData.from].date).toLocaleDateString('vi-VN') 
+                            : new Date(train.departureDate).toLocaleDateString('vi-VN')} - {' '}
+                          {formData.from && stations.find(s => 
+                            (s.id || s.stationID) === parseInt(formData.from)
+                          )?.stationName || 'Loading...'}
                         </div>
                       </div>
                       <div className="flex flex-col items-center justify-center px-4">
@@ -641,10 +711,12 @@ const Buy_Ticket = () => {
                       <div>
                         <div className="font-semibold text-lg">{formatTime(train.endTime)}</div>
                         <div className="text-gray-500">
-                          {new Date(train.arrivalDate).toLocaleDateString('vi-VN')} -{' '}
-                          {formData.to &&
-                            (stations.find(s => (s.id || s.stationID) === formData.to)?.name ||
-                             stations.find(s => (s.id || s.stationID) === formData.to)?.stationName)}
+                          {train.journey && train.journey[formData.to] ?
+                            new Date(train.journey[formData.to].date).toLocaleDateString('vi-VN')
+                            : new Date(train.arrivalDate).toLocaleDateString('vi-VN')} - {' '}
+                          {formData.to && stations.find(s => 
+                            (s.id || s.stationID) === parseInt(formData.to)
+                          )?.stationName || 'Loading...'}
                         </div>
                       </div>
                     </div>
