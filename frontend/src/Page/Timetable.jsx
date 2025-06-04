@@ -467,17 +467,19 @@ const Timetable = () => {
             required
           />
         </div>
-
-        <div className="form-group">
-          <button
-            type="submit"
-            className="search-button"
-            disabled={loading}
-          >
-            {loading ? 'Searching...' : 'Find Trains'}
-          </button>
-        </div>
       </form>
+      
+      {/* Move button outside form and below the form fields */}
+      <div className="form-group" style={{ marginTop: '20px' }}>
+        <button
+          type="button"
+          className="search-button"
+          disabled={loading}
+          onClick={searchTrains}
+        >
+          {loading ? 'Searching...' : 'Find Trains'}
+        </button>
+      </div>
     </div>
   );
 
