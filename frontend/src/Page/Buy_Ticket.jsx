@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Seat from '../ui/models/Seat';
 import Bed from '../ui/models/Bed';
 import '../styles/buy_ticket.css';
@@ -9,11 +10,13 @@ import trackService from '../data/Service/trackService';
 import timetableService from '../data/Service/timetableService';
 import coachTypeService from '../data/Service/coachTypeService';
 import coachService from '../data/Service/coachService';
+import Checkout from './Checkout';
 
 // Set primary color
 document.documentElement.style.setProperty('--primary-color', '#2563eb');
 
 const Buy_Ticket = () => {
+  const navigate = useNavigate();
   // Form state for search inputs
   const [formData, setFormData] = useState({
     from: '',
@@ -884,7 +887,9 @@ const Buy_Ticket = () => {
             <span>Total:</span>
             <span className="font-semibold">{formatCurrency(calculateTotalPrice())}</span>
           </div>
-          <button className="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+          <button 
+          onClick={handleProceedToCheckout}
+          className="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
             Continue
           </button>
         </div>
@@ -899,536 +904,631 @@ const Buy_Ticket = () => {
     }
   };
 
+  // Add new state at the top with other states
+  const [showCheckout, setShowCheckout] = useState(false);
+
+  // Add state for checkout data
+  const [checkoutData, setCheckoutData] = useState(null);
+
+  // Add this function to handle checkout navigation
+  const handleProceedToCheckout = () => {
+  if (selectedItems.length === 0 && selectedReturnItems.length === 0) {
+    return;
+  }
+  
+  // Find station details using the same pattern as searchJourneyTrains
+  const fromStation = stations.find(s => (s.id || s.stationID) === parseInt(formData.from));
+  const toStation = stations.find(s => (s.id || s.stationID) === parseInt(formData.to));
+  
+  if (!fromStation || !toStation) {
+    console.error('Station not found:', { from: formData.from, to: formData.to });
+    return;
+  }
+
+  // Get station names using the same pattern
+  const fromStationName = fromStation.stationName || fromStation.name;
+  const toStationName = toStation.stationName || toStation.name;
+  
+  const checkoutData = {
+    train: selectedTrain,
+    coach: selectedCoach,
+    from: formData.from,
+    to: formData.to,
+    // Use the station names directly
+    fromName: fromStationName,
+    toName: toStationName,
+    departureDate: formData.departureDate,
+    tripType: formData.tripType,
+    selectedItems: selectedItems,
+    totalPrice: calculateTotalPrice(),
+    distance: calculateDistance(parseInt(formData.from), parseInt(formData.to))
+  };
+
+  if (formData.tripType === 'round-trip') {
+    checkoutData.returnTrain = selectedReturnTrain;
+    checkoutData.returnCoach = selectedReturnCoach;
+    checkoutData.returnDate = formData.returnDate;
+    checkoutData.returnItems = selectedReturnItems;
+  }
+
+  // Debug log to verify data
+  console.log('Checkout Data:', {
+    ...checkoutData,
+    fromStation: fromStationName,
+    toStation: toStationName
+  });
+
+  // Store checkout data in localStorage
+  localStorage.setItem('checkoutData', JSON.stringify(checkoutData));
+
+  // Navigate to checkout page
+  navigate('/checkout');
+};
+
+  // Add handler for returning from checkout
+  const handleBackFromCheckout = () => {
+    setShowCheckout(false);
+  };
+
+  // Add handler for completing checkout
+  const handleCheckoutComplete = (bookingResult) => {
+    // Handle successful booking
+    console.log('Booking completed:', bookingResult);
+    // You can redirect to a confirmation page or show a success message
+  };
+
   return (
-    <div className="booking-container bg-[#f0f7ff]">
-      <div className="bg-white shadow-lg booking-content">
-        {/* Search Form */}
-        <div className="p-6 bg-gradient-to-r bg-white text-blue-600">
-          <h1 className="page-title mb-4">Book North-South Railway Tickets</h1>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Trip Type */}
-            <div className="col-span-1 md:col-span-2 lg:col-span-3">
-              <div className="flex gap-4">
-                <label className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    name="tripType"
-                    value="one-way"
-                    checked={formData.tripType === 'one-way'}
-                    onChange={handleInputChange}
-                    className="radio-input"
-                  />
-                  <span className="ml-2">One-trip</span>
-                </label>
-                <label className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    name="tripType"
-                    value="round-trip"
-                    checked={formData.tripType === 'round-trip'}
-                    onChange={handleInputChange}
-                    className="radio-input"
-                  />
-                  <span className="ml-2">Round-trip</span>
-                </label>
-              </div>
-            </div>
-            {/* From Station */}
-            <div>
-              <label className="form-field">Departure Station</label>
-              <select
-                name="from"
-                value={formData.from}
-                onChange={handleInputChange}
-                className="field-select"
-                disabled={loadingStations}
-                required
-              >
-                <option value="">{loadingStations ? 'Loading stations...' : 'Select departure station'}</option>
-                {stations.map(station => (
-                  <option key={station.id || station.stationID} value={station.id || station.stationID}>
-                    {station.name || station.stationName}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {/* To Station */}
-            <div>
-              <label className="form-field">Arrival Station</label>
-              <select
-                name="to"
-                value={formData.to}
-                onChange={handleInputChange}
-                className="field-select"
-                disabled={loadingStations}
-                required
-              >
-                <option value="">{loadingStations ? 'Loading stations...' : 'Select arrival station'}</option>
-                {stations.map(station => (
-                  <option key={station.id || station.stationID} value={station.id || station.stationID}>
-                    {station.name || station.stationName}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {/* Departure Date */}
-            <div>
-              <label className="form-field">Departure Date</label>
-              <input
-                type="date"
-                name="departureDate"
-                value={formData.departureDate}
-                onChange={handleInputChange}
-                min={today}
-                className="field-input"
-                required
-              />
-            </div>
-            {/* Return Date */}
-            {formData.tripType === 'round-trip' && (
-              <div>
-                <label className="form-field">Return Date</label>
-                <input
-                  type="date"
-                  name="returnDate"
-                  value={formData.returnDate}
-                  onChange={handleInputChange}
-                  min={formData.departureDate || today}
-                  className="field-input"
-                  required
-                />
-          
-              </div>
-            )}
-            {/* Departure Time */}
-            <div>
-              <label className="form-field">Departure Time</label>
-              <input
-                type="time"
-                name="departureTime"
-                value={formData.departureTime}
-                onChange={handleInputChange}
-                className="field-input"
-                required
-              />
-            </div>
-            {/* Search Button */}
-            <div className="flex items-end">
-              <button
-                onClick={searchTrains}
-                className="search-button"
-                disabled={!formData.from || !formData.to || !formData.departureDate || !formData.departureTime || loadingTrains}
-              >
-                {loadingTrains ? 'Searching...' : 'Find Train'}
-              </button>
-            </div>
-            {/* Error Display */}
-            {trainSearchError && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-                {trainSearchError}
-              </div>
-            )}
-          </div>
-        </div>
-        {/* Available Trains */}
-        {showSearchResults && (
-          <div className="p-6 border-t border-gray-200">
-            <h2 className="text-xl font-semibold mb-4">Available Trains</h2>
-            {loadingTrains ? (
-              <div className="text-center py-8">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="mt-2 text-gray-600">Searching for trains...</p>
-              </div>
-            ) : availableTrains.length > 0 ? (
-              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                {availableTrains.map(train => (
-                  <div
-                    key={train.id}
-                    className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
-                      selectedTrain?.id === train.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                    }`}
-                    onClick={() => handleSelectTrain(train)}
-                  >
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="font-bold text-lg">{train.id}</h3>
-                      <span className="text-sm bg-blue-100 text-blue-800 py-1 px-2 rounded-full">
-                        {train.direction}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <div>
-                        <div className="font-semibold text-lg">{formatTime(train.startTime)}</div>
-                        <div className="text-gray-500">
-                          {train.journey && train.journey[formData.from] ? 
-                            new Date(train.journey[formData.from].date).toLocaleDateString('vi-VN') 
-                            : new Date(train.departureDate).toLocaleDateString('vi-VN')} - {' '}
-                          {formData.from && stations.find(s => 
-                            (s.id || s.stationID) === parseInt(formData.from)
-                          )?.stationName || 'Loading...'}
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-center justify-center px-4">
-                        <div className="text-gray-500 text-xs">{train.duration}h</div>
-                        <div className="w-20 h-px bg-gray-300 my-1"></div>
-                        <div className="text-gray-500 text-xs">{train.distance}km</div>
-                      </div>
-                      <div>
-                        <div className="font-semibold text-lg">{formatTime(train.endTime)}</div>
-                        <div className="text-gray-500">
-                          {train.journey && train.journey[formData.to] ?
-                            new Date(train.journey[formData.to].date).toLocaleDateString('vi-VN')
-                            : new Date(train.arrivalDate).toLocaleDateString('vi-VN')} - {' '}
-                          {formData.to && stations.find(s => 
-                            (s.id || s.stationID) === parseInt(formData.to)
-                          )?.stationName || 'Loading...'}
-                        </div>
-                      </div>
-                    </div>
-                    
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-600">No trains found for the selected criteria</div>
-            )}
-          </div>
-        )}
-        {/* Select Coach */}
-        {selectedTrain && (
-          <div className="p-6 border-t border-gray-200">
-            <h2 className="text-xl font-semibold mb-4">Select Coach</h2>
-            {loadingCoaches ? (
-              <div className="text-center py-4">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="mt-2 text-gray-600">Loading coaches...</p>
-              </div>
-            ) : (
-              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
-                {trainCoaches.map((coach, index) => (
-                  <div
-                    key={`${coach.coachID}-${index}`}
-                    className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${
-                      selectedCoach?.coachID === coach.coachID ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                    }`}
-                    onClick={() => handleSelectCoach(coach)}
-                  >
-                    <h3 className="font-medium">Coach {coach.coachID}</h3>
-                    <div className="text-sm text-gray-600">{coach.name}</div>
-                    <div className="mt-2 font-semibold text-blue-600">
-                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(coach.price)}
-                    </div>
-                    <div className="mt-1 text-sm text-gray-500">
-                      {coach.type === 'seat' ? 'Seater' : 'Sleeper'} - {coach.capacity} seats
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        {/* Seat/Bed Selection */}
-        {selectedCoach && (
-          <div className="p-6 border-t border-gray-200">
-            <h2 className="text-xl font-semibold mb-4">Choose Your Seat</h2>
-            <div className="bg-gray-100 rounded-lg p-4">
-              <div className="seat-selection-container">{renderSeatsOrBeds()}</div>
-            </div>
-          </div>
-        )}
-
-        {/* Return Journey Section */}
-        {formData.tripType === 'round-trip' && showSearchResults && (
-          <div className="p-6 border-t border-gray-200">
-            <h2 className="text-xl font-semibold mb-4">Return Journey</h2>
-            {loadingReturnTrains ? (
-              <div className="text-center py-8">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="mt-2 text-gray-600">Searching for return trains...</p>
-              </div>
-            ) : returnTrains.length > 0 ? (
-              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                {returnTrains.map(train => (
-                  <div
-                    key={train.id}
-                    className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
-                      selectedReturnTrain?.id === train.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                    }`}
-                    onClick={() => handleSelectTrain(train, true)}
-                  >
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="font-bold text-lg">{train.id}</h3>
-                      <span className="text-sm bg-blue-100 text-blue-800 py-1 px-2 rounded-full">
-                        {train.direction}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <div>
-                        <div className="font-semibold text-lg">{formatTime(train.startTime)}</div>
-                        <div className="text-gray-500">
-                          {train.journey && train.journey[formData.to] ? 
-                            new Date(train.journey[formData.to].date).toLocaleDateString('vi-VN') 
-                            : new Date(train.departureDate).toLocaleDateString('vi-VN')} - {' '}
-                          {formData.to && stations.find(s => 
-                            (s.id || s.stationID) === parseInt(formData.to)
-                          )?.stationName || 'Loading...'}
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-center justify-center px-4">
-                        <div className="text-gray-500 text-xs">{train.duration}h</div>
-                        <div className="w-20 h-px bg-gray-300 my-1"></div>
-                        <div className="text-gray-500 text-xs">{train.distance}km</div>
-                      </div>
-                      <div>
-                        <div className="font-semibold text-lg">{formatTime(train.endTime)}</div>
-                        <div className="text-gray-500">
-                          {train.journey && train.journey[formData.from] ?
-                            new Date(train.journey[formData.from].date).toLocaleDateString('vi-VN')
-                            : new Date(train.arrivalDate).toLocaleDateString('vi-VN')} - {' '}
-                          {formData.from && stations.find(s => 
-                            (s.id || s.stationID) === parseInt(formData.from)
-                          )?.stationName || 'Loading...'}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-600">No return trains found</div>
-            )}
-          </div>
-        )}
-
-        {/* Return Coach Selection */}
-        {selectedReturnTrain && formData.tripType === 'round-trip' && (
-          <div className="p-6 border-t border-gray-200">
-            <h2 className="text-xl font-semibold mb-4">Select Return Coach</h2>
-            {loadingCoaches ? (
-              <div className="text-center py-4">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="mt-2 text-gray-600">Loading coaches...</p>
-              </div>
-            ) : (
-              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
-                {returnTrainCoaches.map((coach, index) => (
-                  <div
-                    key={`${coach.coachID}-${index}`}
-                    className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${
-                      selectedReturnCoach?.coachID === coach.coachID ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                    }`}
-                    onClick={() => handleSelectCoach(coach, true)}
-                  >
-                    <h3 className="font-medium">Coach {coach.coachID}</h3>
-                    <div className="text-sm text-gray-600">{coach.name}</div>
-                    <div className="mt-2 font-semibold text-blue-600">
-                      {formatCurrency(coach.price)}
-                    </div>
-                    <div className="mt-1 text-sm text-gray-500">
-                      {coach.type === 'seat' ? 'Seater' : 'Sleeper'} - {coach.capacity} seats
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-      {renderSelectionPanel()}
-      {/* Return Journey Seat/Bed Selection */}
-      {selectedReturnCoach && formData.tripType === 'round-trip' && (
-        <div className="p-6 border-t border-gray-200 bg-white shadow-lg"> {/* Added bg-white and shadow-lg */}
-          <h2 className="text-xl font-semibold mb-4">Choose Your Return Seat</h2>
-          <div className="bg-gray-100 rounded-lg p-4">
-            <div className="seat-selection-container">
-              {selectedReturnCoach.type === 'seat' 
-                ? renderRegularCoach(selectedReturnCoach, true) 
-                : renderSleeperCoach(selectedReturnCoach, true)}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Combined Booking Information at the bottom */}
-      {(selectedItems.length > 0 || selectedReturnItems.length > 0) && (
-        <div className="p-6 border-t border-gray-200 bg-white shadow-lg mt-4">
-          <h2 className="text-xl font-semibold mb-4">Booking Information</h2>
-          
-          {/* Group outbound items by coach */}
-          {Array.from(new Set(selectedItems.map(item => item.coachId))).map(coachId => {
-            const coach = trainCoaches.find(c => c.coachID === coachId);
-            const itemsForCoach = selectedItems.filter(item => item.coachId === coachId);
-            
-            return coach && itemsForCoach.length > 0 && (
-              <div key={`outbound-${coachId}`} className="mb-6 p-4 border border-gray-200 rounded-lg">
-                <h3 className="font-semibold text-lg mb-2">Outbound Journey - Coach {coachId}</h3>
-                <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-                  <div>
-                    <div className="mb-4">
-                      <h4 className="font-medium text-gray-700">Train Details</h4>
-                      <p className="text-sm text-gray-600">Train Number: {selectedTrain.id}</p>
-                      <p className="text-sm text-gray-600">Direction: {selectedTrain.direction}</p>
-                      <p className="text-sm text-gray-600">
-                        Route: {stations.find(s => (s.id || s.stationID) === parseInt(formData.from))?.stationName} →{' '}
-                        {stations.find(s => (s.id || s.stationID) === parseInt(formData.to))?.stationName}
-                      </p>
-                    </div>
-                    <div className="mb-4">
-                      <h4 className="font-medium text-gray-700">Schedule</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-gray-500">Departure</p>
-                          <p className="text-sm text-gray-600">{new Date(selectedTrain.departureDate).toLocaleDateString('vi-VN')}</p>
-                          <p className="text-sm font-medium">{formatTime(selectedTrain.startTime)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Arrival</p>
-                          <p className="text-sm text-gray-600">{new Date(selectedTrain.arrivalDate).toLocaleDateString('vi-VN')}</p>
-                          <p className="text-sm font-medium">{formatTime(selectedTrain.endTime)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="mb-4">
-                      <h4 className="font-medium text-gray-700">Coach & Seat Details</h4>
-                      <p className="text-sm text-gray-600">Coach: #{coach.coachID} - {coach.name}</p>
-                      <p className="text-sm text-gray-600">Type: {coach.type === 'seat' ? 'Seater Coach' : 'Sleeper Coach'}</p>
-                      <p className="text-sm text-gray-600">Price per {coach.type}: {formatCurrency(coach.price)}</p>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-700">Selected {coach.type === 'seat' ? 'Seats' : 'Beds'}</h4>
-                      <div className="mt-2 space-y-2">
-                        {itemsForCoach.map(item => {
-                          const itemNumber = item.col * coach.rows + item.row + 1;
-                          return (
-                            <div key={item.key} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                              <div>
-                                <span className="text-sm font-medium">
-                                  {coach.type === 'seat' ? 'Seat' : 'Bed'} #{itemNumber}
-                                </span>
-                                <span className="text-xs text-gray-500 ml-2">
-                                  (Row {item.row + 1}, Column {item.col + 1})
-                                </span>
-                              </div>
-                              <span className="text-sm text-blue-600">{formatCurrency(item.price)}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <div className="mt-3 pt-3 border-t border-gray-200">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">
-                            Subtotal ({itemsForCoach.length} {coach.type}s)
-                          </span>
-                          <span className="font-medium">
-                            {formatCurrency(itemsForCoach.reduce((sum, item) => sum + item.price, 0))}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+    <>
+      {showCheckout ? (
+        <Checkout 
+          bookingData={checkoutData}
+          onBack={handleBackFromCheckout}
+          onComplete={handleCheckoutComplete}
+        />
+      ) : (
+        <div className="booking-container bg-[#f0f7ff]">
+          <div className="bg-white shadow-lg booking-content">
+            {/* Search Form */}
+            <div className="p-6 bg-gradient-to-r bg-white text-blue-600">
+              <h1 className="page-title mb-4">Book North-South Railway Tickets</h1>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Trip Type */}
+                <div className="col-span-1 md:col-span-2 lg:col-span-3">
+                  <div className="flex gap-4">
+                    <label className="inline-flex items-center">
+                      <input
+                        type="radio"
+                        name="tripType"
+                        value="one-way"
+                        checked={formData.tripType === 'one-way'}
+                        onChange={handleInputChange}
+                        className="radio-input"
+                      />
+                      <span className="ml-2">One-trip</span>
+                    </label>
+                    <label className="inline-flex items-center">
+                      <input
+                        type="radio"
+                        name="tripType"
+                        value="round-trip"
+                        checked={formData.tripType === 'round-trip'}
+                        onChange={handleInputChange}
+                        className="radio-input"
+                      />
+                      <span className="ml-2">Round-trip</span>
+                    </label>
                   </div>
                 </div>
+                {/* From Station */}
+                <div>
+                  <label className="form-field">Departure Station</label>
+                  <select
+                    name="from"
+                    value={formData.from}
+                    onChange={handleInputChange}
+                    className="field-select"
+                    disabled={loadingStations}
+                    required
+                  >
+                    <option value="">{loadingStations ? 'Loading stations...' : 'Select departure station'}</option>
+                    {stations.map(station => (
+                      <option key={station.id || station.stationID} value={station.id || station.stationID}>
+                        {station.name || station.stationName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {/* To Station */}
+                <div>
+                  <label className="form-field">Arrival Station</label>
+                  <select
+                    name="to"
+                    value={formData.to}
+                    onChange={handleInputChange}
+                    className="field-select"
+                    disabled={loadingStations}
+                    required
+                  >
+                    <option value="">{loadingStations ? 'Loading stations...' : 'Select arrival station'}</option>
+                    {stations.map(station => (
+                      <option key={station.id || station.stationID} value={station.id || station.stationID}>
+                        {station.name || station.stationName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {/* Departure Date */}
+                <div>
+                  <label className="form-field">Departure Date</label>
+                  <input
+                    type="date"
+                    name="departureDate"
+                    value={formData.departureDate}
+                    onChange={handleInputChange}
+                    min={today}
+                    className="field-input"
+                    required
+                  />
+                </div>
+                {/* Return Date */}
+                {formData.tripType === 'round-trip' && (
+                  <div>
+                    <label className="form-field">Return Date</label>
+                    <input
+                      type="date"
+                      name="returnDate"
+                      value={formData.returnDate}
+                      onChange={handleInputChange}
+                      min={formData.departureDate || today}
+                      className="field-input"
+                      required
+                    />
+              
+                  </div>
+                )}
+                {/* Departure Time */}
+                <div>
+                  <label className="form-field">Departure Time</label>
+                  <input
+                    type="time"
+                    name="departureTime"
+                    value={formData.departureTime}
+                    onChange={handleInputChange}
+                    className="field-input"
+                    required
+                  />
+                </div>
+                {/* Search Button */}
+                <div className="flex items-end">
+                  <button
+                    onClick={searchTrains}
+                    className="search-button"
+                    disabled={!formData.from || !formData.to || !formData.departureDate || !formData.departureTime || loadingTrains}
+                  >
+                    {loadingTrains ? 'Searching...' : 'Find Train'}
+                  </button>
+                </div>
+                {/* Error Display */}
+                {trainSearchError && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+                    {trainSearchError}
+                  </div>
+                )}
               </div>
-            );
-          })}
-
-          {/* Return Journey Information - Similar structure as outbound */}
-          {Array.from(new Set(selectedReturnItems.map(item => item.coachId))).map(coachId => {
-            const coach = returnTrainCoaches.find(c => c.coachID === coachId);
-            const itemsForCoach = selectedReturnItems.filter(item => item.coachId === coachId);
-            
-            return coach && itemsForCoach.length > 0 && (
-              <div key={`return-${coachId}`} className="mb-6 p-4 border border-gray-200 rounded-lg">
-                <h3 className="font-semibold text-lg mb-2">Return Journey - Coach {coachId}</h3>
-                <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-                  <div>
-                    <div className="mb-4">
-                      <h4 className="font-medium text-gray-700">Train Details</h4>
-                      <p className="text-sm text-gray-600">Train Number: {selectedReturnTrain.id}</p>
-                      <p className="text-sm text-gray-600">Direction: {selectedReturnTrain.direction}</p>
-                      <p className="text-sm text-gray-600">
-                        Route: {stations.find(s => (s.id || s.stationID) === parseInt(formData.to))?.stationName} →{' '}
-                        {stations.find(s => (s.id || s.stationID) === parseInt(formData.from))?.stationName}
-                      </p>
-                    </div>
-                    <div className="mb-4">
-                      <h4 className="font-medium text-gray-700">Schedule</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-gray-500">Departure</p>
-                          <p className="text-sm text-gray-600">{new Date(selectedReturnTrain.departureDate).toLocaleDateString('vi-VN')}</p>
-                          <p className="text-sm font-medium">{formatTime(selectedReturnTrain.startTime)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500">Arrival</p>
-                          <p className="text-sm text-gray-600">{new Date(selectedReturnTrain.arrivalDate).toLocaleDateString('vi-VN')}</p>
-                          <p className="text-sm font-medium">{formatTime(selectedReturnTrain.endTime)}</p>
-                        </div>
-                      </div>
-                    </div>
+            </div>
+            {/* Available Trains */}
+            {showSearchResults && (
+              <div className="p-6 border-t border-gray-200">
+                <h2 className="text-xl font-semibold mb-4">Available Trains</h2>
+                {loadingTrains ? (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <p className="mt-2 text-gray-600">Searching for trains...</p>
                   </div>
-                  <div>
-                    <div className="mb-4">
-                      <h4 className="font-medium text-gray-700">Coach & Seat Details</h4>
-                      <p className="text-sm text-gray-600">Coach: #{coach.coachID} - {coach.name}</p>
-                      <p className="text-sm text-gray-600">Type: {coach.type === 'seat' ? 'Seater Coach' : 'Sleeper Coach'}</p>
-                      <p className="text-sm text-gray-600">Price per {coach.type}: {formatCurrency(coach.price)}</p>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-700">Selected {coach.type === 'seat' ? 'Seats' : 'Beds'}</h4>
-                      <div className="mt-2 space-y-2">
-                        {itemsForCoach.map(item => {
-                          const itemNumber = item.col * coach.rows + item.row + 1;
-                          return (
-                            <div key={item.key} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                              <div>
-                                <span className="text-sm font-medium">
-                                  {coach.type === 'seat' ? 'Seat' : 'Bed'} #{itemNumber}
-                                </span>
-                                <span className="text-xs text-gray-500 ml-2">
-                                  (Row {item.row + 1}, Column {item.col + 1})
-                                </span>
-                              </div>
-                              <span className="text-sm text-blue-600">{formatCurrency(item.price)}</span>
+                ) : availableTrains.length > 0 ? (
+                  <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                    {availableTrains.map(train => (
+                      <div
+                        key={train.id}
+                        className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
+                          selectedTrain?.id === train.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                        }`}
+                        onClick={() => handleSelectTrain(train)}
+                      >
+                        <div className="flex justify-between items-center mb-2">
+                          <h3 className="font-bold text-lg">{train.id}</h3>
+                          <span className="text-sm bg-blue-100 text-blue-800 py-1 px-2 rounded-full">
+                            {train.direction}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm mb-2">
+                          <div>
+                            <div className="font-semibold text-lg">{formatTime(train.startTime)}</div>
+                            <div className="text-gray-500">
+                              {train.journey && train.journey[formData.from] ? 
+                                new Date(train.journey[formData.from].date).toLocaleDateString('vi-VN') 
+                                : new Date(train.departureDate).toLocaleDateString('vi-VN')} - {' '}
+                              {formData.from && stations.find(s => 
+                                (s.id || s.stationID) === parseInt(formData.from)
+                              )?.stationName || 'Loading...'}
                             </div>
-                          );
-                        })}
+                          </div>
+                          <div className="flex flex-col items-center justify-center px-4">
+                            <div className="text-gray-500 text-xs">{train.duration}h</div>
+                            <div className="w-20 h-px bg-gray-300 my-1"></div>
+                            <div className="text-gray-500 text-xs">{train.distance}km</div>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-lg">{formatTime(train.endTime)}</div>
+                            <div className="text-gray-500">
+                              {train.journey && train.journey[formData.to] ?
+                                new Date(train.journey[formData.to].date).toLocaleDateString('vi-VN')
+                                : new Date(train.arrivalDate).toLocaleDateString('vi-VN')} - {' '}
+                              {formData.to && stations.find(s => 
+                                (s.id || s.stationID) === parseInt(formData.to)
+                              )?.stationName || 'Loading...'}
+                            </div>
+                          </div>
+                        </div>
+                        
                       </div>
-                      <div className="mt-3 pt-3 border-t border-gray-200">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">
-                            Subtotal ({itemsForCoach.length} {coach.type}s)
-                          </span>
-                          <span className="font-medium">
-                            {formatCurrency(itemsForCoach.reduce((sum, item) => sum + item.price, 0))}
-                          </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-600">No trains found for the selected criteria</div>
+                )}
+              </div>
+            )}
+            {/* Select Coach */}
+            {selectedTrain && (
+              <div className="p-6 border-t border-gray-200">
+                <h2 className="text-xl font-semibold mb-4">Select Coach</h2>
+                {loadingCoaches ? (
+                  <div className="text-center py-4">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <p className="mt-2 text-gray-600">Loading coaches...</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+                    {trainCoaches.map((coach, index) => (
+                      <div
+                        key={`${coach.coachID}-${index}`}
+                        className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${
+                          selectedCoach?.coachID === coach.coachID ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                        }`}
+                        onClick={() => handleSelectCoach(coach)}
+                      >
+                        <h3 className="font-medium">Coach {coach.coachID}</h3>
+                        <div className="text-sm text-gray-600">{coach.name}</div>
+                        <div className="mt-2 font-semibold text-blue-600">
+                          {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(coach.price)}
+                        </div>
+                        <div className="mt-1 text-sm text-gray-500">
+                          {coach.type === 'seat' ? 'Seater' : 'Sleeper'} - {coach.capacity} seats
                         </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
+                )}
+              </div>
+            )}
+            {/* Seat/Bed Selection */}
+            {selectedCoach && (
+              <div className="p-6 border-t border-gray-200">
+                <h2 className="text-xl font-semibold mb-4">Choose Your Seat</h2>
+                <div className="bg-gray-100 rounded-lg p-4">
+                  <div className="seat-selection-container">{renderSeatsOrBeds()}</div>
                 </div>
               </div>
-            );
-          })}
+            )}
 
-          {/* Total Price and Continue Button */}
-          <div className="flex flex-col sm:flex-row justify-between items-center mt-4 pt-4 border-t border-gray-200">
-            <div className="mb-4 sm:mb-0">
-              <p className="text-sm text-gray-600">Total Tickets: {selectedItems.length + selectedReturnItems.length}</p>
-              <p className="font-semibold text-lg">
-                Total Price: {formatCurrency(calculateTotalPrice())}
-                <span className="text-sm text-gray-500 ml-2">
-                  {formData.tripType === 'round-trip' ? '(Round-trip)' : '(One-way)'}
-                </span>
-              </p>
-            </div>
-            <button className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors">
-              Continue to Payment
-            </button>
+            {/* Return Journey Section */}
+            {formData.tripType === 'round-trip' && showSearchResults && (
+              <div className="p-6 border-t border-gray-200">
+                <h2 className="text-xl font-semibold mb-4">Return Journey</h2>
+                {loadingReturnTrains ? (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <p className="mt-2 text-gray-600">Searching for return trains...</p>
+                  </div>
+                ) : returnTrains.length > 0 ? (
+                  <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                    {returnTrains.map(train => (
+                      <div
+                        key={train.id}
+                        className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
+                          selectedReturnTrain?.id === train.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                        }`}
+                        onClick={() => handleSelectTrain(train, true)}
+                      >
+                        <div className="flex justify-between items-center mb-2">
+                          <h3 className="font-bold text-lg">{train.id}</h3>
+                          <span className="text-sm bg-blue-100 text-blue-800 py-1 px-2 rounded-full">
+                            {train.direction}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm mb-2">
+                          <div>
+                            <div className="font-semibold text-lg">{formatTime(train.startTime)}</div>
+                            <div className="text-gray-500">
+                              {train.journey && train.journey[formData.to] ? 
+                                new Date(train.journey[formData.to].date).toLocaleDateString('vi-VN') 
+                                : new Date(train.departureDate).toLocaleDateString('vi-VN')} - {' '}
+                              {formData.to && stations.find(s => 
+                                (s.id || s.stationID) === parseInt(formData.to)
+                              )?.stationName || 'Loading...'}
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-center justify-center px-4">
+                            <div className="text-gray-500 text-xs">{train.duration}h</div>
+                            <div className="w-20 h-px bg-gray-300 my-1"></div>
+                            <div className="text-gray-500 text-xs">{train.distance}km</div>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-lg">{formatTime(train.endTime)}</div>
+                            <div className="text-gray-500">
+                              {train.journey && train.journey[formData.from] ?
+                                new Date(train.journey[formData.from].date).toLocaleDateString('vi-VN')
+                                : new Date(train.arrivalDate).toLocaleDateString('vi-VN')} - {' '}
+                              {formData.from && stations.find(s => 
+                                (s.id || s.stationID) === parseInt(formData.from)
+                              )?.stationName || 'Loading...'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-600">No return trains found</div>
+                )}
+              </div>
+            )}
+
+            {/* Return Coach Selection */}
+            {selectedReturnTrain && formData.tripType === 'round-trip' && (
+              <div className="p-6 border-t border-gray-200">
+                <h2 className="text-xl font-semibold mb-4">Select Return Coach</h2>
+                {loadingCoaches ? (
+                  <div className="text-center py-4">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <p className="mt-2 text-gray-600">Loading coaches...</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+                    {returnTrainCoaches.map((coach, index) => (
+                      <div
+                        key={`${coach.coachID}-${index}`}
+                        className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${
+                          selectedReturnCoach?.coachID === coach.coachID ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                        }`}
+                        onClick={() => handleSelectCoach(coach, true)}
+                      >
+                        <h3 className="font-medium">Coach {coach.coachID}</h3>
+                        <div className="text-sm text-gray-600">{coach.name}</div>
+                        <div className="mt-2 font-semibold text-blue-600">
+                          {formatCurrency(coach.price)}
+                        </div>
+                        <div className="mt-1 text-sm text-gray-500">
+                          {coach.type === 'seat' ? 'Seater' : 'Sleeper'} - {coach.capacity} seats
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+          {renderSelectionPanel()}
+          {/* Return Journey Seat/Bed Selection */}
+          {selectedReturnCoach && formData.tripType === 'round-trip' && (
+            <div className="p-6 border-t border-gray-200 bg-white shadow-lg"> {/* Added bg-white and shadow-lg */}
+              <h2 className="text-xl font-semibold mb-4">Choose Your Return Seat</h2>
+              <div className="bg-gray-100 rounded-lg p-4">
+                <div className="seat-selection-container">
+                  {selectedReturnCoach.type === 'seat' 
+                    ? renderRegularCoach(selectedReturnCoach, true) 
+                    : renderSleeperCoach(selectedReturnCoach, true)}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Combined Booking Information at the bottom */}
+          {(selectedItems.length > 0 || selectedReturnItems.length > 0) && (
+            <div className="p-6 border-t border-gray-200 bg-white shadow-lg mt-4">
+              <h2 className="text-xl font-semibold mb-4">Booking Information</h2>
+              
+              {/* Group outbound items by coach */}
+              {Array.from(new Set(selectedItems.map(item => item.coachId))).map(coachId => {
+                const coach = trainCoaches.find(c => c.coachID === coachId);
+                const itemsForCoach = selectedItems.filter(item => item.coachId === coachId);
+                
+                return coach && itemsForCoach.length > 0 && (
+                  <div key={`outbound-${coachId}`} className="mb-6 p-4 border border-gray-200 rounded-lg">
+                    <h3 className="font-semibold text-lg mb-2">Outbound Journey - Coach {coachId}</h3>
+                    <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+                      <div>
+                        <div className="mb-4">
+                          <h4 className="font-medium text-gray-700">Train Details</h4>
+                          <p className="text-sm text-gray-600">Train Number: {selectedTrain.id}</p>
+                          <p className="text-sm text-gray-600">Direction: {selectedTrain.direction}</p>
+                          <p className="text-sm text-gray-600">
+                            Route: {stations.find(s => (s.id || s.stationID) === parseInt(formData.from))?.stationName} →{' '}
+                            {stations.find(s => (s.id || s.stationID) === parseInt(formData.to))?.stationName}
+                          </p>
+                        </div>
+                        <div className="mb-4">
+                          <h4 className="font-medium text-gray-700">Schedule</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs text-gray-500">Departure</p>
+                              <p className="text-sm text-gray-600">{new Date(selectedTrain.departureDate).toLocaleDateString('vi-VN')}</p>
+                              <p className="text-sm font-medium">{formatTime(selectedTrain.startTime)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Arrival</p>
+                              <p className="text-sm text-gray-600">{new Date(selectedTrain.arrivalDate).toLocaleDateString('vi-VN')}</p>
+                              <p className="text-sm font-medium">{formatTime(selectedTrain.endTime)}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="mb-4">
+                          <h4 className="font-medium text-gray-700">Coach & Seat Details</h4>
+                          <p className="text-sm text-gray-600">Coach: #{coach.coachID} - {coach.name}</p>
+                          <p className="text-sm text-gray-600">Type: {coach.type === 'seat' ? 'Seater Coach' : 'Sleeper Coach'}</p>
+                          <p className="text-sm text-gray-600">Price per {coach.type}: {formatCurrency(coach.price)}</p>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-700">Selected {coach.type === 'seat' ? 'Seats' : 'Beds'}</h4>
+                          <div className="mt-2 space-y-2">
+                            {itemsForCoach.map(item => {
+                              const itemNumber = item.col * coach.rows + item.row + 1;
+                              return (
+                                <div key={item.key} className="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                  <div>
+                                    <span className="text-sm font-medium">
+                                      {coach.type === 'seat' ? 'Seat' : 'Bed'} #{itemNumber}
+                                    </span>
+                                    <span className="text-xs text-gray-500 ml-2">
+                                      (Row {item.row + 1}, Column {item.col + 1})
+                                    </span>
+                                  </div>
+                                  <span className="text-sm text-blue-600">{formatCurrency(item.price)}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">
+                                Subtotal ({itemsForCoach.length} {coach.type}s)
+                              </span>
+                              <span className="font-medium">
+                                {formatCurrency(itemsForCoach.reduce((sum, item) => sum + item.price, 0))}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Return Journey Information - Similar structure as outbound */}
+              {Array.from(new Set(selectedReturnItems.map(item => item.coachId))).map(coachId => {
+                const coach = returnTrainCoaches.find(c => c.coachID === coachId);
+                const itemsForCoach = selectedReturnItems.filter(item => item.coachId === coachId);
+                
+                return coach && itemsForCoach.length > 0 && (
+                  <div key={`return-${coachId}`} className="mb-6 p-4 border border-gray-200 rounded-lg">
+                    <h3 className="font-semibold text-lg mb-2">Return Journey - Coach {coachId}</h3>
+                    <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+                      <div>
+                        <div className="mb-4">
+                          <h4 className="font-medium text-gray-700">Train Details</h4>
+                          <p className="text-sm text-gray-600">Train Number: {selectedReturnTrain.id}</p>
+                          <p className="text-sm text-gray-600">Direction: {selectedReturnTrain.direction}</p>
+                          <p className="text-sm text-gray-600">
+                            Route: {stations.find(s => (s.id || s.stationID) === parseInt(formData.to))?.stationName} →{' '}
+                            {stations.find(s => (s.id || s.stationID) === parseInt(formData.from))?.stationName}
+                          </p>
+                        </div>
+                        <div className="mb-4">
+                          <h4 className="font-medium text-gray-700">Schedule</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs text-gray-500">Departure</p>
+                              <p className="text-sm text-gray-600">{new Date(selectedReturnTrain.departureDate).toLocaleDateString('vi-VN')}</p>
+                              <p className="text-sm font-medium">{formatTime(selectedReturnTrain.startTime)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Arrival</p>
+                              <p className="text-sm text-gray-600">{new Date(selectedReturnTrain.arrivalDate).toLocaleDateString('vi-VN')}</p>
+                              <p className="text-sm font-medium">{formatTime(selectedReturnTrain.endTime)}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="mb-4">
+                          <h4 className="font-medium text-gray-700">Coach & Seat Details</h4>
+                          <p className="text-sm text-gray-600">Coach: #{coach.coachID} - {coach.name}</p>
+                          <p className="text-sm text-gray-600">Type: {coach.type === 'seat' ? 'Seater Coach' : 'Sleeper Coach'}</p>
+                          <p className="text-sm text-gray-600">Price per {coach.type}: {formatCurrency(coach.price)}</p>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-700">Selected {coach.type === 'seat' ? 'Seats' : 'Beds'}</h4>
+                          <div className="mt-2 space-y-2">
+                            {itemsForCoach.map(item => {
+                              const itemNumber = item.col * coach.rows + item.row + 1;
+                              return (
+                                <div key={item.key} className="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                  <div>
+                                    <span className="text-sm font-medium">
+                                      {coach.type === 'seat' ? 'Seat' : 'Bed'} #{itemNumber}
+                                    </span>
+                                    <span className="text-xs text-gray-500 ml-2">
+                                      (Row {item.row + 1}, Column {item.col + 1})
+                                    </span>
+                                  </div>
+                                  <span className="text-sm text-blue-600">{formatCurrency(item.price)}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">
+                                Subtotal ({itemsForCoach.length} {coach.type}s)
+                              </span>
+                              <span className="font-medium">
+                                {formatCurrency(itemsForCoach.reduce((sum, item) => sum + item.price, 0))}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Total Price and Continue Button */}
+              <div className="flex flex-col sm:flex-row justify-between items-center mt-4 pt-4 border-t border-gray-200">
+                <div className="mb-4 sm:mb-0">
+                  <p className="text-sm text-gray-600">
+                    Total Tickets: {selectedItems.length + selectedReturnItems.length}
+                  </p>
+                  <p className="font-semibold text-lg">
+                    Total Price: {formatCurrency(calculateTotalPrice())}
+                    <span className="text-sm text-gray-500 ml-2">
+                      {formData.tripType === 'round-trip' ? '(Round-trip)' : '(One-way)'}
+                    </span>
+                  </p>
+                </div>
+                <button 
+                  onClick={handleProceedToCheckout}
+                  className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors"
+                >
+                  Continue to Payment
+                </button>
+              </div>
+            </div>
+          )}
+          {/* {showCheckout && checkoutData && (
+            <Checkout 
+              data={checkoutData} 
+              onBack={handleBackFromCheckout} 
+              onComplete={handleCheckoutComplete}
+            />
+          )} */}
         </div>
       )}
-    </div>
+    </>
   );
 };
 

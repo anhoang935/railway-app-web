@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { CreditCard, User, Mail, Phone, MapPin, Calendar, Clock, Train, Bed, Users, CheckCircle, AlertCircle } from 'lucide-react';
 
 const Checkout = ({ bookingData, onBack, onComplete }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('card');
-  
+  const [booking, setBooking] = useState(null);
   const [passengerInfo, setPassengerInfo] = useState({
     fullName: '',
     email: '',
@@ -23,7 +24,26 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
     billingAddress: ''
   });
 
+  const [isLoading, setIsLoading] = useState(true);
   const [errors, setErrors] = useState({});
+
+  // Modify the steps and add new payment options
+  const steps = [
+    { number: 1, name: 'Passenger', icon: User },
+    { number: 2, name: 'Payment Options', icon: CreditCard },
+    { number: 3, name: 'Complete', icon: CheckCircle }
+  ];
+
+  // Add new state for payment selection
+  const [paymentOption, setPaymentOption] = useState(null);
+
+  useEffect(() => {
+    const storedData = localStorage.getItem('checkoutData');
+    if (storedData) {
+      setBooking(JSON.parse(storedData));
+    }
+    setIsLoading(false);
+  }, []);
 
   // Mock data for when bookingData is not provided
   const defaultBookingData = {
@@ -44,7 +64,6 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
     distance: 1000
   };
 
-  const booking = bookingData || defaultBookingData;
 
   const majorStations = [
     { id: 'hanoi', name: 'Hà Nội' },
@@ -133,8 +152,18 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
   const nextStep = () => {
     if (currentStep === 1 && validateStep1()) {
       setCurrentStep(2);
-    } else if (currentStep === 2 && validateStep2()) {
-      setCurrentStep(3);
+    } else if (currentStep === 2) {
+      if (!paymentOption) {
+        setErrors({ payment: 'Please select a payment option' });
+        return;
+      }
+      if (paymentOption === 'pending') {
+        // Go to completion step
+        setCurrentStep(3);
+      } else {
+        // Redirect to payment gateway
+        window.location.href = '/payment';
+      }
     }
   };
 
@@ -164,89 +193,106 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
     }
   };
 
-  const renderBookingSummary = () => (
-    <div className="bg-white rounded-xl shadow-lg p-6 sticky top-4">
-      <div className="flex items-center gap-3 mb-6">
-        <Train className="w-5 h-5 text-blue-600" />
-        <h3 className="text-lg font-semibold text-gray-800">Booking Summary</h3>
-      </div>
-      
-      <div className="space-y-6">
-        {/* Journey Info */}
-        <div className="bg-gray-50 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div className="text-center">
-              <div className="font-semibold text-gray-800">{getStationName(booking.from)}</div>
-              <div className="text-blue-600 font-medium">{formatTime(booking.train.startTime)}</div>
-            </div>
-            <div className="flex-1 mx-4">
-              <div className="flex items-center justify-center">
-                <div className="h-px bg-gray-300 flex-1"></div>
-                <div className="px-3 py-1 bg-blue-100 text-blue-600 text-xs font-medium rounded-full">
-                  {booking.train.duration}h
-                </div>
-                <div className="h-px bg-gray-300 flex-1"></div>
+  const renderBookingSummary = () => {
+    if (!booking) return null;
+
+    // Group selected items by train and coach for outbound journey
+    const groupedItems = booking.selectedItems.reduce((acc, item) => {
+      const key = `${item.trainId}-${item.coachId}`;
+      if (!acc[key]) {
+        acc[key] = {
+          train: booking.train,
+          coach: booking.coach,
+          items: []
+        };
+      }
+      acc[key].items.push(item);
+      return acc;
+    }, {});
+
+    // Group selected items by train and coach for return journey
+    const groupedReturnItems = booking.returnItems?.reduce((acc, item) => {
+      const key = `${item.trainId}-${item.coachId}`;
+      if (!acc[key]) {
+        acc[key] = {
+          train: booking.returnTrain,
+          coach: booking.returnCoach,
+          items: []
+        };
+      }
+      acc[key].items.push(item);
+      return acc;
+    }, {});
+
+    const renderJourneySection = (groups, title = null) => (
+      <div className="space-y-4">
+        {title && <h4 className="font-medium text-gray-800 mb-3">{title}</h4>}
+        {Object.entries(groups || {}).map(([key, group], index) => (
+          <div key={key} className="bg-gray-50 rounded-lg p-4">
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Train:</span>
+                <span className="font-semibold text-gray-800">{group.train.id}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Coach:</span>
+                <span className="text-gray-800">{group.coach.name}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">{group.coach.type === 'seat' ? 'Seats' : 'Beds'}:</span>
+                <span className="text-gray-800">
+                  {group.items.map(item => 
+                    group.coach.type === 'seat' 
+                      ? `${item.col * 4 + item.row + 1}`
+                      : `${item.row * 14 + item.col + 1}`
+                  ).join(', ')}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-600">
+                  {group.items.length} × {formatCurrency(group.items[0]?.price || 0)}
+                </span>
+                <span className="text-gray-800">
+                  {formatCurrency(group.items.reduce((sum, item) => sum + item.price, 0))}
+                </span>
               </div>
             </div>
-            <div className="text-center">
-              <div className="font-semibold text-gray-800">{getStationName(booking.to)}</div>
-              <div className="text-blue-600 font-medium">{formatTime(booking.train.endTime)}</div>
-            </div>
           </div>
-        </div>
+        ))}
+      </div>
+    );
 
-        {/* Booking Details */}
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Train:</span>
-            <span className="font-semibold text-gray-800">{booking.train.id}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Coach:</span>
-            <span className="text-gray-800">{booking.coach.name}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Departure:</span>
-            <span className="text-gray-800">{new Date(booking.departureDate).toLocaleDateString('vi-VN')}</span>
-          </div>
-          {booking.tripType === 'round-trip' && (
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Return:</span>
-              <span className="text-gray-800">{new Date(booking.returnDate).toLocaleDateString('vi-VN')}</span>
+    return (
+      <div className="bg-white rounded-xl shadow-lg p-6 sticky top-4">
+        <div className="flex items-center gap-3 mb-6">
+          <Train className="w-5 h-5 text-blue-600" />
+          <h3 className="text-lg font-semibold text-gray-800">Booking Summary</h3>
+        </div>
+        
+        <div className="space-y-6">
+          {/* Outbound Journey */}
+          {renderJourneySection(groupedItems, "Outbound Journey")}
+
+          {/* Return Journey if applicable */}
+          {booking.tripType === 'round-trip' && booking.returnItems && (
+            <div className="border-t pt-4">
+              {renderJourneySection(groupedReturnItems, "Return Journey")}
             </div>
           )}
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">{booking.coach.type === 'seat' ? 'Seats' : 'Beds'}:</span>
-            <span className="text-gray-800">
-              {booking.selectedItems.map(item => 
-                booking.coach.type === 'seat' 
-                  ? `${item.col * 4 + item.row + 1}`
-                  : `${item.row * 14 + item.col + 1}`
-              ).join(', ')}
-            </span>
-          </div>
-        </div>
 
-        {/* Price Breakdown */}
-        <div className="border-t pt-4 space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">{booking.selectedItems.length} × {formatCurrency(booking.coach.price)}</span>
-            <span className="text-gray-800">{formatCurrency(booking.selectedItems.length * booking.coach.price)}</span>
-          </div>
-          {booking.tripType === 'round-trip' && (
+          {/* Total Price */}
+          <div className="border-t pt-4">
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">Round-trip multiplier</span>
-              <span className="text-gray-800">×2</span>
+              <span className="font-semibold text-gray-800">Total</span>
+              <span className="font-bold text-xl text-blue-600">
+                {formatCurrency(booking.totalPrice)}
+              </span>
             </div>
-          )}
-          <div className="flex justify-between items-center pt-2 border-t">
-            <span className="font-semibold text-gray-800">Total</span>
-            <span className="font-bold text-xl text-blue-600">{formatCurrency(booking.totalPrice)}</span>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderStep1 = () => (
     <div className="bg-white rounded-xl shadow-lg p-8">
@@ -343,117 +389,78 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
     <div className="bg-white rounded-xl shadow-lg p-8">
       <div className="flex items-center gap-3 mb-8">
         <CreditCard className="w-6 h-6 text-blue-600" />
-        <h2 className="text-2xl font-bold text-gray-800">Payment Information</h2>
+        <h2 className="text-2xl font-bold text-gray-800">Choose Payment Option</h2>
       </div>
 
-      <div className="space-y-6 mb-8">
-        <div className="flex gap-4">
-          <label className="flex items-center gap-3 p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 flex-1">
-            <input
-              type="radio"
-              value="card"
-              checked={paymentMethod === 'card'}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              className="text-blue-600"
-            />
-            <span className="font-medium">Credit/Debit Card</span>
-          </label>
-          <label className="flex items-center gap-3 p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 flex-1">
-            <input
-              type="radio"
-              value="cash"
-              checked={paymentMethod === 'cash'}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              className="text-blue-600"
-            />
-            <span className="font-medium">Pay at Station</span>
-          </label>
-        </div>
-      </div>
-
-      {paymentMethod === 'card' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2 md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700">Card Number *</label>
-            <input
-              type="text"
-              value={paymentInfo.cardNumber}
-              onChange={(e) => handleCardNumberChange(e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                errors.cardNumber ? 'border-red-500 bg-red-50' : 'border-gray-300'
-              }`}
-              placeholder="1234 5678 9012 3456"
-              maxLength="19"
-            />
-            {errors.cardNumber && <span className="text-red-500 text-sm">{errors.cardNumber}</span>}
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Expiry Date *</label>
-            <input
-              type="text"
-              value={paymentInfo.expiryDate}
-              onChange={(e) => handleExpiryDateChange(e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                errors.expiryDate ? 'border-red-500 bg-red-50' : 'border-gray-300'
-              }`}
-              placeholder="MM/YY"
-              maxLength="5"
-            />
-            {errors.expiryDate && <span className="text-red-500 text-sm">{errors.expiryDate}</span>}
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">CVV *</label>
-            <input
-              type="text"
-              value={paymentInfo.cvv}
-              onChange={(e) => handleInputChange('payment', 'cvv', e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                errors.cvv ? 'border-red-500 bg-red-50' : 'border-gray-300'
-              }`}
-              placeholder="123"
-              maxLength="4"
-            />
-            {errors.cvv && <span className="text-red-500 text-sm">{errors.cvv}</span>}
-          </div>
-
-          <div className="space-y-2 md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700">Cardholder Name *</label>
-            <input
-              type="text"
-              value={paymentInfo.cardholderName}
-              onChange={(e) => handleInputChange('payment', 'cardholderName', e.target.value)}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                errors.cardholderName ? 'border-red-500 bg-red-50' : 'border-gray-300'
-              }`}
-              placeholder="Name on card"
-            />
-            {errors.cardholderName && <span className="text-red-500 text-sm">{errors.cardholderName}</span>}
-          </div>
-
-          <div className="space-y-2 md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700">Billing Address</label>
-            <input
-              type="text"
-              value={paymentInfo.billingAddress}
-              onChange={(e) => handleInputChange('payment', 'billingAddress', e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              placeholder="Billing address (optional)"
-            />
-          </div>
-        </div>
-      )}
-
-      {paymentMethod === 'cash' && (
-        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-          <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="font-medium text-amber-800">Pay at Station</p>
-            <p className="text-sm text-amber-700 mt-1">
-              Please arrive at the station at least 30 minutes before departure to complete payment and collect your tickets.
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Pending Option */}
+        <div 
+          onClick={() => setPaymentOption('pending')}
+          className={`cursor-pointer transition-all duration-300 transform hover:scale-105
+            ${paymentOption === 'pending' ? 'ring-2 ring-blue-500' : 'hover:shadow-lg'}
+            rounded-xl overflow-hidden`}
+        >
+          <div className="bg-gradient-to-br from-amber-100 to-amber-50 p-6 text-center">
+            <Clock className="w-12 h-12 text-amber-600 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">Pending Payment</h3>
+            <p className="text-gray-600 text-sm">
+              Reserve now, pay later at the station
             </p>
+            <ul className="mt-4 text-left text-sm space-y-2">
+              <li className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                <span>No immediate payment required</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                <span>Pay at station before departure</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-500" />
+                <span>Arrive 30 minutes early</span>
+              </li>
+            </ul>
           </div>
+        </div>
+
+        {/* Online Payment Option */}
+        <div 
+          onClick={() => setPaymentOption('online')}
+          className={`cursor-pointer transition-all duration-300 transform hover:scale-105
+            ${paymentOption === 'online' ? 'ring-2 ring-blue-500' : 'hover:shadow-lg'}
+            rounded-xl overflow-hidden`}
+        >
+          <div className="bg-gradient-to-br from-blue-100 to-blue-50 p-6 text-center">
+            <CreditCard className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">Pay Online</h3>
+            <p className="text-gray-600 text-sm">
+              Secure payment via credit/debit card
+            </p>
+            <ul className="mt-4 text-left text-sm space-y-2">
+              <li className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                <span>Instant confirmation</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                <span>Secure payment gateway</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                <span>E-ticket available immediately</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {paymentOption && (
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+          <p className="text-blue-800 font-medium">
+            {paymentOption === 'pending' 
+              ? 'Your booking will be held for 24 hours. Please complete payment at the station.'
+              : 'You will be redirected to our secure payment gateway.'}
+          </p>
         </div>
       )}
     </div>
@@ -522,110 +529,129 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
 
   return (
     <div className="min-h-screen bg-gray-100 py-8">
-      <div className="max-w-7xl mx-auto px-4">
-        {/* Progress Bar */}
-        <div className="flex items-center justify-center mb-8">
-          <div className="flex items-center space-x-4">
-            {[1, 2, 3, 4].map((step, index) => (
-              <React.Fragment key={step}>
-                <div className="flex flex-col items-center">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors ${
-                    currentStep >= step 
-                      ? currentStep > step 
-                        ? 'bg-green-500 text-white' 
-                        : 'bg-blue-600 text-white'
-                      : 'bg-gray-300 text-gray-600'
-                  }`}>
-                    {currentStep > step ? <CheckCircle className="w-5 h-5" /> : step}
-                  </div>
-                  <div className={`text-xs mt-2 font-medium ${
-                    currentStep >= step ? 'text-blue-600' : 'text-gray-500'
-                  }`}>
-                    {step === 1 && 'Passenger'}
-                    {step === 2 && 'Payment'}
-                    {step === 3 && 'Confirm'}
-                    {step === 4 && 'Complete'}
-                  </div>
-                </div>
-                {index < 3 && (
-                  <div className={`h-px w-16 transition-colors ${
-                    currentStep > step ? 'bg-green-500' : 'bg-gray-300'
-                  }`} />
-                )}
-              </React.Fragment>
-            ))}
-          </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            {currentStep === 1 && renderStep1()}
-            {currentStep === 2 && renderStep2()}
-            {currentStep === 3 && renderStep3()}
-            {currentStep === 4 && renderStep4()}
-
-            {/* Navigation Buttons */}
-            {currentStep < 4 && (
-              <div className="flex justify-between mt-8">
-                <div>
-                  {currentStep > 1 && (
-                    <button
-                      type="button"
-                      onClick={prevStep}
-                      className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-                      disabled={isProcessing}
-                    >
-                      Back
-                    </button>
-                  )}
-                  
-                  {onBack && currentStep === 1 && (
-                    <button
-                      type="button"
-                      onClick={onBack}
-                      className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      Back to Booking
-                    </button>
-                  )}
-                </div>
-
-                <div>
-                  {currentStep < 3 ? (
-                    <button
-                      type="button"
-                      onClick={nextStep}
-                      className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                    >
-                      Continue
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={processPayment}
-                      className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={isProcessing}
-                    >
-                      {isProcessing ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Processing...
-                        </div>
+      ) : !booking ? (
+        <div className="max-w-md mx-auto bg-white p-8 rounded-lg shadow-lg text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">No Booking Data Found</h2>
+          <p className="text-gray-600 mb-4">Please select your tickets before proceeding to checkout.</p>
+          <Link
+            to="/buy-ticket"
+            className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Return to Booking
+          </Link>
+        </div>
+      ) : (
+        <div className="max-w-7xl mx-auto px-4">
+          {/* Progress Bar */}
+          <div className="flex items-center justify-center mb-8">
+            <div className="flex items-center space-x-4">
+              {steps.map((step, index) => (
+                <React.Fragment key={step.number}>
+                  <div className="flex flex-col items-center">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
+                      currentStep >= step.number 
+                        ? currentStep > step.number 
+                          ? 'bg-green-500 text-white' 
+                          : 'bg-blue-600 text-white'
+                        : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      {currentStep > step.number ? (
+                        <CheckCircle className="w-6 h-6" />
                       ) : (
-                        `Confirm & ${paymentMethod === 'card' ? 'Pay' : 'Book'}`
+                        <step.icon className="w-6 h-6" />
                       )}
-                    </button>
+                    </div>
+                    <div className={`text-sm mt-2 font-medium ${
+                      currentStep >= step.number ? 'text-blue-600' : 'text-gray-500'
+                    }`}>
+                      {step.name}
+                    </div>
+                  </div>
+                  {index < steps.length - 1 && (
+                    <div className={`h-px w-20 transition-colors ${
+                      currentStep > step.number ? 'bg-green-500' : 'bg-gray-200'
+                    }`} />
                   )}
-                </div>
-              </div>
-            )}
+                </React.Fragment>
+              ))}
+            </div>
           </div>
 
-          <div className="lg:col-span-1">
-            {renderBookingSummary()}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              {currentStep === 1 && renderStep1()}
+              {currentStep === 2 && renderStep2()}
+              {currentStep === 3 && renderStep3()}
+              {currentStep === 4 && renderStep4()}
+
+              {/* Navigation Buttons */}
+              {currentStep < 4 && (
+                <div className="flex justify-between mt-8">
+                  <div>
+                    {currentStep > 1 && (
+                      <button
+                        type="button"
+                        onClick={prevStep}
+                        className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        disabled={isProcessing}
+                      >
+                        Back
+                      </button>
+                    )}
+                    
+                    {onBack && currentStep === 1 && (
+                      <button
+                        type="button"
+                        onClick={onBack}
+                        className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        Back to Booking
+                      </button>
+                    )}
+                  </div>
+
+                  <div>
+                    {currentStep < 3 ? (
+                      <button
+                        type="button"
+                        onClick={nextStep}
+                        className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      >
+                        Continue
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={processPayment}
+                        className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isProcessing}
+                      >
+                        {isProcessing ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Processing...
+                          </div>
+                        ) : (
+                          `Confirm & ${paymentMethod === 'card' ? 'Pay' : 'Book'}`
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="lg:col-span-1">
+              {renderBookingSummary()}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
