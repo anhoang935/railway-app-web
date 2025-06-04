@@ -1,0 +1,83 @@
+@startuml ModifyCoaches
+!theme plain
+hide footbox
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 20
+skinparam maxmessagesize 120
+skinparam ParticipantPadding 40
+skinparam BoxPadding 20
+
+' Make diagram much wider and shorter
+skinparam minClassWidth 150
+skinparam participant {
+    Padding 35
+}
+skinparam sequenceMessageAlign center
+
+' Font settings
+skinparam defaultFontName Signika
+skinparam defaultFontSize 9
+
+' Actor styling
+skinparam actor {
+    BackgroundColor #E8F4FD
+    BorderColor #4A90E2
+    FontColor #2C3E50
+    FontSize 9
+}
+
+' Participant styling
+skinparam participant {
+    BackgroundColor #E8F4FD
+    BorderColor #4A90E2
+    FontColor #2C3E50
+    FontSize 8
+}
+
+' Arrow styling
+skinparam sequence {
+    ArrowColor #4A90E2
+    MessageAlignment center
+    GroupHeaderFontSize 10
+    GroupHeaderFontColor #2C3E50
+}
+
+actor Administrator
+participant "UI\n(CoachManagement.jsx)" as UI
+participant "Controller\n(coachController.js)" as Controller
+participant "Database\n(MySQL)" as DB
+
+== Load & Initial Setup ==
+Administrator -> UI: navigateToCoachManagement()
+UI -> Controller: getAllCoaches() & getAllCoachTypes() & getAllTrains()
+Controller -> DB: SELECT coaches, coach_types, trains with JOINs
+DB -> Controller: return all data combined
+Controller -> UI: setCoaches() & setCoachTypes() & setTrains()
+UI -> Administrator: displayCoachManagementInterface()
+
+== CRUD Operations ==
+Administrator -> UI: handleAddNew() | handleEdit() | handleDelete()
+UI -> Administrator: showForm() | populateForm() | showConfirmation()
+Administrator -> UI: handleInputChange() & handleSave() | confirmAction()
+UI -> Controller: createCoach() | updateCoach() | deleteCoach()
+Controller -> DB: INSERT | UPDATE | DELETE & syncTrainCoachCounts()
+DB -> Controller: return success & updated data
+Controller -> UI: returnOperationResult()
+UI -> Administrator: setSyncMessage() & updateInterface()
+
+== Sync & Error Management ==
+Administrator -> UI: handleSyncAllCoachCounts()
+UI -> Controller: syncAllTrainCoachCounts()
+Controller -> DB: SELECT counts & UPDATE all trains
+DB -> Controller: return sync complete
+Controller -> UI: returnSyncComplete()
+UI -> Administrator: setSyncMessage("Completed")
+
+alt Error Handling
+    Controller -> DB: anyOperation() | UI -> UI: validateData()
+    DB -> Controller: errorResponse() | UI -> Administrator: showValidationError()
+    Controller -> UI: errorMessage()
+    UI -> Administrator: displayError()
+end
+
+@enduml

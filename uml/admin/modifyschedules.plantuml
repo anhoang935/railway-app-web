@@ -1,0 +1,79 @@
+@startuml ModifySchedules
+!theme plain
+hide footbox
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 20
+skinparam maxmessagesize 120
+skinparam ParticipantPadding 40
+skinparam BoxPadding 20
+
+' Make diagram much wider and shorter
+skinparam minClassWidth 150
+skinparam participant {
+    Padding 35
+}
+
+' Font settings
+skinparam defaultFontName Signika
+skinparam defaultFontSize 9
+
+' Actor styling
+skinparam actor {
+    BackgroundColor #E8F4FD
+    BorderColor #4A90E2
+    FontColor #2C3E50
+    FontSize 9
+}
+
+' Participant styling
+skinparam participant {
+    BackgroundColor #E8F4FD
+    BorderColor #4A90E2
+    FontColor #2C3E50
+    FontSize 8
+}
+
+' Arrow styling
+skinparam sequence {
+    ArrowColor #4A90E2
+    MessageAlignment center
+    GroupHeaderFontSize 10
+    GroupHeaderFontColor #2C3E50
+}
+
+actor Administrator
+participant "UI\n(Scheduling.jsx)" as UI
+participant "Controller\n(scheduleController.js)" as Controller
+participant "Database\n(MySQL)" as DB
+
+== Load & Initial Setup ==
+Administrator -> UI: navigateToScheduling()
+UI -> Controller: getAllSchedules() & getAllStations() & getAllTrains()
+Controller -> DB: SELECT schedules with JOINs, stations, trains
+DB -> Controller: return all data with details
+Controller -> UI: setSchedules() & setStations() & setTrains()
+UI -> Administrator: displaySchedulingInterface()
+
+== CRUD Operations with Validation ==
+Administrator -> UI: handleAddNew() | handleEdit() | handleDelete()
+UI -> Administrator: showScheduleForm() | populateEditForm() | showConfirmation()
+Administrator -> UI: handleInputChange() with validateSameStation() & handleSave()
+UI -> Controller: createSchedule() | updateSchedule() | deleteSchedule()
+Controller -> DB: validate stations/trains & INSERT|UPDATE|DELETE schedule
+DB -> Controller: return success & schedule data
+Controller -> UI: returnScheduleData()
+UI -> Administrator: showSuccessMessage() & updateSchedulesList()
+
+== Real-time Validation & Error Handling ==
+Administrator -> UI: selectSameStationForBoth() | enterInvalidData()
+UI -> UI: detectSameStation() & disableSaveButton() | validateFormData()
+UI -> Administrator: showVisualWarning() | showValidationError()
+
+alt Database/Validation Errors
+    Controller -> DB: anyOperation() with invalid data
+    DB -> Controller: errorResponse() | foreignKeyConstraintError()
+    Controller -> UI: returnErrorMessage()
+    UI -> Administrator: displayErrorAlert()
+end
+
+@enduml
