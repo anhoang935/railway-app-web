@@ -58,15 +58,18 @@ class Coach {
         }
     }
 
-    static async create({ coachID, trainID, coach_typeID }) {
+    // Modify the create method to skip auto-updates by default
+    static async create({ coachID, trainID, coach_typeID }, updateCount = false) {
         try {
             const [result] = await pool.query(
                 'INSERT INTO coach (coachID, trainID, coach_typeID) VALUES (?, ?, ?)',
                 [coachID, trainID, coach_typeID]
             );
 
-            // Update the train's coach count after adding a coach
-            await this.updateTrainCoachCount(trainID);
+            // Only update count when explicitly requested
+            if (updateCount) {
+                await this.updateTrainCoachCount(trainID);
+            }
 
             return {
                 coachID,
@@ -79,13 +82,36 @@ class Coach {
         }
     }
 
-    static async update(coachID, coachData) {
+    // Add a background job queue or make updates asynchronous
+    static async createCoachAsync({ coachID, trainID, coach_typeID }) {
+        try {
+            // Insert coach first
+            const [result] = await pool.query(
+                'INSERT INTO coach (coachID, trainID, coach_typeID) VALUES (?, ?, ?)',
+                [coachID, trainID, coach_typeID]
+            );
+
+            // Update count in background (don't wait for it)
+            setImmediate(() => {
+                this.updateTrainCoachCount(trainID).catch(err =>
+                    console.error('Background coach count update failed:', err)
+                );
+            });
+
+            return {
+                coachID,
+                trainID,
+                coach_typeID
+            };
+        } catch (error) {
+            console.error('Error inserting coach:', error);
+            throw error;
+        }
+    }
+
+    static async update(coachID, coachData, updateCount = false) {
         try {
             const { trainID, coach_typeID } = coachData;
-
-            // Get the current coach to see if trainID is changing
-            const currentCoach = await this.findById(coachID);
-            const oldTrainID = currentCoach ? currentCoach.trainID : null;
 
             const [result] = await pool.query(
                 'UPDATE coach SET trainID = ?, coach_typeID = ? WHERE coachID = ?',
@@ -96,11 +122,10 @@ class Coach {
                 return null;
             }
 
-            // Update coach count for both old and new trains if trainID changed
-            if (oldTrainID && oldTrainID !== trainID) {
-                await this.updateTrainCoachCount(oldTrainID);
+            // Only update count when explicitly requested
+            if (updateCount) {
+                await this.updateTrainCoachCount(trainID);
             }
-            await this.updateTrainCoachCount(trainID);
 
             return { coachID, trainID, coach_typeID };
         } catch (error) {
@@ -134,11 +159,15 @@ class Coach {
     // NEW: Sync all trains' coach counts - useful for data maintenance
     static async syncAllTrainCoachCounts() {
         try {
-            const [trains] = await pool.query('SELECT trainID FROM train');
-
-            for (const train of trains) {
-                await this.updateTrainCoachCount(train.trainID);
-            }
+            // Use a single UPDATE query instead of individual updates
+            await pool.query(`
+                UPDATE train t 
+                SET coachTotal = (
+                    SELECT COUNT(*) 
+                    FROM coach c 
+                    WHERE c.trainID = t.trainID
+                )
+            `);
 
             return true;
         } catch (error) {

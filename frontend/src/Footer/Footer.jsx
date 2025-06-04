@@ -10,7 +10,7 @@ const Footer = () => {
         <div className="footer-grid">
           {/* Company Info */}
           <div>
-            <h3 className="footer-title">TAB Travel</h3>
+            <h3 className="footer-title">TABB Travel Corp®</h3>
             <p className="footer-text">
               Making your travel dreams come true with unforgettable experiences and exceptional service.
             </p>
@@ -61,7 +61,7 @@ const Footer = () => {
 
         {/* Bottom Bar */}
         <div className="footer-bottom">
-          <p>© {new Date().getFullYear()} TAB Travel. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} TABB Railway Corporation®. All rights reserved.</p>
         </div>
       </div>
     </footer>
