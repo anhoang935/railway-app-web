@@ -6,6 +6,7 @@ import { Trash } from 'lucide-react';
 import stationService from '../data/Service/stationService';
 import buyTicketService from '../data/Service/buyTicketService';
 import trackService from '../data/Service/trackService';
+import timetableService from '../data/Service/timetableService';
 // Set primary color
 document.documentElement.style.setProperty('--primary-color', '#2563eb');
 
@@ -36,6 +37,16 @@ const Buy_Ticket = () => {
   const [loadingTrains, setLoadingTrains] = useState(false);
   const [trainSearchError, setTrainSearchError] = useState(null);
   const [tracks, setTracks] = useState([]);
+  const [returnTrains, setReturnTrains] = useState([]);
+  const [selectedReturnTrain, setSelectedReturnTrain] = useState(null);
+  const [loadingReturnTrains, setLoadingReturnTrains] = useState(false);
+  const [showReturnTrainSelection, setShowReturnTrainSelection] = useState(false);
+  const [selectedReturnCoach, setSelectedReturnCoach] = useState(null);
+  const [selectedReturnItems, setSelectedReturnItems] = useState([]);
+  const [returnFormData, setReturnFormData] = useState({
+    departureDate: '',
+    departureTime: ''
+  });
   // Static train and coach types (for fallback or testing)
   const trainTypes = [
     { id: 'SE1', direction: 'Bắc-Nam', startTime: '12:00', endTime: '04:00', duration: 16 },
@@ -101,18 +112,18 @@ const Buy_Ticket = () => {
     // Convert input values to numbers
     const start = Number(fromStationId);
     const end = Number(toStationId);
-
+    
     if (start === end) return 0;
 
     // Get indices to determine direction
     const fromIndex = stations.findIndex(s => Number(s.stationID) === start);
     const toIndex = stations.findIndex(s => Number(s.stationID) === end);
-
+    
     if (fromIndex === -1 || toIndex === -1) return 0;
 
     // Determine direction of travel
     const isForward = fromIndex < toIndex;
-
+    
     // Get all station IDs between start and end (inclusive)
     const stationRange = stations
       .slice(Math.min(fromIndex, toIndex), Math.max(fromIndex, toIndex) + 1)
@@ -120,17 +131,17 @@ const Buy_Ticket = () => {
 
     // Calculate total distance by summing up track segments
     let totalDistance = 0;
-
+    
     for (let i = 0; i < stationRange.length - 1; i++) {
       const currentStation = stationRange[i];
       const nextStation = stationRange[i + 1];
-
+      
       // Find track between these stations (in either direction)
-      const track = tracks.find(t =>
+      const track = tracks.find(t => 
         (t.station1ID === currentStation && t.station2ID === nextStation) ||
         (t.station2ID === currentStation && t.station1ID === nextStation)
       );
-
+      
       if (track) {
         totalDistance += track.distance;
       }
@@ -139,131 +150,66 @@ const Buy_Ticket = () => {
     return totalDistance;
   };
 
-  // Calculate return date based on distance
-  const calculateReturnDate = (departureDate, distance) => {
-    const date = new Date(departureDate);
-    const days = Math.ceil((distance / 500) * 5); // 1 day per 500km
-    date.setDate(date.getDate() + days);
-    return date.toISOString().split('T')[0];
-  };
-
-  const isTimeAfter = (time1, time2) => {
-    const [h1, m1, s1] = time1.split(':').map(Number);
-    const [h2, m2, s2] = time2.split(':').map(Number);
-    return h1 > h2 || (h1 === h2 && (m1 > m2 || (m1 === m2 && s1 > s2)));
+  const timeToMinutes = (timeStr) => {
+    if (!timeStr) return 0;
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
   };
 
   // Search trains with date correction for overnight journeys
   const searchTrains = async () => {
-    const { from, to, departureTime, departureDate } = formData;
+    const { from, to, departureTime, departureDate, tripType, returnDate } = formData;
 
+    // Validation
     if (!from || !to || from === to || !departureDate || !departureTime) {
       setTrainSearchError('Please fill in all required fields');
       return;
     }
 
+    if (tripType === 'round-trip' && !returnDate) {
+      setTrainSearchError('Please select a return date for round-trip');
+      return;
+    }
+
+    // Reset states
     setLoadingTrains(true);
     setTrainSearchError(null);
     setAvailableTrains([]);
+    setReturnTrains([]);
     setSelectedTrain(null);
     setSelectedCoach(null);
     setSelectedItems([]);
+    setSelectedReturnTrain(null);
+    setSelectedReturnCoach(null);
+    setSelectedReturnItems([]);
     setShowSearchResults(true);
 
     try {
-      const fromId = parseInt(from);
-      const toId = parseInt(to);
-      const fromStation = stations.find(s => (s.id || s.stationID) === fromId);
-      const toStation = stations.find(s => (s.id || s.stationID) === toId);
+      // Search outbound trains first
+      const outboundTrains = await searchJourneyTrains({
+        fromId: parseInt(from),
+        toId: parseInt(to),
+        departureDate,
+        departureTime
+      });
+      
+      setAvailableTrains(outboundTrains);
 
-      if (!fromStation || !toStation) {
-        throw new Error(`Station not found - From ID: ${fromId}, To ID: ${toId}`);
-      }
-
-      const timeToUse = `${departureTime}:00`;
-      const fromStationName = fromStation.stationName || fromStation.name;
-      const toStationName = toStation.stationName || toStation.name;
-
-      const result = await buyTicketService.searchTrains(fromStationName, toStationName, timeToUse);
-
-      if (result.success) {
-        const distance = calculateDistance(fromId, toId);
-
-        // Create maps to track dates and times
-        const transformedTrains = result.data.map(train => {
-          const scheduleID = train['Train Name'];
-          const baseDate = new Date(departureDate);
-          const stationDates = new Map(); // stationID -> date
-          const lastDepartureTimeMap = new Map(); // For comparing time shifts per train
-          const journeyPoints = Object.entries(train.journey || {})
-            .sort(([a], [b]) => parseInt(a) - parseInt(b))
-            .map(([_, station]) => ({
-              stationId: station.stationID,
-              arrivalTime: station.arrivalTime,
-              departureTime: station.departureTime
-            }));
-
-          let currentDate = new Date(baseDate);
-
-          journeyPoints.forEach((point, index) => {
-            const { stationId, departureTime } = point;
-
-            // Parse current and last departure times
-            const currentTimeParts = departureTime.split(':').map(Number);
-            const currentMinutes = currentTimeParts[0] * 60 + currentTimeParts[1];
-
-            const lastTime = lastDepartureTimeMap.get(scheduleID);
-            if (lastTime !== undefined && currentMinutes < lastTime) {
-              // Time is earlier than the previous one — next day
-              currentDate.setDate(currentDate.getDate() + 1);
-            }
-
-            // Update map and time tracker
-            stationDates.set(stationId, new Date(currentDate));
-            lastDepartureTimeMap.set(scheduleID, currentMinutes);
-          });
-
-          // Final transformation
-          const departureStationDate = stationDates.get(fromId) || baseDate;
-          const arrivalStationDate = stationDates.get(toId) || baseDate;
-
-          return {
-            id: scheduleID,
-            direction: calculateDirection(fromId, toId),
-            startTime: train['Departure Time'],
-            endTime: train['Arrival Time'],
-            duration: calculateDuration(
-              `${departureStationDate.toISOString().split('T')[0]}T${train['Departure Time']}`,
-              `${arrivalStationDate.toISOString().split('T')[0]}T${train['Arrival Time']}`
-            ),
-            distance: calculateDistance(fromId, toId),
-            departureDate: departureStationDate.toISOString().split('T')[0],
-            arrivalDate: arrivalStationDate.toISOString().split('T')[0],
-            returnDate: calculateReturnDate(arrivalStationDate.toISOString().split('T')[0], calculateDistance(fromId, toId)),
-            availableCapacity: train['Available Capacity'],
-            stationDates: Object.fromEntries([...stationDates].map(([id, date]) => [
-              id,
-              date.toISOString().split('T')[0]
-            ])),
-            journey: journeyPoints.reduce((acc, point) => ({
-              ...acc,
-              [point.stationId]: {
-                ...point,
-                date: stationDates.get(point.stationId).toISOString().split('T')[0]
-              }
-            }), {})
-          };
+      // Only search for return trains if:
+      // 1. It's a round trip
+      // 2. There are available outbound trains
+      if (tripType === 'round-trip' && outboundTrains.length > 0) {
+        setLoadingReturnTrains(true);
+        const returnJourneyTrains = await searchJourneyTrains({
+          fromId: parseInt(to),
+          toId: parseInt(from),
+          departureDate: returnDate,
+          departureTime: '00:00:00'
         });
-
-
-        setAvailableTrains(transformedTrains);
-
-        if (transformedTrains.length === 0) {
-          setTrainSearchError('No trains found for the selected route and time');
-        }
-      } else {
-        setTrainSearchError(result.message || 'Failed to search trains');
+        setReturnTrains(returnJourneyTrains);
+        setLoadingReturnTrains(false);
       }
+
     } catch (error) {
       console.error('Train search error:', error);
       setTrainSearchError(error.message || 'An error occurred while searching for trains');
@@ -272,11 +218,204 @@ const Buy_Ticket = () => {
     }
   };
 
+  // Helper function to search trains for a journey (either outbound or return)
+  const searchJourneyTrains = async ({ fromId, toId, departureDate, departureTime }) => {
+    // Find station details
+    const fromStation = stations.find(s => (s.id || s.stationID) === fromId);
+    const toStation = stations.find(s => (s.id || s.stationID) === toId);
+
+    if (!fromStation || !toStation) {
+      throw new Error(`Station not found - From ID: ${fromId}, To ID: ${toId}`);
+    }
+
+    const fromStationName = fromStation.stationName || fromStation.name;
+    const toStationName = toStation.stationName || toStation.name;
+
+    // Search trains
+    const result = await buyTicketService.searchTrains(
+      fromStationName, 
+      toStationName, 
+      `${departureTime}:00`
+    );
+
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to search trains');
+    }
+
+    // Transform train data with schedules
+    const transformedTrains = await Promise.all(result.data.map(async train => {
+      try {
+        // Get complete schedule
+        const schedules = await timetableService.getSchedulesBetweenStations(1, 38);
+        const schedule = schedules.find(s => s.trainName === train['Train Name']);
+        
+        if (!schedule) return null;
+
+        // Get journey points
+        const allJourneys = await timetableService.getJourneysBySchedule(schedule.scheduleID);
+        const journeys = [...allJourneys].sort((a, b) => parseInt(a.journeyID) - parseInt(b.journeyID));
+        
+        // Find departure journey
+        const departureJourney = journeys.find(j => parseInt(j.stationID) === parseInt(fromId));
+        if (!departureJourney) return null;
+
+        // Calculate journey dates and times
+        const journeyWithDates = calculateJourneyDates({
+          journeys,
+          fromId,
+          toId,
+          departureJourney,
+          startDate: departureDate
+        });
+
+        // Get departure and arrival info
+        const departureInfo = journeyWithDates[fromId];
+        const arrivalInfo = journeyWithDates[toId];
+
+        // Debug logging with correct station order
+        console.log(`\n=== Train ${train['Train Name']} Journey Details ===`);
+        console.log(`Direction: ${calculateDirection(fromId, toId)}`);
+        console.log('Full journey timeline:');
+        
+        // Get stations in journey order (same logic as calculateJourneyDates)
+        const fromIndex = journeys.findIndex(j => parseInt(j.stationID) === parseInt(fromId));
+        const toIndex = journeys.findIndex(j => parseInt(j.stationID) === parseInt(toId));
+        const isForward = fromIndex < toIndex;
+        
+        const orderedJourneyStations = isForward 
+          ? journeys.slice(fromIndex, toIndex + 1)
+          : journeys.slice(toIndex, fromIndex + 1).reverse();
+
+        // Display stations in correct order
+        orderedJourneyStations.forEach(journey => {
+          const stationInfo = journeyWithDates[journey.stationID];
+          const station = stations.find(s => 
+            (s.id || s.stationID) === parseInt(journey.stationID)
+          );
+          
+          if (stationInfo) {
+            console.log(
+              `Station: ${station?.stationName || station?.name || journey.stationID}`,
+              `\n  Date: ${stationInfo.date}`,
+              `\n  Arrival: ${stationInfo.arrivalTime}`,
+              `\n  Departure: ${stationInfo.departureTime}`
+            );
+          }
+        });
+
+        console.log('Calculated journey info:');
+        console.log('  Start:', `${departureInfo?.date} ${departureInfo?.departureTime}`);
+        console.log('  End:', `${arrivalInfo?.date} ${arrivalInfo?.arrivalTime}`);
+        console.log('  Duration:', `${calculateDuration(
+          `${departureInfo?.date}T${departureInfo?.departureTime}`,
+          `${arrivalInfo?.date}T${arrivalInfo?.arrivalTime}`
+        )}h`);
+        console.log('===================================\n');
+
+        // Return transformed train data
+        return {
+          id: train['Train Name'],
+          direction: calculateDirection(fromId, toId),
+          startTime: departureInfo?.departureTime || train['Departure Time'],
+          endTime: arrivalInfo?.arrivalTime || train['Arrival Time'],
+          duration: calculateDuration(
+            `${departureInfo?.date}T${departureInfo?.departureTime}`,
+            `${arrivalInfo?.date}T${arrivalInfo?.arrivalTime}`
+          ),
+          distance: calculateDistance(fromId, toId),
+          departureDate: departureInfo?.date || departureDate,
+          arrivalDate: arrivalInfo?.date,
+          availableCapacity: train['Available Capacity'],
+          journey: journeyWithDates
+        };
+      } catch (error) {
+        console.error('Error processing train schedule:', error);
+        return null;
+      }
+    }));
+
+    // Filter out failed transformations
+    return transformedTrains.filter(train => train !== null);
+  };
+
+  // Helper function to calculate dates for each station in journey
+  const calculateJourneyDates = ({ journeys, fromId, toId, departureJourney, startDate }) => {
+  const journeyWithDates = {};
+  
+  // Find journey indices
+  const fromIndex = journeys.findIndex(j => parseInt(j.stationID) === parseInt(fromId));
+  const toIndex = journeys.findIndex(j => parseInt(j.stationID) === parseInt(toId));
+  
+  if (fromIndex === -1 || toIndex === -1) {
+    console.error('Station not found in journey:', { fromId, toId, fromIndex, toIndex });
+    return journeyWithDates;
+  }
+
+  const isForward = fromIndex < toIndex;
+  
+  // Get stations in the correct order for this journey
+  const relevantJourneys = isForward 
+    ? journeys.slice(fromIndex, toIndex + 1)
+    : journeys.slice(toIndex, fromIndex + 1).reverse();
+
+  // Initialize with start date and reference time
+  const startDateObj = new Date(startDate);
+  let currentDate = new Date(startDate);
+  let dayOffset = 0;
+  let referenceTimeMinutes = timeToMinutes(relevantJourneys[0].departureTime || relevantJourneys[0].arrivalTime);
+  
+  // Process each station in journey order
+  relevantJourneys.forEach((journey, index) => {
+    const currentTimeMinutes = timeToMinutes(journey.arrivalTime);
+    
+    // Check if we need to increment the day
+    if (index > 0) {
+      // If current time is less than reference time, we've crossed midnight
+      if (currentTimeMinutes < referenceTimeMinutes) {
+        dayOffset++;
+        referenceTimeMinutes = currentTimeMinutes; // Reset reference time
+      } else if (currentTimeMinutes - referenceTimeMinutes > 720) {
+        // If time difference is more than 12 hours in the future,
+        // we probably went backwards across midnight
+        dayOffset--;
+        referenceTimeMinutes = currentTimeMinutes;
+      } else {
+        referenceTimeMinutes = currentTimeMinutes;
+      }
+    }
+
+    // Calculate the date for this station
+    const stationDate = new Date(startDateObj);
+    stationDate.setDate(startDateObj.getDate() + dayOffset);
+
+    // Store journey information
+    journeyWithDates[journey.stationID] = {
+      stationID: journey.stationID,
+      arrivalTime: journey.arrivalTime,
+      departureTime: journey.departureTime || journey.arrivalTime,
+      date: stationDate.toISOString().split('T')[0]
+    };
+  });
+
+  return journeyWithDates;
+};
+
   const calculateDuration = (startDateTime, endDateTime) => {
     const start = new Date(startDateTime);
     const end = new Date(endDateTime);
     let duration = (end - start) / (1000 * 60 * 60); // Convert to hours
-    if (duration < 0) duration += 24;
+    
+    // If duration seems too short for the journey (less than 10 hours), 
+    // it likely means we crossed to next day
+    if (duration < 10) {
+      duration += 24;
+    }
+    
+    // If duration is negative, add days until it's positive
+    while (duration < 0) {
+      duration += 24;
+    }
+
     return Math.round(duration);
   };
   // Calculate direction based on station indices
@@ -296,15 +435,26 @@ const Buy_Ticket = () => {
   };
 
   // Train and coach selection handlers
-  const handleSelectTrain = (train) => {
-    setSelectedTrain(train);
-    setSelectedCoach(null);
-    setSelectedItems([]);
+  const handleSelectTrain = (train, isReturn = false) => {
+    if (isReturn) {
+      setSelectedReturnTrain(train);
+      setSelectedReturnCoach(null);
+      setSelectedReturnItems([]);
+    } else {
+      setSelectedTrain(train);
+      setSelectedCoach(null);
+      setSelectedItems([]);
+    }
   };
 
-  const handleSelectCoach = (coach) => {
-    setSelectedCoach(coach);
-    setSelectedItems([]);
+  const handleSelectCoach = (coach, isReturn = false) => {
+    if (isReturn) {
+      setSelectedReturnCoach(coach);
+      setSelectedReturnItems([]);
+    } else {
+      setSelectedCoach(coach);
+      setSelectedItems([]);
+    }
   };
 
   // Handle seat/bed selection
@@ -467,8 +617,9 @@ const Buy_Ticket = () => {
 
   // Utility functions
   const calculateTotalPrice = () => {
-    const itemsPrice = selectedItems.reduce((sum, item) => sum + item.price, 0);
-    return formData.tripType === 'round-trip' ? itemsPrice * 2 : itemsPrice;
+    const outboundPrice = selectedItems.reduce((sum, item) => sum + item.price, 0);
+    const returnPrice = selectedReturnItems.reduce((sum, item) => sum + item.price, 0);
+    return formData.tripType === 'round-trip' ? outboundPrice + returnPrice : outboundPrice;
   };
 
   const formatCurrency = (amount) => {
@@ -476,7 +627,16 @@ const Buy_Ticket = () => {
   };
 
   const formatTime = (timeStr) => {
-    return timeStr.replace(':', 'h');
+    if (!timeStr) return '';
+  
+    const timeParts = timeStr.split(':');
+    if (timeParts.length >= 2) {
+      const hours = timeParts[0].padStart(2, '0');
+      const minutes = timeParts[1].padStart(2, '0');
+      return `${hours}:${minutes}`;
+    }
+    
+    return timeStr; 
   };
 
   const today = new Date().toISOString().split('T')[0];
@@ -680,8 +840,9 @@ const Buy_Ticket = () => {
                 {availableTrains.map(train => (
                   <div
                     key={train.id}
-                    className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${selectedTrain?.id === train.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                      }`}
+                    className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
+                      selectedTrain?.id === train.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                    }`}
                     onClick={() => handleSelectTrain(train)}
                   >
                     <div className="flex justify-between items-center mb-2">
@@ -694,10 +855,10 @@ const Buy_Ticket = () => {
                       <div>
                         <div className="font-semibold text-lg">{formatTime(train.startTime)}</div>
                         <div className="text-gray-500">
-                          {train.journey && train.journey[formData.from] ?
-                            new Date(train.journey[formData.from].date).toLocaleDateString('vi-VN')
+                          {train.journey && train.journey[formData.from] ? 
+                            new Date(train.journey[formData.from].date).toLocaleDateString('vi-VN') 
                             : new Date(train.departureDate).toLocaleDateString('vi-VN')} - {' '}
-                          {formData.from && stations.find(s =>
+                          {formData.from && stations.find(s => 
                             (s.id || s.stationID) === parseInt(formData.from)
                           )?.stationName || 'Loading...'}
                         </div>
@@ -713,19 +874,13 @@ const Buy_Ticket = () => {
                           {train.journey && train.journey[formData.to] ?
                             new Date(train.journey[formData.to].date).toLocaleDateString('vi-VN')
                             : new Date(train.arrivalDate).toLocaleDateString('vi-VN')} - {' '}
-                          {formData.to && stations.find(s =>
+                          {formData.to && stations.find(s => 
                             (s.id || s.stationID) === parseInt(formData.to)
                           )?.stationName || 'Loading...'}
                         </div>
                       </div>
                     </div>
-                    {formData.tripType === 'round-trip' && (
-                      <div className="mt-2 pt-2 border-t border-dashed">
-                        <div className="text-sm text-gray-600">
-                          Return Date: {new Date(train.returnDate).toLocaleDateString('vi-VN')}
-                        </div>
-                      </div>
-                    )}
+                    
                   </div>
                 ))}
               </div>
@@ -742,8 +897,9 @@ const Buy_Ticket = () => {
               {coachTypes.map(coach => (
                 <div
                   key={coach.id}
-                  className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${selectedCoach?.id === coach.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                    }`}
+                  className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${
+                    selectedCoach?.id === coach.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                  }`}
                   onClick={() => handleSelectCoach(coach)}
                 >
                   <h3 className="font-medium">{coach.name}</h3>
@@ -771,9 +927,9 @@ const Buy_Ticket = () => {
                     <p className="text-sm text-gray-600">Coach: {selectedCoach.name}</p>
                     <p className="text-sm text-gray-600">
                       Journey: {stations.find(s => (s.id || s.stationID) === formData.from)?.name ||
-                        stations.find(s => (s.id || s.stationID) === formData.from)?.stationName} →{' '}
+                                stations.find(s => (s.id || s.stationID) === formData.from)?.stationName} →{' '}
                       {stations.find(s => (s.id || s.stationID) === formData.to)?.name ||
-                        stations.find(s => (s.id || s.stationID) === formData.to)?.stationName}
+                       stations.find(s => (s.id || s.stationID) === formData.to)?.stationName}
                     </p>
                     <p className="text-sm text-gray-600">
                       Departure: {new Date(selectedTrain.departureDate).toLocaleDateString('vi-VN')} at {formatTime(selectedTrain.startTime)}
@@ -807,6 +963,91 @@ const Buy_Ticket = () => {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Return Journey Section */}
+        {formData.tripType === 'round-trip' && showSearchResults && (
+          <div className="p-6 border-t border-gray-200">
+            <h2 className="text-xl font-semibold mb-4">Return Journey</h2>
+            {loadingReturnTrains ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-2 text-gray-600">Searching for return trains...</p>
+              </div>
+            ) : returnTrains.length > 0 ? (
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                {returnTrains.map(train => (
+                  <div
+                    key={train.id}
+                    className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
+                      selectedReturnTrain?.id === train.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                    }`}
+                    onClick={() => handleSelectTrain(train, true)}
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="font-bold text-lg">{train.id}</h3>
+                      <span className="text-sm bg-blue-100 text-blue-800 py-1 px-2 rounded-full">
+                        {train.direction}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <div>
+                        <div className="font-semibold text-lg">{formatTime(train.startTime)}</div>
+                        <div className="text-gray-500">
+                          {train.journey && train.journey[formData.to] ? 
+                            new Date(train.journey[formData.to].date).toLocaleDateString('vi-VN') 
+                            : new Date(train.departureDate).toLocaleDateString('vi-VN')} - {' '}
+                          {formData.to && stations.find(s => 
+                            (s.id || s.stationID) === parseInt(formData.to)
+                          )?.stationName || 'Loading...'}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-center justify-center px-4">
+                        <div className="text-gray-500 text-xs">{train.duration}h</div>
+                        <div className="w-20 h-px bg-gray-300 my-1"></div>
+                        <div className="text-gray-500 text-xs">{train.distance}km</div>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-lg">{formatTime(train.endTime)}</div>
+                        <div className="text-gray-500">
+                          {train.journey && train.journey[formData.from] ?
+                            new Date(train.journey[formData.from].date).toLocaleDateString('vi-VN')
+                            : new Date(train.arrivalDate).toLocaleDateString('vi-VN')} - {' '}
+                          {formData.from && stations.find(s => 
+                            (s.id || s.stationID) === parseInt(formData.from)
+                          )?.stationName || 'Loading...'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-600">No return trains found</div>
+            )}
+          </div>
+        )}
+
+        {/* Return Coach Selection */}
+        {selectedReturnTrain && formData.tripType === 'round-trip' && (
+          <div className="p-6 border-t border-gray-200">
+            <h2 className="text-xl font-semibold mb-4">Select Return Coach</h2>
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+              {coachTypes.map(coach => (
+                <div
+                  key={coach.id}
+                  className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${
+                    selectedReturnCoach?.id === coach.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                  }`}
+                  onClick={() => handleSelectCoach(coach, true)}
+                >
+                  <h3 className="font-medium">{coach.name}</h3>
+                  <div className="mt-2 font-semibold text-blue-600">{formatCurrency(coach.price)}</div>
+                  <div className="mt-1 text-sm text-gray-500">{coach.type === 'seat' ? 'Seater' : 'Sleeper'}</div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
