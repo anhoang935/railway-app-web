@@ -50,8 +50,8 @@ const MyBooking = () => {
                 
                 // Fetch user's bookings and stats
                 const [userBookings, userStats] = await Promise.all([
-                    bookingService.getBookingsByUser(user.userID),
-                    bookingService.getUserBookingStats(user.userID)
+                    bookingService.getBookingsByUser(user.userId),
+                    bookingService.getUserBookingStats(user.userId)
                 ]);
                 
                 setBookings(userBookings);
