@@ -1,18 +1,20 @@
-import React, { useState } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaSave, FaTimes, FaTrain, FaCog, FaSync, FaExclamationTriangle, FaChartBar, FaRedo } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { FaPlus, FaEdit, FaTrash, FaSave, FaTimes, FaSync, FaChartBar, FaTrain, FaCog, FaExclamationTriangle } from 'react-icons/fa';
+import { useAsyncData } from "../../../hooks/useAsyncData";
+import { useLoadingWithTimeout } from "../../../hooks/useLoadingWithTimeout";
+import LoadingPage from "../../../components/LoadingPage";
 import coachService from '../../../data/Service/coachService';
 import coachTypeService from '../../../data/Service/coachTypeService';
 import trainService from '../../../data/Service/trainService';
-import { useLoadingWithTimeout } from '../../../hooks/useLoadingWithTimeout';
-import { useAsyncData } from '../../../hooks/useAsyncData';
-import LoadingPage from '../../../components/LoadingPage';
 
 function CoachManagement() {
+    // Your existing state variables...
     const [activeTab, setActiveTab] = useState('coaches');
     const [syncing, setSyncing] = useState(false);
     const [syncMessage, setSyncMessage] = useState(null);
+    const [currentError, setCurrentError] = useState(null);
 
-    // Add missing state variables for coaches
+    // Coach form states
     const [isAddingCoach, setIsAddingCoach] = useState(false);
     const [editingCoachId, setEditingCoachId] = useState(null);
     const [coachFormData, setCoachFormData] = useState({
@@ -21,7 +23,7 @@ function CoachManagement() {
         coach_typeID: ''
     });
 
-    // Add missing state variables for coach types
+    // Coach type form states
     const [isAddingCoachType, setIsAddingCoachType] = useState(false);
     const [editingCoachTypeId, setEditingCoachTypeId] = useState(null);
     const [coachTypeFormData, setCoachTypeFormData] = useState({
@@ -31,7 +33,7 @@ function CoachManagement() {
         capacity: ''
     });
 
-    // Use useAsyncData for all initial data fetching
+    // Data fetching hooks
     const {
         data: coaches,
         loading: coachesLoading,
@@ -56,7 +58,6 @@ function CoachManagement() {
         setData: setTrains
     } = useAsyncData(() => trainService.getAllTrains());
 
-    // Use useLoadingWithTimeout for operations
     const {
         loading: operationLoading,
         error: operationError,
@@ -64,7 +65,7 @@ function CoachManagement() {
         startLoading,
         stopLoading,
         setLoadingError
-    } = useLoadingWithTimeout();
+    } = useLoadingWithTimeout(10000); // 10 second timeout for operations
 
     // Show loading page while any initial data loads
     const isInitialLoading = coachesLoading || coachTypesLoading || trainsLoading;
@@ -78,8 +79,8 @@ function CoachManagement() {
         return <LoadingPage message={loadingMessage} />;
     }
 
-    // Combine error states
-    const currentError = coachesError || coachTypesError || trainsError || operationError;
+    // Combine error states - make sure currentError is properly set
+    const combinedError = coachesError || coachTypesError || trainsError || operationError || currentError;
     const hasDataError = coachesError || coachTypesError || trainsError;
 
     // Handle refresh/retry functionality
@@ -100,49 +101,43 @@ function CoachManagement() {
 
             await Promise.all(refreshPromises);
             setOperationError(null);
+            setCurrentError(null);
 
+            stopLoading();
         } catch (error) {
             setLoadingError('Failed to refresh data: ' + error.toString());
         }
     };
 
-    // Admin function to sync coach counts
+    // Admin function to sync coach counts - FIX: Use startLoading instead of setOperationLoading
     const handleSyncCoachCounts = async () => {
+        setSyncing(true);
+        startLoading(); // Use startLoading instead of setOperationLoading(true)
+        setSyncMessage(null);
+        setCurrentError(null);
+
         try {
-            setSyncing(true);
-            setSyncMessage(null);
-
-            // Call the sync API endpoint if available, otherwise manual sync
-            try {
-                await coachService.syncAllCoachCounts();
-            } catch (syncError) {
-                // Fallback to manual refresh if sync endpoint doesn't exist
-                console.warn('Sync endpoint not available, using manual refresh:', syncError);
-            }
-
-            // Refresh data to show updated counts
-            await Promise.all([
-                refetchCoaches(),
-                refetchTrains()
-            ]);
-
+            await coachService.syncAllCoachCounts();
             setSyncMessage({
                 type: 'success',
-                text: 'Coach counts have been synchronized successfully!'
+                text: 'Coach counts synchronized successfully!'
             });
+
+            // Refresh data after successful sync
+            await handleRefreshData();
+
+        } catch (error) {
+            console.error('Sync error:', error);
+            setSyncMessage({
+                type: 'error',
+                text: error.message || 'Failed to sync coach counts. Please try again.'
+            });
+        } finally {
+            setSyncing(false);
+            stopLoading(); // Use stopLoading instead of setOperationLoading(false)
 
             // Clear message after 5 seconds
             setTimeout(() => setSyncMessage(null), 5000);
-
-        } catch (err) {
-            setOperationError('Failed to sync coach counts: ' + err.toString());
-            setSyncMessage({
-                type: 'error',
-                text: 'Failed to sync coach counts. Please try again.'
-            });
-            setTimeout(() => setSyncMessage(null), 5000);
-        } finally {
-            setSyncing(false);
         }
     };
 
@@ -176,6 +171,7 @@ function CoachManagement() {
             coach_typeID: ''
         });
         setOperationError(null);
+        setCurrentError(null);
     };
 
     const handleEditCoach = (coach) => {
@@ -187,69 +183,94 @@ function CoachManagement() {
             coach_typeID: coach.coach_typeID
         });
         setOperationError(null);
+        setCurrentError(null);
     };
 
+    // CRITICAL FIX: Add timeout wrapper for ALL async operations
+    const withTimeout = async (operation, timeoutMs = 8000) => {
+        return Promise.race([
+            operation(),
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Operation timed out')), timeoutMs)
+            )
+        ]);
+    };
+
+    // Updated handleSaveCoach with proper timeout handling - FIX: Use startLoading/stopLoading
     const handleSaveCoach = async () => {
+        // VALIDATE FIRST - before any async operations
+        if (!coachFormData.trainID || !coachFormData.coach_typeID) {
+            setCurrentError('Please fill in all required fields');
+            return; // Exit immediately on validation failure
+        }
+
+        // Clear any existing errors
+        setCurrentError(null);
+        setOperationError(null);
+        startLoading(); // Use startLoading instead of setOperationLoading(true)
+
         try {
-            startLoading();
+            await withTimeout(async () => {
+                if (editingCoachId) {
+                    // Update existing coach
+                    await coachService.updateCoach(editingCoachId, {
+                        trainID: coachFormData.trainID,
+                        coach_typeID: coachFormData.coach_typeID
+                    });
+                    setSyncMessage({ type: 'success', text: 'Coach updated successfully!' });
+                } else {
+                    // Create new coach
+                    await coachService.createCoach({
+                        trainID: coachFormData.trainID,
+                        coach_typeID: coachFormData.coach_typeID
+                    });
+                    setSyncMessage({ type: 'success', text: 'Coach created successfully!' });
+                }
 
-            if (!coachFormData.coachID?.trim() || !coachFormData.trainID || !coachFormData.coach_typeID) {
-                setLoadingError('Please fill in all required fields');
-                return;
-            }
+                // Reset form
+                setCoachFormData({ coachID: '', trainID: '', coach_typeID: '' });
+                setEditingCoachId(null);
+                setIsAddingCoach(false);
 
-            if (isAddingCoach) {
-                const newCoach = await coachService.createCoach(coachFormData);
-                // Optimistic update
-                setCoaches(prev => [...(prev || []), newCoach]);
-            } else {
-                const updatedCoach = await coachService.updateCoach(editingCoachId, coachFormData);
-                // Optimistic update
-                setCoaches(prev =>
-                    (prev || []).map(coach =>
-                        coach.coachID === editingCoachId ? updatedCoach : coach
-                    )
-                );
-            }
+                // Refresh data
+                await refetchCoaches();
+            }, 8000); // 8 second timeout
 
-            handleCancelCoach();
+        } catch (error) {
+            console.error('Error saving coach:', error);
+            const errorMessage = error.message === 'Operation timed out'
+                ? 'Request timed out. Please try again.'
+                : error.message || 'Failed to save coach';
 
-            // Show success message
-            setSyncMessage({
-                type: 'success',
-                text: isAddingCoach ? 'Coach added successfully!' : 'Coach updated successfully!'
-            });
-            setTimeout(() => setSyncMessage(null), 3000);
+            setCurrentError(errorMessage);
+            setSyncMessage({ type: 'error', text: errorMessage });
+        } finally {
+            stopLoading(); // Use stopLoading instead of setOperationLoading(false)
 
-            stopLoading();
-
-        } catch (err) {
-            setLoadingError('Failed to save coach: ' + err.toString());
-            // Refresh data on error to ensure consistency
-            await refetchCoaches();
+            // Clear messages after 5 seconds
+            setTimeout(() => setSyncMessage(null), 5000);
         }
     };
 
     const handleDeleteCoach = async (coachId) => {
-        if (window.confirm('Are you sure you want to delete this coach? This will automatically update the train\'s coach count.')) {
+        if (window.confirm('Are you sure you want to delete this coach?')) {
             try {
                 startLoading();
 
                 await coachService.deleteCoach(coachId);
 
                 // Optimistic update
-                setCoaches(prev => (prev || []).filter(coach => coach.coachID !== coachId));
+                setCoaches(prevCoaches => prevCoaches.filter(coach => coach.coachID !== coachId));
 
                 setSyncMessage({
                     type: 'success',
                     text: 'Coach deleted successfully!'
                 });
-                setTimeout(() => setSyncMessage(null), 3000);
 
                 stopLoading();
 
-            } catch (err) {
-                setLoadingError('Failed to delete coach: ' + err.toString());
+            } catch (error) {
+                setLoadingError('Failed to delete coach: ' + error.toString());
                 // Refresh data on error to ensure consistency
                 await refetchCoaches();
             }
@@ -265,6 +286,7 @@ function CoachManagement() {
             coach_typeID: ''
         });
         setOperationError(null);
+        setCurrentError(null);
     };
 
     // Coach Type management functions
@@ -345,7 +367,7 @@ function CoachManagement() {
                 await coachTypeService.deleteCoachType(coachTypeId);
 
                 // Optimistic update
-                setCoachTypes(prev => (prev || []).filter(coachType => coachType.coach_typeID !== coachTypeId));
+                setCoachTypes(prevCoachTypes => prevCoachTypes.filter(coachType => coachType.coach_typeID !== coachTypeId));
 
                 setSyncMessage({
                     type: 'success',
@@ -354,7 +376,6 @@ function CoachManagement() {
                 setTimeout(() => setSyncMessage(null), 3000);
 
                 stopLoading();
-
             } catch (err) {
                 setLoadingError('Failed to delete coach type: ' + err.toString());
                 // Refresh data on error to ensure consistency
@@ -447,18 +468,19 @@ function CoachManagement() {
             </div>
 
             {/* Error message */}
-            {currentError && (
+            {combinedError && (
                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="font-medium">
                                 {hasDataError ? 'Data Loading Error' : 'Operation Error'}
                             </p>
-                            <p className="mt-1">{currentError}</p>
+                            <p className="mt-1">{combinedError}</p>
                         </div>
                         <button
                             onClick={() => {
                                 setOperationError(null);
+                                setCurrentError(null);
                                 if (hasDataError) handleRefreshData();
                             }}
                             className="text-red-500 hover:text-red-700 font-bold text-lg"
@@ -467,15 +489,6 @@ function CoachManagement() {
                             ×
                         </button>
                     </div>
-                    {/* {hasDataError && (
-                        <button
-                            onClick={handleRefreshData}
-                            disabled={operationLoading}
-                            className="mt-2 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
-                        >
-                            Retry Loading
-                        </button>
-                    )} */}
                 </div>
             )}
 
@@ -492,9 +505,6 @@ function CoachManagement() {
             {/* Data status info */}
             <div className="mb-4 text-sm text-gray-600">
                 <p>
-                    {/* <strong>Coaches:</strong> {coaches?.length || 0} |
-                    <strong> Coach Types:</strong> {coachTypes?.length || 0} |
-                    <strong> Trains:</strong> {trains?.length || 0} | */}
                     <strong> Last updated:</strong> {new Date().toLocaleTimeString()}
                 </p>
             </div>

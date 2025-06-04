@@ -1,4 +1,5 @@
 import Coach from '../models/Coaches.js';
+import pool from '../Config/db.js';
 
 export const getAllCoaches = async (req, res) => {
     try {
@@ -61,8 +62,11 @@ export const getCoachesByTrain = async (req, res) => {
 
 export const createCoach = async (req, res) => {
     try {
-        let coachData;
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Operation timed out')), 15000) // Reduced timeout
+        );
 
+        let coachData;
         if (req.headers['content-type'] === 'text/plain') {
             try {
                 coachData = JSON.parse(req.body);
@@ -76,20 +80,29 @@ export const createCoach = async (req, res) => {
             coachData = req.body;
         }
 
-        const { trainID, coach_typeID, coachID } = coachData;
+        const { trainID, coach_typeID } = coachData;
 
-        if (!trainID || !coach_typeID || !coachID) {
+        // Validate required fields first
+        if (!trainID || !coach_typeID) {
             return res.status(400).json({
                 success: false,
-                message: 'Please provide trainID, coach_typeID, and coachID'
+                message: 'Please fill in all required fields'
             });
         }
 
-        const coach = await Coach.create({
-            coachID,
-            trainID,
-            coach_typeID
-        });
+        // Auto-generate coachID
+        const [result] = await pool.query(`
+            SELECT COALESCE(MAX(CAST(coachID AS UNSIGNED)), 0) + 1 as nextId 
+            FROM coach 
+            WHERE coachID REGEXP '^[0-9]+$'
+        `);
+        const coachID = result[0].nextId.toString();
+
+        // Create coach without auto-updating counts
+        const coach = await Promise.race([
+            Coach.create({ coachID, trainID, coach_typeID }, false), // false = don't auto-update
+            timeoutPromise
+        ]);
 
         res.status(201).json({
             success: true,
@@ -98,6 +111,12 @@ export const createCoach = async (req, res) => {
         });
     } catch (error) {
         console.error('Controller error:', error);
+        if (error.message === 'Operation timed out') {
+            return res.status(408).json({
+                success: false,
+                message: 'Request timed out. Please try again.'
+            });
+        }
         res.status(500).json({
             success: false,
             message: error.message
@@ -168,7 +187,15 @@ export const deleteCoach = async (req, res) => {
 
 export const syncCoachCounts = async (req, res) => {
     try {
-        await Coach.syncAllTrainCoachCounts();
+        // Increase timeout for sync operations
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Sync operation timed out')), 45000)
+        );
+
+        await Promise.race([
+            Coach.syncAllTrainCoachCounts(),
+            timeoutPromise
+        ]);
 
         res.status(200).json({
             success: true,
@@ -176,6 +203,12 @@ export const syncCoachCounts = async (req, res) => {
         });
     } catch (error) {
         console.error('Controller error:', error);
+        if (error.message === 'Sync operation timed out') {
+            return res.status(408).json({
+                success: false,
+                message: 'Sync operation timed out. Please try again.'
+            });
+        }
         res.status(500).json({
             success: false,
             message: error.message
