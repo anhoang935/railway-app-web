@@ -11,7 +11,6 @@ const Scheduling = ({ setActiveTab }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [formData, setFormData] = useState({
-        scheduleID: '',
         trainID: '',
         start_stationID: '',
         end_stationID: '',
@@ -92,18 +91,10 @@ const Scheduling = ({ setActiveTab }) => {
     };
 
     const handleAddNew = () => {
-        // Generate a new ID based on existing schedules
-        const maxId = schedules.length > 0
-            ? Math.max(...schedules.map(s => {
-                const numericPart = s.scheduleID.toString().replace(/\D/g, '');
-                return numericPart ? parseInt(numericPart) : 0;
-            }))
-            : 0;
-
         setIsAdding(true);
         setEditingId(null);
         setFormData({
-            scheduleID: `SC${maxId + 1}`,
+            // Remove scheduleID completely - let backend auto-generate it
             trainID: '',
             start_stationID: '',
             end_stationID: '',
@@ -133,7 +124,7 @@ const Scheduling = ({ setActiveTab }) => {
         setIsAdding(false);
         setEditingId(null);
         setFormData({
-            scheduleID: '',
+            // Remove scheduleID from cancel reset
             trainID: '',
             start_stationID: '',
             end_stationID: '',
@@ -181,6 +172,7 @@ const Scheduling = ({ setActiveTab }) => {
             startLoading();
 
             const scheduleToCreate = {
+                // Don't include scheduleID - let backend auto-generate
                 start_stationID: formData.start_stationID,
                 end_stationID: formData.end_stationID,
                 departureTime: formData.departureTime,
@@ -200,7 +192,7 @@ const Scheduling = ({ setActiveTab }) => {
 
             setIsAdding(false);
             setFormData({
-                scheduleID: '',
+                // Remove scheduleID from reset as well
                 trainID: '',
                 start_stationID: '',
                 end_stationID: '',
@@ -223,6 +215,7 @@ const Scheduling = ({ setActiveTab }) => {
             startLoading();
 
             const scheduleToUpdate = {
+                // Don't include scheduleID in updates
                 start_stationID: formData.start_stationID,
                 end_stationID: formData.end_stationID,
                 departureTime: formData.departureTime,
@@ -244,7 +237,7 @@ const Scheduling = ({ setActiveTab }) => {
 
             setEditingId(null);
             setFormData({
-                scheduleID: '',
+                // Remove scheduleID from update reset
                 trainID: '',
                 start_stationID: '',
                 end_stationID: '',

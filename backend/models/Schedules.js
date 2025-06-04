@@ -13,7 +13,7 @@ class Schedule {
         JOIN station AS start_station ON s.start_stationID = start_station.stationID
         JOIN station AS end_station ON s.end_stationID = end_station.stationID
         JOIN train t ON s.trainID = t.trainID
-        ORDER BY s.departureTime
+        ORDER BY s.scheduleID ASC
       `);
       return rows;
     } catch (error) {
@@ -54,7 +54,7 @@ class Schedule {
         JOIN station AS end_station ON s.end_stationID = end_station.stationID
         JOIN train t ON s.trainID = t.trainID
         WHERE s.trainID = ?
-        ORDER BY s.departureTime
+        ORDER BY s.scheduleID ASC
       `, [trainID]);
       return rows;
     } catch (error) {
@@ -75,7 +75,7 @@ class Schedule {
         JOIN station AS end_station ON s.end_stationID = end_station.stationID
         JOIN train t ON s.trainID = t.trainID
         WHERE s.start_stationID = ? OR s.end_stationID = ?
-        ORDER BY s.departureTime
+        ORDER BY s.scheduleID ASC
       `, [stationID, stationID]);
       return rows;
     } catch (error) {
@@ -96,7 +96,7 @@ class Schedule {
         JOIN station AS end_station ON s.end_stationID = end_station.stationID
         JOIN train t ON s.trainID = t.trainID
         WHERE s.start_stationID = ? AND s.end_stationID = ?
-        ORDER BY s.departureTime
+        ORDER BY s.scheduleID ASC
       `, [startStationID, endStationID]);
       return rows;
     } catch (error) {
