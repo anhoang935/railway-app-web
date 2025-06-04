@@ -1,8 +1,16 @@
 import axios from "axios";
 
-// Update the timeout for regular operations
-const api = axios.create({
-    timeout: 15000, // Reduced to 15 seconds for regular operations
+// Remove timeout completely for background operations
+const apiNoTimeout = axios.create({
+    timeout: 0, // No timeout
+    headers: {
+        'Content-Type': 'application/json'
+    }
+});
+
+// Keep a short timeout only for quick operations
+const apiQuick = axios.create({
+    timeout: 10000, // 10 seconds for read operations
     headers: {
         'Content-Type': 'application/json'
     }
@@ -19,42 +27,21 @@ const getBaseUrl = () => {
 const BASE_URL = getBaseUrl();
 
 const coachService = {
+    // Quick read operation - keep timeout
     getAllCoaches: async () => {
         try {
-            const response = await api.get(BASE_URL);
+            const response = await apiQuick.get(BASE_URL);
             return response.data.data;
         } catch (error) {
-            if (error.code === 'ECONNABORTED') {
-                throw new Error('Request timed out. Please try again.');
-            }
             console.error('Error fetching coaches:', error);
             throw error.response?.data?.message || error.message || 'Failed to fetch coaches';
         }
     },
 
-    getCoachByID: async (id) => {
-        try {
-            const response = await api.get(`${BASE_URL}/${id}`);
-            return response.data.data;
-        } catch (error) {
-            console.error('Error fetching coach by ID:', error);
-            throw error.response?.data?.message || error.message || 'Failed to fetch coach';
-        }
-    },
-
-    getCoachesByTrain: async (trainId) => {
-        try {
-            const response = await api.get(`${BASE_URL}/train/${trainId}`);
-            return response.data.data;
-        } catch (error) {
-            console.error('Error fetching coaches by train:', error);
-            throw error.response?.data?.message || error.message || 'Failed to fetch coaches by train';
-        }
-    },
-
+    // Write operations - NO TIMEOUT (this fixes your issue)
     createCoach: async (coachData) => {
         try {
-            const response = await api.post(BASE_URL, coachData);
+            const response = await apiNoTimeout.post(BASE_URL, coachData);
             return response.data.data;
         } catch (error) {
             console.error('Error creating coach:', error);
@@ -64,7 +51,7 @@ const coachService = {
 
     updateCoach: async (id, coachData) => {
         try {
-            const response = await api.put(`${BASE_URL}/${id}`, coachData);
+            const response = await apiNoTimeout.put(`${BASE_URL}/${id}`, coachData);
             return response.data.data;
         } catch (error) {
             console.error('Error updating coach:', error);
@@ -74,7 +61,7 @@ const coachService = {
 
     deleteCoach: async (id) => {
         try {
-            await api.delete(`${BASE_URL}/${id}`);
+            await apiNoTimeout.delete(`${BASE_URL}/${id}`);
             return true;
         } catch (error) {
             console.error('Error deleting coach:', error);
@@ -82,17 +69,12 @@ const coachService = {
         }
     },
 
-    // Admin sync functions
+    // Sync operations - NO TIMEOUT
     syncAllCoachCounts: async () => {
         try {
-            const response = await api.post(`${BASE_URL}/sync/all`, {}, {
-                timeout: 45000 // 45 seconds only for sync
-            });
+            const response = await apiNoTimeout.post(`${BASE_URL}/sync/all`, {});
             return response.data;
         } catch (error) {
-            if (error.code === 'ECONNABORTED') {
-                throw new Error('Sync operation timed out. Please try again.');
-            }
             console.error('Error syncing all coach counts:', error);
             throw error.response?.data?.message || error.message || 'Failed to sync coach counts';
         }
@@ -100,7 +82,7 @@ const coachService = {
 
     syncTrainCoachCount: async (trainId) => {
         try {
-            const response = await api.post(`${BASE_URL}/sync/train/${trainId}`);
+            const response = await apiNoTimeout.post(`${BASE_URL}/sync/train/${trainId}`);
             return response.data;
         } catch (error) {
             console.error('Error syncing train coach count:', error);

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaPlus, FaEdit, FaTrash, FaSave, FaTimes, FaSync, FaChartBar, FaTrain, FaCog, FaExclamationTriangle } from 'react-icons/fa';
 import { useAsyncData } from "../../../hooks/useAsyncData";
-import { useLoadingWithTimeout } from "../../../hooks/useLoadingWithTimeout";
 import LoadingPage from "../../../components/LoadingPage";
 import coachService from '../../../data/Service/coachService';
 import coachTypeService from '../../../data/Service/coachTypeService';
@@ -58,14 +57,9 @@ function CoachManagement() {
         setData: setTrains
     } = useAsyncData(() => trainService.getAllTrains());
 
-    const {
-        loading: operationLoading,
-        error: operationError,
-        setError: setOperationError,
-        startLoading,
-        stopLoading,
-        setLoadingError
-    } = useLoadingWithTimeout(10000); // 10 second timeout for operations
+    // Remove the useLoadingWithTimeout hook and replace with simple state
+    const [operationLoading, setOperationLoading] = useState(false);
+    const [operationError, setOperationError] = useState(null);
 
     // Show loading page while any initial data loads
     const isInitialLoading = coachesLoading || coachTypesLoading || trainsLoading;
@@ -86,7 +80,7 @@ function CoachManagement() {
     // Handle refresh/retry functionality
     const handleRefreshData = async () => {
         try {
-            startLoading();
+            setOperationLoading(true);
 
             // Refresh all data sources
             const refreshPromises = [];
@@ -103,42 +97,35 @@ function CoachManagement() {
             setOperationError(null);
             setCurrentError(null);
 
-            stopLoading();
+            setOperationLoading(false);
         } catch (error) {
-            setLoadingError('Failed to refresh data: ' + error.toString());
+            setOperationLoading(false);
+            setCurrentError('Failed to refresh data: ' + error.toString());
         }
     };
 
     // Admin function to sync coach counts - FIX: Use startLoading instead of setOperationLoading
     const handleSyncCoachCounts = async () => {
         setSyncing(true);
-        startLoading(); // Use startLoading instead of setOperationLoading(true)
-        setSyncMessage(null);
-        setCurrentError(null);
+        setSyncMessage({ type: 'info', text: 'Synchronization started in background...' });
 
-        try {
-            await coachService.syncAllCoachCounts();
-            setSyncMessage({
-                type: 'success',
-                text: 'Coach counts synchronized successfully!'
+        // Start sync in background without waiting
+        coachService.syncAllCoachCounts()
+            .then(() => {
+                setSyncMessage({ type: 'success', text: 'Synchronization completed!' });
+                // Refresh data after successful sync
+                setTimeout(() => {
+                    refetchCoaches().catch(console.error);
+                }, 1000);
+            })
+            .catch(error => {
+                console.error('Sync error:', error);
+                setSyncMessage({ type: 'error', text: 'Sync failed. Please try again later.' });
+            })
+            .finally(() => {
+                setSyncing(false);
+                setTimeout(() => setSyncMessage(null), 8000);
             });
-
-            // Refresh data after successful sync
-            await handleRefreshData();
-
-        } catch (error) {
-            console.error('Sync error:', error);
-            setSyncMessage({
-                type: 'error',
-                text: error.message || 'Failed to sync coach counts. Please try again.'
-            });
-        } finally {
-            setSyncing(false);
-            stopLoading(); // Use stopLoading instead of setOperationLoading(false)
-
-            // Clear message after 5 seconds
-            setTimeout(() => setSyncMessage(null), 5000);
-        }
     };
 
     // Count coaches per train for admin dashboard
@@ -186,94 +173,118 @@ function CoachManagement() {
         setCurrentError(null);
     };
 
-    // CRITICAL FIX: Add timeout wrapper for ALL async operations
-    const withTimeout = async (operation, timeoutMs = 8000) => {
-        return Promise.race([
-            operation(),
-            new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Operation timed out')), timeoutMs)
-            )
-        ]);
-    };
-
-    // Updated handleSaveCoach with proper timeout handling - FIX: Use startLoading/stopLoading
+    // Replace the existing handleSaveCoach with this optimistic version
     const handleSaveCoach = async () => {
-        // VALIDATE FIRST - before any async operations
+        // Validation first
         if (!coachFormData.trainID || !coachFormData.coach_typeID) {
             setCurrentError('Please fill in all required fields');
-            return; // Exit immediately on validation failure
+            return;
         }
 
-        // Clear any existing errors
         setCurrentError(null);
         setOperationError(null);
-        startLoading(); // Use startLoading instead of setOperationLoading(true)
+        setOperationLoading(true);
 
         try {
-            await withTimeout(async () => {
-                if (editingCoachId) {
-                    // Update existing coach
-                    await coachService.updateCoach(editingCoachId, {
-                        trainID: coachFormData.trainID,
-                        coach_typeID: coachFormData.coach_typeID
-                    });
-                    setSyncMessage({ type: 'success', text: 'Coach updated successfully!' });
-                } else {
-                    // Create new coach
-                    await coachService.createCoach({
-                        trainID: coachFormData.trainID,
-                        coach_typeID: coachFormData.coach_typeID
-                    });
+            if (editingCoachId) {
+                // Optimistic update - update UI immediately
+                const optimisticCoach = {
+                    coachID: editingCoachId,
+                    trainID: coachFormData.trainID,
+                    coach_typeID: coachFormData.coach_typeID,
+                    trainName: getTrainName(coachFormData.trainID),
+                    coach_type_name: getCoachTypeName(coachFormData.coach_typeID)
+                };
+
+                setCoaches(prev => 
+                    prev.map(coach => 
+                        coach.coachID === editingCoachId ? optimisticCoach : coach
+                    )
+                );
+
+                setSyncMessage({ type: 'success', text: 'Coach updated! Processing in background...' });
+
+                // Background update (fire and forget)
+                coachService.updateCoach(editingCoachId, {
+                    trainID: coachFormData.trainID,
+                    coach_typeID: coachFormData.coach_typeID
+                }).catch(error => {
+                    console.error('Background update failed:', error);
+                    // Revert optimistic update on failure
+                    refetchCoaches();
+                    setSyncMessage({ type: 'error', text: 'Update failed. Data refreshed.' });
+                });
+
+            } else {
+                // For create, generate a temporary ID
+                const tempId = `temp_${Date.now()}`;
+                const optimisticCoach = {
+                    coachID: tempId,
+                    trainID: coachFormData.trainID,
+                    coach_typeID: coachFormData.coach_typeID,
+                    trainName: getTrainName(coachFormData.trainID),
+                    coach_type_name: getCoachTypeName(coachFormData.coach_typeID),
+                    isTemporary: true
+                };
+
+                // Add to UI immediately
+                setCoaches(prev => [...prev, optimisticCoach]);
+                setSyncMessage({ type: 'success', text: 'Coach created! Processing in background...' });
+
+                // Background create (fire and forget)
+                coachService.createCoach({
+                    trainID: coachFormData.trainID,
+                    coach_typeID: coachFormData.coach_typeID
+                }).then(newCoach => {
+                    // Replace temporary coach with real one
+                    setCoaches(prev => 
+                        prev.map(coach => 
+                            coach.coachID === tempId ? newCoach : coach
+                        )
+                    );
                     setSyncMessage({ type: 'success', text: 'Coach created successfully!' });
-                }
+                }).catch(error => {
+                    console.error('Background create failed:', error);
+                    // Remove temporary coach on failure
+                    setCoaches(prev => prev.filter(coach => coach.coachID !== tempId));
+                    setSyncMessage({ type: 'error', text: 'Create failed. Please try again.' });
+                });
+            }
 
-                // Reset form
-                setCoachFormData({ coachID: '', trainID: '', coach_typeID: '' });
-                setEditingCoachId(null);
-                setIsAddingCoach(false);
-
-                // Refresh data
-                await refetchCoaches();
-            }, 8000); // 8 second timeout
+            // Reset form immediately
+            handleCancelCoach();
 
         } catch (error) {
-            console.error('Error saving coach:', error);
-            const errorMessage = error.message === 'Operation timed out'
-                ? 'Request timed out. Please try again.'
-                : error.message || 'Failed to save coach';
-
-            setCurrentError(errorMessage);
-            setSyncMessage({ type: 'error', text: errorMessage });
+            // This should rarely happen now
+            console.error('Optimistic update error:', error);
+            setCurrentError('Operation failed. Please try again.');
         } finally {
-            stopLoading(); // Use stopLoading instead of setOperationLoading(false)
-
-            // Clear messages after 5 seconds
+            setOperationLoading(false);
             setTimeout(() => setSyncMessage(null), 5000);
         }
     };
 
     const handleDeleteCoach = async (coachId) => {
         if (window.confirm('Are you sure you want to delete this coach?')) {
-            try {
-                startLoading();
+            // Optimistic delete - remove from UI immediately
+            const originalCoaches = [...coaches];
+            setCoaches(prev => prev.filter(coach => coach.coachID !== coachId));
+            setSyncMessage({ type: 'success', text: 'Coach deleted! Processing...' });
 
-                await coachService.deleteCoach(coachId);
-
-                // Optimistic update
-                setCoaches(prevCoaches => prevCoaches.filter(coach => coach.coachID !== coachId));
-
-                setSyncMessage({
-                    type: 'success',
-                    text: 'Coach deleted successfully!'
+            // Background delete
+            coachService.deleteCoach(coachId)
+                .then(() => {
+                    setSyncMessage({ type: 'success', text: 'Coach deleted successfully!' });
+                })
+                .catch(error => {
+                    console.error('Delete failed:', error);
+                    // Restore coaches on failure
+                    setCoaches(originalCoaches);
+                    setSyncMessage({ type: 'error', text: 'Delete failed. Data restored.' });
+                })
+                .finally(() => {
+                    setTimeout(() => setSyncMessage(null), 3000);
                 });
-
-                stopLoading();
-
-            } catch (error) {
-                setLoadingError('Failed to delete coach: ' + error.toString());
-                // Refresh data on error to ensure consistency
-                await refetchCoaches();
-            }
         }
     };
 
@@ -321,10 +332,10 @@ function CoachManagement() {
 
     const handleSaveCoachType = async () => {
         try {
-            startLoading();
+            setOperationLoading(true);
 
             if (!coachTypeFormData.coach_typeID?.trim() || !coachTypeFormData.type?.trim() || !coachTypeFormData.price) {
-                setLoadingError('Please fill in all required fields');
+                setOperationError('Please fill in all required fields');
                 return;
             }
 
@@ -350,10 +361,11 @@ function CoachManagement() {
             });
             setTimeout(() => setSyncMessage(null), 3000);
 
-            stopLoading();
+            setOperationLoading(false);
 
         } catch (err) {
-            setLoadingError('Failed to save coach type: ' + err.toString());
+            setOperationLoading(false);
+            setOperationError('Failed to save coach type: ' + err.toString());
             // Refresh data on error to ensure consistency
             await refetchCoachTypes();
         }
@@ -362,7 +374,7 @@ function CoachManagement() {
     const handleDeleteCoachType = async (coachTypeId) => {
         if (window.confirm('Are you sure you want to delete this coach type?')) {
             try {
-                startLoading();
+                setOperationLoading(true);
 
                 await coachTypeService.deleteCoachType(coachTypeId);
 
@@ -375,9 +387,10 @@ function CoachManagement() {
                 });
                 setTimeout(() => setSyncMessage(null), 3000);
 
-                stopLoading();
+                setOperationLoading(false);
             } catch (err) {
-                setLoadingError('Failed to delete coach type: ' + err.toString());
+                setOperationLoading(false);
+                setOperationError('Failed to delete coach type: ' + err.toString());
                 // Refresh data on error to ensure consistency
                 await refetchCoachTypes();
             }
