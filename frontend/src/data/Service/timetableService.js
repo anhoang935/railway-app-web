@@ -7,7 +7,7 @@ const getBaseUrl = () => {
     }
 
     // For mobile/other networks, use current host
-    return `${window.location.protocol}//${window.location.hostname}:5000/api/timetable`;
+    return `${process.env.REACT_APP_BACKEND_URL}/api/timetable`;
 };
 
 const BASE_URL = getBaseUrl();

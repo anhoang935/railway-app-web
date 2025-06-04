@@ -14,7 +14,7 @@ const getBaseUrl = () => {
     if (window.location.hostname === 'localhost') {
         return `http://localhost:${port}/api/v1/coaches`;
     }
-    return `${window.location.protocol}//${window.location.hostname}:${port}/api/v1/coaches`;
+    return `${process.env.REACT_APP_BACKEND_URL}/api/v1/coaches`;
 };
 const BASE_URL = getBaseUrl();
 
