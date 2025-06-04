@@ -472,7 +472,21 @@ const Buy_Ticket = () => {
       await fetchTrainCoaches(train.id, false); // Pass false for outbound journey
     }
   };
-
+  const calculatePriceByDistance = (distance, coachTypeId) => {
+    const coachType = coachTypes.find(type => type.id === coachTypeId);
+    const basePrice = coachType ? coachType.price : 40000;
+    if(distance <= 0) return 0;
+    else if(distance <= 40) return basePrice;
+    else if(distance <= 50) return Math.round(basePrice * 1.075);
+    else if (distance <= 60) return Math.round(basePrice * 1.2);
+    else if (distance <= 80) return Math.round(basePrice * 1.4);
+    else if (distance <= 100) return Math.round(basePrice * 2.675);
+    else if (distance <= 120) return Math.round(basePrice * 3.075);
+    else{
+      const price = basePrice + (distance * 605);
+      return Math.round(price / 1000) * 1000;
+    }
+  }
   const fetchTrainCoaches = async (trainId, isReturn = false) => {
     try {
       setLoadingCoaches(true);
@@ -489,13 +503,14 @@ const Buy_Ticket = () => {
       }
       
       console.log('Processed coaches:', coaches); // Debug log
-
-      const groupedCoaches = coaches.reduce((acc, coach) => {
+      coaches.sort((a, b) => a.coachID - b.coachID);
+      const groupedCoaches = coaches.reduce((acc, coach, index) => {
         const coachType = coachTypes.find(type => type.id === coach.coach_typeID);
         if (coachType) {
           return [...acc, {
             ...coachType,
-            coachID: coach.coachID,
+            coachID: index + 1,
+            originalCoachID: coach.coachID,
             trainID: coach.trainID,
             name: coach.name || coachType.name
           }];
@@ -547,6 +562,10 @@ const Buy_Ticket = () => {
       const coach = selectedReturnCoach; // Use return coach
       const train = selectedReturnTrain; // Use return train
       if (!coach || !train) return;
+
+      const distance = calculateDistance(parseInt(formData.to), parseInt(formData.from));
+      const itemPrice = calculatePriceByDistance(distance, coach.id);
+
       setSelectedReturnItems(prev => {
         const exists = prev.find(item => item.key === key);
         if (exists) {
@@ -557,7 +576,7 @@ const Buy_Ticket = () => {
             key, 
             row, 
             col, 
-            price: coach.price,
+            price: itemPrice,
             coachId: coach.coachID,
             trainId: train.id
           }];
@@ -567,6 +586,9 @@ const Buy_Ticket = () => {
       const coach = selectedCoach; // Use outbound coach
       const train = selectedTrain; // Use outbound train
       if (!coach || !train) return;
+
+      const distance = calculateDistance(parseInt(formData.from), parseInt(formData.to));
+      const itemPrice = calculatePriceByDistance(distance, coach.id);
       setSelectedItems(prev => {
         const exists = prev.find(item => item.key === key);
         if (exists) {
@@ -577,7 +599,7 @@ const Buy_Ticket = () => {
             key, 
             row, 
             col, 
-            price: coach.price,
+            price: itemPrice,
             coachId: coach.coachID,
             trainId: train.id
           }];
@@ -623,11 +645,15 @@ const Buy_Ticket = () => {
         if (r === 2 && rows >= 4) {
           columnSeats.push(<div key={`aisle-${c}-${r}`} className="h-[20px] w-full"></div>);
         }
+        const distance = isReturn 
+          ? calculateDistance(parseInt(formData.to), parseInt(formData.from))
+          : calculateDistance(parseInt(formData.from), parseInt(formData.to));
+        const seatPrice = calculatePriceByDistance(distance, coach.id);
         columnSeats.push(
           <div key={key} onClick={() => handleSelectItem(r, c, isReturn)}>
             <Seat
               seatNumber={seatNumber}
-              price={formatCurrency(coach.price)}
+              price={formatCurrency(seatPrice)}
               isBooked={false}
               isSelected={selected}
               isHovered={hovered}
@@ -693,13 +719,17 @@ const Buy_Ticket = () => {
           const hovered = hoveredItem === key;
           const tierNumber = rows - row;
 
+          const distance = isReturn 
+            ? calculateDistance(parseInt(formData.to), parseInt(formData.from))
+            : calculateDistance(parseInt(formData.from), parseInt(formData.to));
+          const bedPrice = calculatePriceByDistance(distance, coach.id);
           columnBeds.push(
             <div key={key} className="bed-container">
               <div onClick={() => handleSelectItem(row, actualCol, isReturn)}>
                 <Bed
                   bedNumber={bedNumber}
                   tierNumber={tierNumber}
-                  price={formatCurrency(coach.price)}
+                  price={formatCurrency(bedPrice)}
                   isBooked={false}
                   isSelected={selected}
                   isHovered={hovered}
