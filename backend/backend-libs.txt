@@ -7,6 +7,7 @@ npm install cookie-parser
 npm install bcryptjs jsonwebtoken
 npm install nodemailer
 npm install node-cron
+npm install bcrypt
 
 backend libs:
 axios: cd frontend -> npm install axios

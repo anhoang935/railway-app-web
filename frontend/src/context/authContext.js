@@ -1,10 +1,10 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import authService from '../data/Service/authService';
 
 const AuthContext = createContext();
 
 export const useAuth = () => {
-    const context = React.useContext(AuthContext);
+    const context = useContext(AuthContext);
     if (!context) {
         throw new Error('useAuth must be used within an AuthProvider');
     }
@@ -16,40 +16,53 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const checkAuth = () => {
-            try {
-                const user = authService.getCurrentUser();
-                user && setCurrentUser({
-                    userID: user.userId,
-                    email: user.email,
-                    username: user.username
-                });
-            } catch (error) {
-                console.error("Error checking authentication status:", error);
-            } finally {
-                setLoading(false);
+        const checkAuthStatus = () => {
+            console.log('AuthContext - checking auth status...');
+
+            // Use authService to check authentication
+            const isAuth = authService.isAuthenticated();
+            const user = authService.getCurrentUser();
+
+            console.log('AuthContext - auth check result:', {
+                isAuthenticated: isAuth,
+                user: user
+            });
+
+            if (isAuth && user) {
+                setCurrentUser(user);
+            } else {
+                setCurrentUser(null);
+            }
+            setLoading(false);
+        };
+
+        // Check immediately
+        checkAuthStatus();
+
+        // Listen for storage changes (for cross-tab synchronization)
+        const handleStorageChange = (e) => {
+            if (e.key === 'authToken' || e.key === 'userId') {
+                checkAuthStatus();
             }
         };
 
-        checkAuth();
+        window.addEventListener('storage', handleStorageChange);
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+        };
     }, []);
 
-    const login = (userData) => {
-        setCurrentUser({
-            userID: userData.userId,
-            email: userData.email,
-            username: userData.username
-        });
-    };
-
-    const logout = () => {
-        authService.logout();
-        setCurrentUser(null);
+    const value = {
+        currentUser,
+        loading,
+        setCurrentUser,
+        setLoading
     };
 
     return (
-        <AuthContext.Provider value={{ currentUser, loading, login, logout }}>
-            {!loading ? children : <div>Loading authentication...</div>}
+        <AuthContext.Provider value={value}>
+            {children}
         </AuthContext.Provider>
     );
 };

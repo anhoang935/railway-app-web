@@ -1,3 +1,4 @@
+import bcrypt from 'bcrypt';
 import User from '../models/Users.js';
 
 // Get all users
@@ -142,31 +143,24 @@ export const createUser = async (req, res) => {
       userData = req.body;
     }
 
-    const { UserName, Email, Password, VerifyCode, Status } = userData;
+    const { UserName, Email, Password, Gender, PhoneNumber, DateOfBirth, Address, Status, Role } = userData;
 
-    if (!UserName || !Email || !Password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide UserName, Email, and Password'
-      });
-    }
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(Email)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide a valid email address'
-      });
-    }
+    console.log('Creating user with role:', Role); // Debug log
 
     const user = await User.create({
       UserName,
       Email,
       Password,
+      Gender,
+      PhoneNumber,
+      DateOfBirth,
+      Address,
       VerifyCode,
-      Status
+      Status,
+      Role // Make sure Role is included
     });
+
+    console.log('Created user:', user); // Debug log
 
     // Remove password from response for security
     const { Password: _, ...safeUser } = user;
@@ -189,9 +183,9 @@ export const createUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    let userData;
 
-    // If content type is text/plain, try to parse it as JSON
+    let userData;
+    // Handle different content types
     if (req.headers['content-type'] === 'text/plain') {
       try {
         userData = JSON.parse(req.body);
@@ -202,19 +196,28 @@ export const updateUser = async (req, res) => {
         });
       }
     } else {
-      // Otherwise use the parsed body directly
       userData = req.body;
     }
 
-    // Optional: Add validation for DateOfBirth if needed
-    if (userData.DateOfBirth) {
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (!dateRegex.test(userData.DateOfBirth)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid date format for DateOfBirth. Use YYYY-MM-DD format.'
-        });
-      }
+    console.log('Updating user ID:', id, 'with data:', userData);
+
+    // Validate input
+    if (!userData || Object.keys(userData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No data provided for update'
+      });
+    }
+
+    // Remove password from update if it's empty
+    if (userData.Password === '') {
+      delete userData.Password;
+    }
+
+    // Hash password if provided - bcrypt should now be available
+    if (userData.Password) {
+      const saltRounds = 12;
+      userData.Password = await bcrypt.hash(userData.Password, saltRounds);
     }
 
     const updatedUser = await User.update(id, userData);
@@ -226,18 +229,19 @@ export const updateUser = async (req, res) => {
       });
     }
 
-    // Remove password from response for security
-    const { Password, ...safeUser } = updatedUser;
+    // Remove password from response
+    const { Password, ...userResponse } = updatedUser;
 
     res.status(200).json({
       success: true,
       message: 'User updated successfully',
-      data: safeUser
+      data: userResponse
     });
   } catch (error) {
+    console.error('Update user error:', error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Failed to update user: ' + error.message
     });
   }
 };

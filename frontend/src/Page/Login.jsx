@@ -39,7 +39,7 @@ const Login = () => {
 
   useEffect(() => {
     setIsVisible(true);
-    
+
     // Check if user is already logged in
     if (authService.isAuthenticated()) {
       navigate('/home');
@@ -116,7 +116,7 @@ const Login = () => {
       console.error('Error logging in:', error);
       setLoading(false);
       setLoadingMessage('');
-      
+
       if (error.response) {
         switch (error.response.status) {
           case 400:
@@ -149,6 +149,19 @@ const Login = () => {
       localStorage.removeItem('email');
       localStorage.removeItem('password');
       localStorage.setItem('rememberMe', 'false');
+    }
+
+    // Debug the response structure
+    console.log('OTP Success Response:', response);
+    console.log('Response data:', response.data);
+    console.log('User data:', response.data?.user); // Changed from response.data?.data?.user
+    console.log('User role:', response.data?.user?.role); // Changed from response.data?.data?.user?.role
+
+    // Store user role for navigation purposes - FIX THE STRUCTURE
+    if (response.data && response.data.user) {
+      const userRole = response.data.user.role || 'Customer';
+      localStorage.setItem('userRole', userRole);
+      console.log('Stored user role in localStorage:', userRole);
     }
 
     setSuccess('Login successful! Welcome back.');

@@ -78,7 +78,9 @@ const userService = {
 
     createUser: async (userData) => {
         try {
+            console.log('Creating user with data:', userData); // Debug log
             const response = await axios.post(BASE_URL, userData);
+            console.log('Create user response:', response.data); // Debug log
             return response.data.data;
         } catch (error) {
             console.error('Error creating user:', error);
@@ -88,15 +90,20 @@ const userService = {
 
     updateUser: async (id, userData) => {
         try {
+            console.log('Updating user:', id, 'with data:', userData); // Debug log
+
             const response = await axios.put(`${BASE_URL}/${id}`, userData, {
                 headers: {
                     ...authHeader(),
                     'Content-Type': 'application/json'
                 }
             });
+
+            console.log('Update response:', response.data); // Debug log
             return response.data.data;
         } catch (error) {
             console.error('Error updating user:', error);
+            console.error('Error response:', error.response?.data); // More detailed error logging
             throw error.response?.data?.message || error.message || 'Failed to update user';
         }
     },

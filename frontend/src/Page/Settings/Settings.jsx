@@ -4,13 +4,14 @@ import {
     KeyRound, Save, SlidersHorizontal, ChefHat, Accessibility, School
 } from "lucide-react";
 import userService from "../../data/Service/userService";
-import { useAuth } from "../../context/authContext";
+import authService from "../../data/Service/authService";
 import { useNavigate } from "react-router-dom";
+import "./settings.css";
 
 export default function Settings() {
-    const { currentUser, loading: authLoading } = useAuth();
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(true);
+    const [currentUser, setCurrentUser] = useState(null);
     const [formData, setFormData] = useState({
         fullName: "",
         gender: "",
@@ -31,55 +32,64 @@ export default function Settings() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        const fetchUserData = async () => {
-            // Only try to fetch data if the auth state has finished loading
-            // and we have a currentUser
-            if (authLoading) {
-                return; // Wait for auth to finish loading
-            }
+        const checkAuthAndFetchData = async () => {
+            try {
+                setIsLoading(true);
 
-            if (!currentUser) {
-                setIsLoading(false);
-                return;
-            }
+                // Check authentication using authService directly
+                const isAuth = authService.isAuthenticated();
+                const user = authService.getCurrentUser();
 
-            if (currentUser && currentUser.userID) {
-                try {
-                    setIsLoading(true);
-                    setError(null);
-                    const userData = await userService.getUserByID(currentUser.userID);
+                console.log('Settings - Auth check:', { isAuth, user });
 
-                    // Format the date of birth if it exists
-                    let formattedDob = userData.DateOfBirth || "";
-                    if (userData.DateOfBirth) {
-                        const date = new Date(userData.DateOfBirth);
-                        formattedDob = date.toISOString().split('T')[0];
-                    }
-
-                    setFormData({
-                        fullName: userData.UserName || "",
-                        gender: userData.Gender?.toLowerCase() || "",
-                        dob: formattedDob,
-                        email: userData.Email || "",
-                        phone: userData.PhoneNumber || "",
-                        address: userData.Address || "",
-                        preferredClass: userData.PreferredClass || "first",
-                        mealPreference: userData.MealPreference || "veg",
-                        specialAssistance: userData.SpecialAssistance || false,
-                        password: "",
-                        confirmPassword: "",
-                    });
-                } catch (error) {
-                    console.error("Error fetching user data:", error);
-                    setError("Failed to load user data. Please try again.");
-                } finally {
-                    setIsLoading(false);
+                if (!isAuth || !user) {
+                    console.log('Settings - Not authenticated, redirecting to login');
+                    navigate('/login');
+                    return;
                 }
+
+                setCurrentUser(user);
+
+                // Fetch user data from API
+                if (user.userId) {
+                    try {
+                        const userData = await userService.getUserByID(user.userId);
+
+                        // Format the date of birth if it exists
+                        let formattedDob = userData.DateOfBirth || "";
+                        if (userData.DateOfBirth) {
+                            const date = new Date(userData.DateOfBirth);
+                            formattedDob = date.toISOString().split('T')[0];
+                        }
+
+                        setFormData({
+                            fullName: userData.UserName || "",
+                            gender: userData.Gender?.toLowerCase() || "",
+                            dob: formattedDob,
+                            email: userData.Email || "",
+                            phone: userData.PhoneNumber || "",
+                            address: userData.Address || "",
+                            preferredClass: userData.PreferredClass || "first",
+                            mealPreference: userData.MealPreference || "veg",
+                            specialAssistance: userData.SpecialAssistance || false,
+                            password: "",
+                            confirmPassword: "",
+                        });
+                    } catch (error) {
+                        console.error("Error fetching user data:", error);
+                        setError("Failed to load user data. Please try again.");
+                    }
+                }
+            } catch (error) {
+                console.error("Settings - Auth check failed:", error);
+                navigate('/login');
+            } finally {
+                setIsLoading(false);
             }
         };
 
-        fetchUserData();
-    }, [currentUser, authLoading, navigate]);
+        checkAuthAndFetchData();
+    }, [navigate]);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -109,19 +119,19 @@ export default function Settings() {
                 const userUpdateData = {
                     UserName: formData.fullName,
                     Gender: formData.gender,
-                    DateOfBirth: formData.dob, // Matching our new DB column name
+                    DateOfBirth: formData.dob,
                     Email: formData.email,
                     PhoneNumber: formData.phone,
-                    Address: formData.address, // Matching our new DB column name
+                    Address: formData.address,
                     PreferredClass: formData.preferredClass,
                     MealPreference: formData.mealPreference,
                     SpecialAssistance: formData.specialAssistance
                 };
 
-                await userService.updateUser(currentUser.userID, userUpdateData);
+                await userService.updateUser(currentUser.userId, userUpdateData);
 
                 if (formData.password) {
-                    await userService.updateUserPassword(currentUser.userID, {
+                    await userService.updateUserPassword(currentUser.userId, {
                         newPassword: formData.password
                     });
 
@@ -151,8 +161,8 @@ export default function Settings() {
         setIsEditing(!isEditing);
     };
 
-    // IMPORTANT: This is the key change - full page overlay during loading
-    if (authLoading || isLoading) {
+    // Show loading spinner
+    if (isLoading) {
         return (
             <div className="fixed inset-0 bg-white z-50 flex justify-center items-center">
                 <div className="text-center">
@@ -163,18 +173,18 @@ export default function Settings() {
         );
     }
 
-    // Only show not authenticated message if auth loading is done and no user found
-    if (!authLoading && !currentUser) {
+    // Show error if authentication failed
+    if (error) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh]">
                 <div className="text-center p-8 max-w-md">
-                    <h2 className="text-2xl font-bold text-red-600 mb-4">Authentication Required</h2>
-                    <p className="text-gray-600 mb-6">Please log in to access your account settings.</p>
+                    <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
+                    <p className="text-gray-600 mb-6">{error}</p>
                     <button
-                        onClick={() => navigate('/login')}
+                        onClick={() => window.location.reload()}
                         className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
                     >
-                        Go to Login
+                        Try Again
                     </button>
                 </div>
             </div>
@@ -182,222 +192,291 @@ export default function Settings() {
     }
 
     return (
-        <div className="animate-fadeInUp max-w-3xl mx-auto p-4 space-y-6">
-            <div className="flex justify-around border-b">
-                {[
-                    {
-                        key: "profile",
-                        icon: <User className="w-4 h-4" />,
-                        label: "Profile"
-                    },
-                    {
-                        key: "preferences",
-                        icon: <SlidersHorizontal className="w-4 h-4" />,
-                        label: "Preferences"
-                    },
-                    {
-                        key: "security",
-                        icon: <Lock className="w-4 h-4" />,
-                        label: "Security"
-                    }
-                ].map((tab) => (
-                    <button
-                        key={tab.key}
-                        onClick={() => setActiveTab(tab.key)}
-                        className={`flex items-center gap-2 px-4 py-2 border-b-2 ${activeTab === tab.key ? "border-blue-600 font-semibold text-blue-600" : "border-transparent text-gray-600 hover:text-blue-600"}`}
-                    >
-                        {tab.icon} {tab.label}
-                    </button>
-                ))}
-            </div>
-
-            <form onSubmit={handleSubmit} className="bg-white shadow rounded-xl p-6 space-y-6 border border-gray-200">
-                {activeTab === "profile" && (
-                    <>
-                        <h2 className="text-xl font-bold flex items-center gap-2"><User /> Personal Information</h2>
-                        <div className="grid gap-4">
-                            <div>
-                                <label className="font-bold mb-1 text-blue-600 flex items-center gap-2">
-                                    <User className="w-4 h-4" />
-                                    Full Name
-                                </label>
-                                <input
-                                    name="fullName"
-                                    value={formData.fullName}
-                                    onChange={handleChange}
-                                    disabled={!isEditing}
-                                    className="w-full border rounded-lg px-3 py-2"
-                                />
-                            </div>
-                            <div>
-                                <label className="font-bold mb-1 text-blue-600 flex items-center gap-2">
-                                    <UserRoundPen className="w-4 h-4" />
-                                    Gender
-                                </label>
-                                <select
-                                    name="gender"
-                                    value={formData.gender}
-                                    onChange={handleChange}
-                                    disabled={!isEditing}
-                                    className="w-full border rounded-lg px-3 py-2"
-                                >
-                                    <option value="male">Male</option>
-                                    <option value="female">Female</option>
-                                    <option value="other">Other</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="text-blue-600 font-bold mb-1 flex items-center gap-1"><Calendar className="w-4 h-4" /> Date of Birth</label>
-                                <input
-                                    type="date"
-                                    name="dob"
-                                    value={formData.dob}
-                                    onChange={handleChange}
-                                    disabled={!isEditing}
-                                    className="w-full border rounded-lg px-3 py-2"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-blue-600 font-bold mb-1 flex items-center gap-1"><Mail className="w-4 h-4" /> Email</label>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    disabled={!isEditing}
-                                    className="w-full border rounded-lg px-3 py-2"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-blue-600 font-bold mb-1 flex items-center gap-1"><Phone className="w-4 h-4" /> Phone</label>
-                                <input
-                                    type="tel"
-                                    name="phone"
-                                    value={formData.phone}
-                                    onChange={handleChange}
-                                    disabled={!isEditing}
-                                    className="w-full border rounded-lg px-3 py-2"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-blue-600 font-bold mb-1 flex items-center gap-1"><MapPin className="w-4 h-4" /> Address</label>
-                                <textarea
-                                    name="address"
-                                    value={formData.address}
-                                    onChange={handleChange}
-                                    disabled={!isEditing}
-                                    className="w-full border rounded-lg px-3 py-2 resize-none"
-                                />
-                            </div>
-                        </div>
-                    </>
-                )}
-
-                {activeTab === "preferences" && (
-                    <>
-                        <h2 className="text-xl font-bold flex items-center gap-2"><SlidersHorizontal /> Travel Preferences</h2>
-                        <div className="grid gap-4">
-                            <div>
-                                <label className="text-blue-600 font-bold mb-1 flex items-center gap-2">
-                                    <School className="w-4 h-4" />
-                                    Preferred Class
-                                </label>
-                                <select
-                                    name="preferredClass"
-                                    value={formData.preferredClass}
-                                    onChange={handleChange}
-                                    disabled={!isEditing}
-                                    className="w-full border rounded-lg px-3 py-2"
-                                >
-                                    <option value="first">First Class</option>
-                                    <option value="second">Second Class</option>
-                                    <option value="sleeper">Sleeper</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="text-blue-600 font-bold mb-1 flex items-center gap-1"><ChefHat className="w-4 h-4" /> Meal Preference</label>
-                                <select
-                                    name="mealPreference"
-                                    value={formData.mealPreference}
-                                    onChange={handleChange}
-                                    disabled={!isEditing}
-                                    className="w-full border rounded-lg px-3 py-2"
-                                >
-                                    <option value="veg">Vegetarian</option>
-                                    <option value="non-veg">Non-Vegetarian</option>
-                                    <option value="vegan">Vegan</option>
-                                </select>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    name="specialAssistance"
-                                    checked={formData.specialAssistance}
-                                    onChange={handleChange}
-                                    disabled={!isEditing}
-                                />
-                                <label className="flex items-center gap-1"><Accessibility className="w-4 h-4" /> Require Special Assistance</label>
-                            </div>
-                        </div>
-                    </>
-                )}
-
-                {activeTab === "security" && (
-                    <>
-                        <h2 className="text-xl font-bold flex items-center gap-2"><KeyRound /> Security Settings</h2>
-                        <div className="grid gap-4">
-                            <div>
-                                <label className="block text-blue-600 font-bold mb-1">New Password</label>
-                                <input
-                                    type="password"
-                                    name="password"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    disabled={!isEditing}
-                                    className="w-full border rounded-lg px-3 py-2"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-blue-600 font-bold mb-1">Confirm Password</label>
-                                <input
-                                    type="password"
-                                    name="confirmPassword"
-                                    value={formData.confirmPassword}
-                                    onChange={handleChange}
-                                    disabled={!isEditing}
-                                    className="w-full border rounded-lg px-3 py-2"
-                                />
-                            </div>
-                        </div>
-                    </>
-                )}
-
-                <div className="flex justify-end pt-4">
-                    {isEditing && (
-                        <button type="submit"
-                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2">
-                            <Save className="w-4 h-4" /> Save Changes
-                        </button>
-                    )}
-                    {!isEditing && (
-                        <button type="button"
-                            onClick={handleEditToggle}
-                            className="ml-4 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4" /> Change Information
-                        </button>
-                    )}
+        <div className="container">
+            <div className="space-y-6">
+                {/* Header */}
+                <div className="text-center mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Account Settings</h1>
+                    <p className="text-gray-600">Manage your profile and preferences</p>
                 </div>
 
+                {/* Success Notification */}
                 {showNotification && (
-                    <div
-                        className={`mt-4 transition-all duration-700 ease-in-out 
-                                    ${showNotification ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-2 scale-95'} 
-                                bg-green-100 text-green-800 px-4 py-3 rounded-lg shadow text-center`}
-                    >
-                        Changes have been saved successfully ✅
+                    <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-4 flex items-center">
+                        <CheckCircle className="mr-2" size={20} />
+                        Profile updated successfully!
                     </div>
                 )}
-            </form>
+
+                {/* Tab Navigation */}
+                <div className="tab-navigation">
+                    <button
+                        className={`tab-button ${activeTab === "profile" ? "active" : ""}`}
+                        onClick={() => setActiveTab("profile")}
+                    >
+                        <User size={20} />
+                        Profile
+                    </button>
+                    <button
+                        className={`tab-button ${activeTab === "security" ? "active" : ""}`}
+                        onClick={() => setActiveTab("security")}
+                    >
+                        <Lock size={20} />
+                        Security
+                    </button>
+                    {/* Remove Preferences tab */}
+                </div>
+
+                {/* Form Container */}
+                <div className="form-container">
+                    <form onSubmit={handleSubmit}>
+                        {/* Profile Tab */}
+                        {activeTab === "profile" && (
+                            <div className="space-y-6">
+                                <h3 className="text-xl font-semibold text-gray-900 mb-4">Personal Information</h3>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="form-group">
+                                        <label className="form-label">
+                                            <User size={16} className="inline mr-2" />
+                                            Full Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="fullName"
+                                            value={formData.fullName}
+                                            onChange={handleChange}
+                                            disabled={!isEditing}
+                                            className="form-input"
+                                            placeholder="Enter your full name"
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label">
+                                            <Mail size={16} className="inline mr-2" />
+                                            Email
+                                        </label>
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value={formData.email}
+                                            onChange={handleChange}
+                                            disabled={!isEditing}
+                                            className="form-input"
+                                            placeholder="Enter your email"
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label">
+                                            <Phone size={16} className="inline mr-2" />
+                                            Phone Number
+                                        </label>
+                                        <input
+                                            type="tel"
+                                            name="phone"
+                                            value={formData.phone}
+                                            onChange={handleChange}
+                                            disabled={!isEditing}
+                                            className="form-input"
+                                            placeholder="Enter your phone number"
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label">
+                                            <Calendar size={16} className="inline mr-2" />
+                                            Date of Birth
+                                        </label>
+                                        <input
+                                            type="date"
+                                            name="dob"
+                                            value={formData.dob}
+                                            onChange={handleChange}
+                                            disabled={!isEditing}
+                                            className="form-input"
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label">Gender</label>
+                                        <select
+                                            name="gender"
+                                            value={formData.gender}
+                                            onChange={handleChange}
+                                            disabled={!isEditing}
+                                            className="select-input"
+                                        >
+                                            <option value="">Select Gender</option>
+                                            <option value="male">Male</option>
+                                            <option value="female">Female</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Move preferences here as form fields */}
+                                    <div className="form-group">
+                                        <label className="form-label">
+                                            <School size={16} className="inline mr-2" />
+                                            Preferred Class
+                                        </label>
+                                        <select
+                                            name="preferredClass"
+                                            value={formData.preferredClass}
+                                            onChange={handleChange}
+                                            disabled={!isEditing}
+                                            className="select-input"
+                                        >
+                                            <option value="economy">Economy</option>
+                                            <option value="business">Business</option>
+                                            <option value="first">First Class</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="form-group">
+                                        <label className="form-label">
+                                            <MapPin size={16} className="inline mr-2" />
+                                            Address
+                                        </label>
+                                        <textarea
+                                            name="address"
+                                            value={formData.address}
+                                            onChange={handleChange}
+                                            disabled={!isEditing}
+                                            rows="2"
+                                            className="form-textarea"
+                                            placeholder="Enter your address"
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label">
+                                            <ChefHat size={16} className="inline mr-2" />
+                                            Meal Preference
+                                        </label>
+                                        <select
+                                            name="mealPreference"
+                                            value={formData.mealPreference}
+                                            onChange={handleChange}
+                                            disabled={!isEditing}
+                                            className="select-input"
+                                        >
+                                            <option value="veg">Vegetarian</option>
+                                            <option value="non-veg">Non-Vegetarian</option>
+                                            <option value="vegan">Vegan</option>
+                                            <option value="halal">Halal</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="flex items-center space-x-3">
+                                        <input
+                                            type="checkbox"
+                                            name="specialAssistance"
+                                            checked={formData.specialAssistance}
+                                            onChange={handleChange}
+                                            disabled={!isEditing}
+                                            className="w-4 h-4 text-blue-600 rounded"
+                                        />
+                                        <span className="form-label flex items-center">
+                                            <Accessibility size={16} className="mr-2" />
+                                            Require Special Assistance
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Security Tab */}
+                        {activeTab === "security" && (
+                            <div className="space-y-6">
+                                <h3 className="text-xl font-semibold text-gray-900 mb-4">Security Settings</h3>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="form-group">
+                                        <label className="form-label">
+                                            <KeyRound size={16} className="inline mr-2" />
+                                            New Password
+                                        </label>
+                                        <input
+                                            type="password"
+                                            name="password"
+                                            value={formData.password}
+                                            onChange={handleChange}
+                                            disabled={!isEditing}
+                                            className="form-input"
+                                            placeholder="Enter new password"
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label">
+                                            <Lock size={16} className="inline mr-2" />
+                                            Confirm Password
+                                        </label>
+                                        <input
+                                            type="password"
+                                            name="confirmPassword"
+                                            value={formData.confirmPassword}
+                                            onChange={handleChange}
+                                            disabled={!isEditing}
+                                            className="form-input"
+                                            placeholder="Confirm new password"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                    <p className="text-sm text-yellow-800">
+                                        <strong>Password Requirements:</strong>
+                                        <br />• At least 8 characters long
+                                        <br />• Include uppercase and lowercase letters
+                                        <br />• Include at least one number
+                                        <br />• Include at least one special character
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Remove the entire Preferences tab section */}
+
+                        {/* Button Container */}
+                        <div className="button-container">
+                            {!isEditing ? (
+                                <button
+                                    type="button"
+                                    onClick={handleEditToggle}
+                                    className="button edit-button"
+                                >
+                                    <UserRoundPen className="icon" />
+                                    Edit Profile
+                                </button>
+                            ) : (
+                                <div className="flex space-x-4">
+                                    <button
+                                        type="button"
+                                        onClick={handleEditToggle}
+                                        className="button bg-gray-500 text-white hover:bg-gray-600"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="button save-button"
+                                    >
+                                        <Save className="icon" />
+                                        Save Changes
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     );
 }

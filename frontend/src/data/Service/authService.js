@@ -43,12 +43,41 @@ const authService = {
                 otp
             });
 
+            console.log('Full OTP response:', response.data); // Debug the full response
+
             // Store token after successful OTP verification
-            if (response.data.data.token) {
+            // Backend structure: response.data.data.token and response.data.data.user
+            if (response.data && response.data.data && response.data.data.token) {
                 localStorage.setItem('authToken', response.data.data.token);
                 localStorage.setItem('userId', response.data.data.user.userId.toString());
                 localStorage.setItem('userEmail', response.data.data.user.email);
                 localStorage.setItem('userName', response.data.data.user.username);
+                localStorage.setItem('userRole', response.data.data.user.role || 'Customer');
+
+                // Debug log to see what we're storing
+                console.log('Storing auth data:', {
+                    token: response.data.data.token ? 'exists' : 'missing',
+                    userId: response.data.data.user.userId,
+                    email: response.data.data.user.email,
+                    username: response.data.data.user.username,
+                    role: response.data.data.user.role
+                });
+
+                console.log('Final localStorage check:', {
+                    authToken: localStorage.getItem('authToken'),
+                    userId: localStorage.getItem('userId'),
+                    userEmail: localStorage.getItem('userEmail'),
+                    userName: localStorage.getItem('userName'),
+                    userRole: localStorage.getItem('userRole')
+                });
+            } else {
+                console.error('Token or user data missing in response structure:', {
+                    hasData: !!response.data,
+                    hasDataData: !!response.data?.data,
+                    hasToken: !!response.data?.data?.token,
+                    hasUser: !!response.data?.data?.user,
+                    fullResponse: response.data
+                });
             }
 
             return response.data;
@@ -71,10 +100,12 @@ const authService = {
     },
 
     logout: () => {
+        // Clear all auth-related localStorage items
         localStorage.removeItem('authToken');
         localStorage.removeItem('userId');
         localStorage.removeItem('userEmail');
         localStorage.removeItem('userName');
+        localStorage.removeItem('userRole');
         localStorage.removeItem('email');
         localStorage.removeItem('password');
         localStorage.removeItem('rememberMe');
@@ -132,24 +163,35 @@ const authService = {
     },
 
     isAuthenticated: () => {
-        return !!localStorage.getItem('authToken');
+        const token = localStorage.getItem('authToken');
+        const userId = localStorage.getItem('userId');
+
+        console.log('isAuthenticated check:', {
+            hasToken: !!token,
+            hasUserId: !!userId,
+            token: token ? 'exists' : 'missing',
+            userId: userId || 'missing'
+        });
+
+        const isAuth = !!(token && userId);
+        console.log('isAuthenticated result:', isAuth);
+        return isAuth;
     },
 
     getCurrentUser: () => {
         const token = localStorage.getItem('authToken');
         const userId = localStorage.getItem('userId');
-        const userEmail = localStorage.getItem('userEmail');
-        const userName = localStorage.getItem('userName');
 
-        if (token && userId) {
-            return {
-                userId: parseInt(userId),
-                email: userEmail,
-                username: userName,
-                token
-            };
+        if (!token || !userId) {
+            return null;
         }
-        return null;
+
+        return {
+            userId: localStorage.getItem('userId'),
+            username: localStorage.getItem('userName'),
+            email: localStorage.getItem('userEmail'),
+            role: localStorage.getItem('userRole')
+        };
     }
 };
 

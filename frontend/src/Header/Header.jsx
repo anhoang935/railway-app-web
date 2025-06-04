@@ -25,6 +25,7 @@ const Header = () => {
     const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isAuthenticated, setIsAuthenticated] = useState(false); // Add this state
     const [currentUser, setCurrentUser] = useState(null); // Add this state
+    const [userRole, setUserRole] = useState(null);
     const navigate = useNavigate();
     const location = useLocation();
     const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -53,20 +54,49 @@ const Header = () => {
         };
     }, []);
 
-    // Add this useEffect to check authentication status
+    // Replace the current useEffect with this simpler version
     useEffect(() => {
-        const checkAuth = () => {
-            const authStatus = authService.isAuthenticated();
+        const checkAuthStatus = () => {
+            const isAuth = authService.isAuthenticated();
             const user = authService.getCurrentUser();
-            setIsAuthenticated(authStatus);
+            const role = localStorage.getItem('userRole');
+
+            console.log('Header auth check:', {
+                isAuthenticated: isAuth,
+                currentUser: user,
+                userRole: role
+            });
+
+            setIsAuthenticated(isAuth);
             setCurrentUser(user);
+            setUserRole(role);
         };
 
-        checkAuth();
+        // Check immediately
+        checkAuthStatus();
 
-        // Check auth status when location changes
-        checkAuth();
+        // Check every 500ms to catch login state changes
+        const interval = setInterval(checkAuthStatus, 500);
+
+        // Listen for storage changes
+        const handleStorageChange = () => {
+            checkAuthStatus();
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('storage', handleStorageChange);
+        };
     }, [location]);
+
+    // Function to check if user is admin
+    const isAdmin = () => {
+        const result = userRole === 'Admin';
+        console.log('isAdmin check - userRole:', userRole, 'result:', result);
+        return result;
+    };
 
     const toggleMobileMenu = () => {
         setMobileMenuOpen(!isMobileMenuOpen);
@@ -77,6 +107,8 @@ const Header = () => {
         authService.logout();
         setIsAuthenticated(false);
         setCurrentUser(null);
+        setUserRole(null); // Add this line to clear the role
+        setDropdownOpen(false); // Close dropdown
         navigate('/home');
     };
 
@@ -145,7 +177,15 @@ const Header = () => {
 
                                         {dropdownOpen && (
                                             <div className="user-dropdown-menu">
-                                                <Link to="/settings" className="dropdown-item" onClick={() => setDropdownOpen(false)}>
+                                                <Link
+                                                    to="/settings"
+                                                    className="dropdown-item"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        setDropdownOpen(false);
+                                                        navigate('/settings');
+                                                    }}
+                                                >
                                                     <Settings size={16} className="item-icon" />
                                                     <span>Settings</span>
                                                 </Link>
@@ -162,9 +202,21 @@ const Header = () => {
                                         )}
                                     </div>
 
-                                    {/* Button Options */}
-                                    {/* <LongButton onClick={() => navigate('/admin')} /> */}
-                                    <BlackButton text="Admin Panel" onClick={() => navigate('/admin')} />
+                                    {/* ONLY show Admin Panel button for admin users */}
+                                    {isAdmin() && (
+                                        <BlackButton text="Admin Panel" onClick={() => navigate('/admin')} />
+                                    )}
+
+                                    {/* Remove or comment out this settings button since it's now in the dropdown */}
+                                    {/* <button
+                                        className="setting-btn"
+                                        title="Settings"
+                                        onClick={() => navigate('/settings')}
+                                    >
+                                        <span className="bar bar1"></span>
+                                        <span className="bar bar2"></span>
+                                        <span className="bar bar1"></span>
+                                    </button> */}
                                 </>
                             ) : (
                                 // Show login/register when not authenticated
@@ -184,7 +236,8 @@ const Header = () => {
                                 </>
                             )}
 
-                            <button
+                            {/* Remove the settings button from here as it's now in the dropdown */}
+                            {/* <button
                                 className="setting-btn"
                                 title="Settings"
                                 onClick={() => navigate('/settings')}
@@ -192,60 +245,37 @@ const Header = () => {
                                 <span className="bar bar1"></span>
                                 <span className="bar bar2"></span>
                                 <span className="bar bar1"></span>
-                            </button>
+                            </button> */}
                         </div>
 
                         {/* Mobile Menu */}
-                        <div className={`mobile-menu ${isMobileMenuOpen ? 'open' : ''}`}>
-                            <ul className='mobile-nav-links'>
-                                {nav_links.map((item, index) => (
-                                    <li className='nav__item' key={index}>
-                                        <NavLink
-                                            to={item.path}
-                                            className={({ isActive }) =>
-                                                `mobile-nav-link ${isActive ? 'active-mobile-link' : ''}`}
-                                            onClick={() => setMobileMenuOpen(false)}
-                                        >
-                                            {item.display}
-                                        </NavLink>
-                                    </li>
-                                ))}
-                                <div className="mobile-auth-buttons">
-                                    {isAuthenticated && (
-                                        <div className="mobile-user-dropdown">
-                                            <Link to="/settings" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
-                                                <Settings size={16} className="mr-2" />
-                                                Settings
-                                            </Link>
-                                            <Link to="/my-bookings" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>
-                                                <CreditCard size={16} className="mr-2" />
-                                                My Bookings
-                                            </Link>
-                                            <button
-                                                className="mobile-nav-link text-red-500"
-                                                onClick={() => {
-                                                    setMobileMenuOpen(false);
-                                                    handleLogout();
-                                                }}
-                                            >
-                                                <LogOut size={16} className="mr-2" />
-                                                Logout
-                                            </button>
-                                        </div>
-                                    )}
-                                    <button
-                                        className="setting-btn"
-                                        onClick={() => {
-                                            setMobileMenuOpen(false);
-                                            navigate('/settings');
-                                        }}
-                                        title="Settings"
-                                    >
-                                        <span className="bar bar1"></span>
-                                        <span className="bar bar2"></span>
-                                        <span className="bar bar1"></span>
-                                    </button>
-                                </div>
+                        <div className={`mobile-menu ${isMobileMenuOpen ? 'active' : ''}`}>
+                            <ul>
+                                <li><Link to="/home" onClick={toggleMobileMenu}>Home</Link></li>
+                                <li><Link to="/about" onClick={toggleMobileMenu}>About</Link></li>
+                                <li><Link to="/timetable" onClick={toggleMobileMenu}>Timetable</Link></li>
+                                <li><Link to="/buy-ticket" onClick={toggleMobileMenu}>Buy Ticket</Link></li>
+                                <li><Link to="/check-ticket" onClick={toggleMobileMenu}>Check Ticket</Link></li>
+                                <li><Link to="/return-ticket" onClick={toggleMobileMenu}>Return Ticket</Link></li>
+
+                                {authService.isAuthenticated() ? (
+                                    <>
+                                        <li><Link to="/settings" onClick={toggleMobileMenu}>Settings</Link></li>
+                                        <li><Link to="/my-bookings" onClick={toggleMobileMenu}>My Bookings</Link></li>
+
+                                        {/* ONLY show Admin Panel in mobile for admin users */}
+                                        {isAdmin() && (
+                                            <li><Link to="/admin" onClick={toggleMobileMenu}>Admin Panel</Link></li>
+                                        )}
+
+                                        <li><button onClick={handleLogout}>Logout</button></li>
+                                    </>
+                                ) : (
+                                    <>
+                                        <li><Link to="/login" onClick={toggleMobileMenu}>Log In</Link></li>
+                                        <li><Link to="/register" onClick={toggleMobileMenu}>Sign Up</Link></li>
+                                    </>
+                                )}
                             </ul>
                         </div>
                     </nav>

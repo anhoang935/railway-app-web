@@ -219,7 +219,8 @@ export const verifyLoginOTP = async (req, res) => {
           userId: user.userID,
           username: user.UserName,
           email: user.Email,
-          status: user.Status
+          status: user.Status,
+          role: user.Role
         },
         token
       }

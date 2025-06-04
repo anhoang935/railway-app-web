@@ -12,12 +12,9 @@ import LoadingPage from '../../../components/LoadingPage';
 const StaffUsers = ({ setActiveTab }) => {
   const [successMessage, setSuccessMessage] = useState(null);
 
-  // Modal state
-  const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState('create'); // 'create', 'edit'
-  const [currentUser, setCurrentUser] = useState(null);
-
-  // Form data
+  // Form state
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     UserName: '',
     Email: '',
@@ -55,7 +52,7 @@ const StaffUsers = ({ setActiveTab }) => {
     setLoadingError
   } = useLoadingWithTimeout();
 
-  // Clear messages after 5 seconds - MOVED BEFORE EARLY RETURN
+  // Clear messages after 5 seconds
   useEffect(() => {
     if (successMessage) {
       const timer = setTimeout(() => {
@@ -82,8 +79,8 @@ const StaffUsers = ({ setActiveTab }) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Modal handlers
-  const openCreateModal = () => {
+  // Add new customer handlers
+  const handleAddNew = () => {
     setFormData({
       UserName: '',
       Email: '',
@@ -95,12 +92,12 @@ const StaffUsers = ({ setActiveTab }) => {
       Status: 'pending',
       Role: 'Customer'
     });
-    setModalMode('create');
-    setShowModal(true);
+    setIsAdding(true);
+    setEditingId(null);
     setOperationError(null);
   };
 
-  const openEditModal = (user) => {
+  const handleEdit = (user) => {
     setFormData({
       UserName: user.UserName || '',
       Email: user.Email || '',
@@ -112,59 +109,69 @@ const StaffUsers = ({ setActiveTab }) => {
       Role: user.Role || 'Customer',
       Password: ''
     });
-    setCurrentUser(user);
-    setModalMode('edit');
-    setShowModal(true);
+    setEditingId(user.userID);
+    setIsAdding(false);
     setOperationError(null);
   };
 
-  // Form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleCancel = () => {
+    setIsAdding(false);
+    setEditingId(null);
+    setOperationError(null);
+  };
 
+  // Save new customer
+  const handleSaveNew = async () => {
     try {
       startLoading();
 
-      if (modalMode === 'create') {
-        const newUser = await userService.createUser({
-          ...formData,
-          Role: formData.Role
-        });
+      const newUser = await userService.createUser({
+        ...formData,
+        Role: formData.Role
+      });
 
-        // Optimistic update
-        if (newUser) {
-          setAllUsers(prevUsers => [...prevUsers, newUser]);
-        } else {
-          await refetchUsers();
-        }
-
-        setSuccessMessage("Customer created successfully");
-      } else if (modalMode === 'edit') {
-        const updateData = {
-          ...formData,
-          Role: formData.Role
-        };
-        if (!updateData.Password) delete updateData.Password;
-
-        await userService.updateUser(currentUser.userID, updateData);
-
-        // Optimistic update
-        setAllUsers(prevUsers =>
-          prevUsers.map(user =>
-            user.userID === currentUser.userID
-              ? { ...user, ...updateData }
-              : user
-          )
-        );
-
-        setSuccessMessage(`Customer updated successfully`);
+      // Optimistic update
+      if (newUser) {
+        setAllUsers(prevUsers => [...prevUsers, newUser]);
+      } else {
+        await refetchUsers();
       }
 
-      setShowModal(false);
+      setSuccessMessage("Customer created successfully");
+      setIsAdding(false);
       stopLoading();
     } catch (err) {
-      setLoadingError(`Operation failed: ${err.toString()}`);
-      console.error('Error during user operation:', err);
+      setLoadingError(`Failed to create customer: ${err.toString()}`);
+    }
+  };
+
+  // Save edited customer
+  const handleSaveEdit = async () => {
+    try {
+      startLoading();
+
+      const updateData = {
+        ...formData,
+        Role: formData.Role
+      };
+      if (!updateData.Password) delete updateData.Password;
+
+      await userService.updateUser(editingId, updateData);
+
+      // Optimistic update
+      setAllUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.userID === editingId
+            ? { ...user, ...updateData }
+            : user
+        )
+      );
+
+      setSuccessMessage(`Customer updated successfully`);
+      setEditingId(null);
+      stopLoading();
+    } catch (err) {
+      setLoadingError(`Failed to update customer: ${err.toString()}`);
     }
   };
 
@@ -287,7 +294,7 @@ const StaffUsers = ({ setActiveTab }) => {
 
           <button
             onClick={refetchUsers}
-            disabled={operationLoading}
+            disabled={operationLoading || isAdding || editingId !== null}
             className="flex items-center justify-center p-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Refresh"
           >
@@ -296,7 +303,7 @@ const StaffUsers = ({ setActiveTab }) => {
 
           <button
             onClick={exportToCSV}
-            disabled={operationLoading}
+            disabled={operationLoading || isAdding || editingId !== null}
             className="flex items-center px-4 py-2 bg-green-600 text-white font-bold rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="Export to CSV"
           >
@@ -305,8 +312,8 @@ const StaffUsers = ({ setActiveTab }) => {
           </button>
 
           <button
-            onClick={openCreateModal}
-            disabled={operationLoading}
+            onClick={handleAddNew}
+            disabled={operationLoading || isAdding || editingId !== null}
             className="flex items-center px-4 py-2 bg-blue-600 text-white font-bold rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <UserPlus size={16} className="mr-2" />
@@ -370,6 +377,295 @@ const StaffUsers = ({ setActiveTab }) => {
               <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Status</th>
               <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Actions</th>
             </tr>
+            {/* Add New Row Form - Appears inline at top of table */}
+            {isAdding && (
+              <>
+                <tr className="bg-blue-50 sticky top-[41px] z-10">
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <span className="text-gray-500 italic">Auto-generated</span>
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <input
+                      type="text"
+                      name="UserName"
+                      value={formData.UserName}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                      placeholder="Username"
+                      required
+                    />
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <input
+                      type="email"
+                      name="Email"
+                      value={formData.Email}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                      placeholder="Email"
+                      required
+                    />
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <input
+                      type="text"
+                      name="PhoneNumber"
+                      value={formData.PhoneNumber}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                      placeholder="Phone Number"
+                    />
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <select
+                      name="Gender"
+                      value={formData.Gender}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <select
+                      name="Status"
+                      value={formData.Status}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="verified">Verified</option>
+                    </select>
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <div className="flex justify-center space-x-2">
+                      <button
+                        onClick={handleSaveNew}
+                        disabled={operationLoading}
+                        className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
+                      >
+                        <FaSave className="mr-1" /> {operationLoading ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        onClick={handleCancel}
+                        disabled={operationLoading}
+                        className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
+                      >
+                        <FaTimes className="mr-1" /> Cancel
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                {/* Additional form fields row */}
+                <tr className="bg-blue-50 sticky top-[82px] z-10">
+                  <td colSpan="7" className="px-4 py-2 border-b border-gray-200">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input
+                          type="password"
+                          name="Password"
+                          value={formData.Password}
+                          onChange={handleInputChange}
+                          disabled={operationLoading}
+                          className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                          placeholder="Password"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                        <input
+                          type="date"
+                          name="DateOfBirth"
+                          value={formData.DateOfBirth}
+                          onChange={handleInputChange}
+                          disabled={operationLoading}
+                          className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                        <select
+                          name="Role"
+                          value={formData.Role}
+                          onChange={handleInputChange}
+                          disabled={operationLoading}
+                          className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                        >
+                          <option value="Customer">Customer</option>
+                          <option value="Admin">Admin</option>
+                        </select>
+                      </div>
+                      <div className="col-span-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                        <textarea
+                          name="Address"
+                          value={formData.Address}
+                          onChange={handleInputChange}
+                          disabled={operationLoading}
+                          rows={2}
+                          className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                          placeholder="Address"
+                        />
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </>
+            )}
+            {/* Edit Row Form - Similar to Add New but appears in place of the row being edited */}
+            {editingId !== null && (
+              <>
+                <tr className="bg-blue-50 sticky top-[41px] z-10">
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    {editingId}
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <input
+                      type="text"
+                      name="UserName"
+                      value={formData.UserName}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                      placeholder="Username"
+                      required
+                    />
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <input
+                      type="email"
+                      name="Email"
+                      value={formData.Email}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                      placeholder="Email"
+                      required
+                    />
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <input
+                      type="text"
+                      name="PhoneNumber"
+                      value={formData.PhoneNumber}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                      placeholder="Phone Number"
+                    />
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <select
+                      name="Gender"
+                      value={formData.Gender}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <select
+                      name="Status"
+                      value={formData.Status}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="verified">Verified</option>
+                    </select>
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <div className="flex justify-center space-x-2">
+                      <button
+                        onClick={handleSaveEdit}
+                        disabled={operationLoading}
+                        className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
+                      >
+                        <FaSave className="mr-1" /> {operationLoading ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        onClick={handleCancel}
+                        disabled={operationLoading}
+                        className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
+                      >
+                        <FaTimes className="mr-1" /> Cancel
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                {/* Additional form fields for editing */}
+                <tr className="bg-blue-50 sticky top-[82px] z-10">
+                  <td colSpan="7" className="px-4 py-2 border-b border-gray-200">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Password (leave blank to keep unchanged)</label>
+                        <input
+                          type="password"
+                          name="Password"
+                          value={formData.Password}
+                          onChange={handleInputChange}
+                          disabled={operationLoading}
+                          className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                          placeholder="New Password"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                        <input
+                          type="date"
+                          name="DateOfBirth"
+                          value={formData.DateOfBirth}
+                          onChange={handleInputChange}
+                          disabled={operationLoading}
+                          className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                        <select
+                          name="Role"
+                          value={formData.Role}
+                          onChange={handleInputChange}
+                          disabled={operationLoading}
+                          className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                        >
+                          <option value="Customer">Customer</option>
+                          <option value="Admin">Admin</option>
+                        </select>
+                      </div>
+                      <div className="col-span-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                        <textarea
+                          name="Address"
+                          value={formData.Address}
+                          onChange={handleInputChange}
+                          disabled={operationLoading}
+                          rows={2}
+                          className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                          placeholder="Address"
+                        />
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </>
+            )}
           </thead>
           <tbody className="divide-y divide-gray-200">
             {currentUsers.length === 0 ? (
@@ -397,8 +693,8 @@ const StaffUsers = ({ setActiveTab }) => {
                   <td className="px-4 py-3 text-sm">
                     <div className="flex justify-center space-x-2">
                       <button
-                        onClick={() => openEditModal(user)}
-                        disabled={operationLoading}
+                        onClick={() => handleEdit(user)}
+                        disabled={operationLoading || isAdding || editingId !== null}
                         className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Edit"
                       >
@@ -406,7 +702,7 @@ const StaffUsers = ({ setActiveTab }) => {
                       </button>
                       <button
                         onClick={() => handleDeleteUser(user.userID)}
-                        disabled={operationLoading}
+                        disabled={operationLoading || isAdding || editingId !== null}
                         className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Delete"
                       >
@@ -421,176 +717,6 @@ const StaffUsers = ({ setActiveTab }) => {
         </table>
       </div>
 
-      {/* Modal for create/edit */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white font-bold rounded-lg shadow-xl w-full max-w-2xl">
-            <div className="px-6 py-4 border-b flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-900">
-                {modalMode === 'create' ? 'Add New Customer' : 'Edit Customer'}
-              </h3>
-              <button
-                onClick={() => setShowModal(false)}
-                disabled={operationLoading}
-                className="text-gray-400 hover:text-gray-500 disabled:opacity-50"
-              >
-                <XCircle size={24} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="px-6 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">Username</label>
-                  <input
-                    type="text"
-                    name="UserName"
-                    value={formData.UserName}
-                    onChange={handleInputChange}
-                    disabled={operationLoading}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                    required
-                  />
-                </div>
-
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">Email</label>
-                  <input
-                    type="email"
-                    name="Email"
-                    value={formData.Email}
-                    onChange={handleInputChange}
-                    disabled={operationLoading}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                    required
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    {modalMode === 'create' ? 'Password' : 'New Password (leave blank to keep unchanged)'}
-                  </label>
-                  <input
-                    type="password"
-                    name="Password"
-                    value={formData.Password}
-                    onChange={handleInputChange}
-                    disabled={operationLoading}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                    required={modalMode === 'create'}
-                  />
-                </div>
-
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">Phone Number</label>
-                  <input
-                    type="text"
-                    name="PhoneNumber"
-                    value={formData.PhoneNumber}
-                    onChange={handleInputChange}
-                    disabled={operationLoading}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                  />
-                </div>
-
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">Gender</label>
-                  <select
-                    name="Gender"
-                    value={formData.Gender}
-                    onChange={handleInputChange}
-                    disabled={operationLoading}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                  >
-                    <option value="">Select Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
-                  <input
-                    type="date"
-                    name="DateOfBirth"
-                    value={formData.DateOfBirth}
-                    onChange={handleInputChange}
-                    disabled={operationLoading}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                  />
-                </div>
-
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">Status</label>
-                  <select
-                    name="Status"
-                    value={formData.Status}
-                    onChange={handleInputChange}
-                    disabled={operationLoading}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="verified">Verified</option>
-                  </select>
-                </div>
-
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">Role</label>
-                  <select
-                    name="Role"
-                    value={formData.Role}
-                    onChange={handleInputChange}
-                    disabled={operationLoading}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                  >
-                    <option value="Customer">Customer</option>
-                    <option value="Admin">Admin</option>
-                  </select>
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700">Address</label>
-                  <textarea
-                    name="Address"
-                    value={formData.Address}
-                    onChange={handleInputChange}
-                    disabled={operationLoading}
-                    rows={3}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  disabled={operationLoading}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={operationLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                >
-                  {operationLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                      Processing...
-                    </>
-                  ) : (
-                    modalMode === 'create' ? 'Create' : 'Update'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
       <div className="flex-grow"></div>
 
       {/* Pagination - at the bottom of the page with more spacing */}

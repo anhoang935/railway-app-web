@@ -1,20 +1,25 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/authContext';
+import authService from '../data/Service/authService';
 
 const ProtectedRoute = ({ children }) => {
-    const { currentUser, loading } = useAuth();
+    console.log('ProtectedRoute - Checking authentication...');
 
-    if (loading) {
-        return <div className="flex items-center justify-center min-h-screen">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-        </div>;
-    }
+    // Use authService directly instead of context
+    const isAuth = authService.isAuthenticated();
+    const user = authService.getCurrentUser();
 
-    if (!currentUser) {
+    console.log('ProtectedRoute - Auth check result:', {
+        isAuthenticated: isAuth,
+        user: user
+    });
+
+    if (!isAuth || !user) {
+        console.log('ProtectedRoute - Not authenticated, redirecting to login');
         return <Navigate to="/login" replace />;
     }
 
+    console.log('ProtectedRoute - User authenticated, rendering children');
     return children;
 };
 

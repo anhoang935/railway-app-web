@@ -7,6 +7,10 @@ import {
 } from 'lucide-react';
 import "./admin.css";
 
+// Import your existing user service instead of useUser hook
+import userService from '../../data/Service/userService';
+import authService from '../../data/Service/authService';
+
 import Dashboard from './Page/Dashboard';
 import TrainManagement from './Page/TrainManagement';
 import StationManagement from './Page/StationManagement';
@@ -49,6 +53,11 @@ export default function AdminPanel() {
     const [isEditing, setIsEditing] = useState(false);
     const [expandedMenus, setExpandedMenus] = useState([]);
     const navigate = useNavigate();
+
+    // Replace useUser hook with state management for current user
+    const [currentUser, setCurrentUser] = useState(null);
+    const [userLoading, setUserLoading] = useState(true);
+
     const [dashboardLayout, setDashboardLayout] = useState([
         { id: 'alerts', title: 'System Alerts', visible: true, order: 1 },
         { id: 'trains', title: 'Train Status', visible: true, order: 2 },
@@ -62,6 +71,46 @@ export default function AdminPanel() {
         }, 60000);
         return () => clearInterval(interval);
     }, []);
+
+    // Fetch current user data using your existing services
+    useEffect(() => {
+        const fetchCurrentUser = async () => {
+            try {
+                setUserLoading(true);
+
+                // Get current user from auth service
+                const authUser = authService.getCurrentUser();
+
+                if (authUser && authUser.userId) {
+                    // Fetch full user details from user service
+                    const fullUserData = await userService.getUserByID(authUser.userId);
+                    setCurrentUser(fullUserData);
+                } else {
+                    // Fallback: try to get user from localStorage
+                    const userId = localStorage.getItem('userId');
+                    if (userId) {
+                        const userData = await userService.getUserByID(parseInt(userId));
+                        setCurrentUser(userData);
+                    } else {
+                        // No user found, redirect to login
+                        navigate('/login');
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching current user:', error);
+                // Set default admin user data as fallback
+                setCurrentUser({
+                    UserName: 'Admin User',
+                    Role: 'Administrator'
+                });
+            } finally {
+                setUserLoading(false);
+            }
+        };
+
+        fetchCurrentUser();
+    }, [navigate]);
 
     const toggleWidgetVisibility = (widgetId) => {
         setDashboardLayout(layout =>
@@ -86,9 +135,11 @@ export default function AdminPanel() {
         }, 3000);
     };
 
+    // Enhanced logout function
     const handleLogout = () => {
+        authService.logout(); // Clear auth tokens
         navigate('/home');
-    }
+    };
 
     const toggleSubmenu = (menu) => {
         setExpandedMenus(prev =>
@@ -140,6 +191,12 @@ export default function AdminPanel() {
             default:
                 return <Dashboard />;
         }
+    };
+
+    // Helper function to get user initials
+    const getUserInitials = (name) => {
+        if (!name) return 'AD';
+        return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
     };
 
     return (
@@ -281,12 +338,18 @@ export default function AdminPanel() {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center">
                             <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-                                <span className="font-semibold">BC</span>
+                                <span className="font-semibold">
+                                    {userLoading ? '...' : getUserInitials(currentUser?.UserName)}
+                                </span>
                             </div>
                             {sidebarOpen && (
                                 <div className="ml-3">
-                                    <p className="text-sm font-medium">Binh Chan</p>
-                                    <p className="text-xs text-blue-200">Administrator</p>
+                                    <p className="text-sm font-medium">
+                                        {userLoading ? 'Loading...' : (currentUser?.UserName || 'Admin User')}
+                                    </p>
+                                    <p className="text-xs text-blue-200">
+                                        {currentUser?.Role || 'Administrator'}
+                                    </p>
                                 </div>
                             )}
                         </div>

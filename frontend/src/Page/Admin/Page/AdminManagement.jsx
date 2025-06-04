@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   UserPlus, Search, Edit, Trash2,
   CheckCircle, XCircle, RefreshCw, Filter, Download, UserCheck
@@ -12,12 +12,9 @@ import LoadingPage from '../../../components/LoadingPage';
 const StaffMembers = ({ setActiveTab }) => {
   const [successMessage, setSuccessMessage] = useState(null);
 
-  // Modal state
-  const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState('create');
-  const [currentUser, setCurrentUser] = useState(null);
-
-  // Form data
+  // Form state
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     UserName: '',
     Email: '',
@@ -55,7 +52,20 @@ const StaffMembers = ({ setActiveTab }) => {
     setLoadingError
   } = useLoadingWithTimeout();
 
-  // Clear messages after 5 seconds - MOVED BEFORE EARLY RETURN
+  // Filter for Admin role only - MOVED BEFORE CONDITIONAL RETURN
+  const admins = useMemo(() => {
+    if (!allUsers) return [];
+
+    const adminUsers = allUsers.filter(user => {
+      console.log('User role:', user.Role, 'User:', user); // Debug log
+      return user.Role === 'Admin';
+    });
+
+    console.log('All users:', allUsers.length, 'Admin users:', adminUsers.length); // Debug log
+    return adminUsers;
+  }, [allUsers]);
+
+  // Clear messages after 5 seconds
   useEffect(() => {
     if (successMessage) {
       const timer = setTimeout(() => {
@@ -65,13 +75,10 @@ const StaffMembers = ({ setActiveTab }) => {
     }
   }, [successMessage]);
 
-  // Show loading page during initial data fetch
+  // Show loading page during initial data fetch - MOVED AFTER ALL HOOKS
   if (dataLoading) {
     return <LoadingPage message="Loading admin users..." />;
   }
-
-  // Filter for Admin role only
-  const admins = allUsers ? allUsers.filter(user => user.Role === 'Admin') : [];
 
   // Combine error states
   const currentError = dataError || operationError;
@@ -82,8 +89,8 @@ const StaffMembers = ({ setActiveTab }) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Modal handlers
-  const openCreateModal = () => {
+  // Add new admin handlers
+  const handleAddNew = () => {
     setFormData({
       UserName: '',
       Email: '',
@@ -95,13 +102,12 @@ const StaffMembers = ({ setActiveTab }) => {
       Status: 'pending',
       Role: 'Admin'
     });
-    setModalMode('create');
-    setShowModal(true);
+    setIsAdding(true);
+    setEditingId(null);
     setOperationError(null);
   };
 
-  const openEditModal = (user) => {
-    // Don't include password when editing
+  const handleEdit = (user) => {
     setFormData({
       UserName: user.UserName || '',
       Email: user.Email || '',
@@ -113,65 +119,74 @@ const StaffMembers = ({ setActiveTab }) => {
       Role: user.Role || 'Admin',
       Password: ''
     });
-    setCurrentUser(user);
-    setModalMode('edit');
-    setShowModal(true);
+    setEditingId(user.userID);
+    setIsAdding(false);
     setOperationError(null);
   };
 
-  // Form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleCancel = () => {
+    setIsAdding(false);
+    setEditingId(null);
+    setOperationError(null);
+  };
 
+  // Save new admin - Updated to force refresh
+  const handleSaveNew = async () => {
     try {
       startLoading();
 
-      if (modalMode === 'create') {
-        const newUser = await userService.createUser({
-          ...formData,
-          Role: formData.Role
-        });
+      const newUser = await userService.createUser({
+        ...formData,
+        Role: 'Admin' // Ensure role is explicitly set
+      });
 
-        // Optimistic update
-        if (newUser) {
-          setAllUsers(prevUsers => [...prevUsers, newUser]);
-        } else {
-          await refetchUsers();
-        }
+      console.log('Created user:', newUser); // Debug log
 
-        setSuccessMessage("Staff member created successfully");
-      } else if (modalMode === 'edit') {
-        const updateData = {
-          ...formData,
-          Role: formData.Role
-        };
-        if (!updateData.Password) delete updateData.Password;
+      // Force data refresh instead of optimistic update
+      await refetchUsers();
 
-        await userService.updateUser(currentUser.userID, updateData);
-
-        // Optimistic update
-        setAllUsers(prevUsers =>
-          prevUsers.map(user =>
-            user.userID === currentUser.userID
-              ? { ...user, ...updateData }
-              : user
-          )
-        );
-
-        setSuccessMessage(`User updated successfully. Role changed to: ${formData.Role}`);
-      }
-
-      setShowModal(false);
+      setSuccessMessage("Administrator created successfully");
+      setIsAdding(false);
       stopLoading();
     } catch (err) {
-      setLoadingError(`Operation failed: ${err.toString()}`);
-      console.error('Error during user operation:', err);
+      console.error('Error creating admin:', err); // Debug log
+      setLoadingError(`Failed to create administrator: ${err.toString()}`);
+    }
+  };
+
+  // Save edited admin
+  const handleSaveEdit = async () => {
+    try {
+      startLoading();
+
+      const updateData = {
+        ...formData,
+        Role: formData.Role
+      };
+      if (!updateData.Password) delete updateData.Password;
+
+      await userService.updateUser(editingId, updateData);
+
+      // Optimistic update
+      setAllUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.userID === editingId
+            ? { ...user, ...updateData }
+            : user
+        )
+      );
+
+      setSuccessMessage(`Administrator updated successfully`);
+      setEditingId(null);
+      stopLoading();
+    } catch (err) {
+      setLoadingError(`Failed to update administrator: ${err.toString()}`);
     }
   };
 
   // Delete user
   const handleDeleteUser = async (userId) => {
-    if (window.confirm("Are you sure you want to delete this staff member? This action cannot be undone.")) {
+    if (window.confirm("Are you sure you want to delete this administrator? This action cannot be undone.")) {
       try {
         startLoading();
 
@@ -180,10 +195,10 @@ const StaffMembers = ({ setActiveTab }) => {
         // Optimistic update
         setAllUsers(prevUsers => prevUsers.filter(user => user.userID !== userId));
 
-        setSuccessMessage("Staff member deleted successfully");
+        setSuccessMessage("Administrator deleted successfully");
         stopLoading();
       } catch (err) {
-        setLoadingError(`Failed to delete staff member: ${err.toString()}`);
+        setLoadingError(`Failed to delete administrator: ${err.toString()}`);
       }
     }
   };
@@ -214,7 +229,7 @@ const StaffMembers = ({ setActiveTab }) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `staff_members_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `administrators_export_${new Date().toISOString().slice(0, 10)}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -261,7 +276,7 @@ const StaffMembers = ({ setActiveTab }) => {
           <div className="relative">
             <input
               type="text"
-              placeholder="Search staff members..."
+              placeholder="Search administrators..."
               className="pl-9 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -288,7 +303,7 @@ const StaffMembers = ({ setActiveTab }) => {
 
           <button
             onClick={refetchUsers}
-            disabled={operationLoading}
+            disabled={operationLoading || isAdding || editingId !== null}
             className="flex items-center justify-center p-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Refresh"
           >
@@ -297,7 +312,7 @@ const StaffMembers = ({ setActiveTab }) => {
 
           <button
             onClick={exportToCSV}
-            disabled={operationLoading}
+            disabled={operationLoading || isAdding || editingId !== null}
             className="flex items-center px-4 py-2 bg-green-600 text-white font-bold rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="Export to CSV"
           >
@@ -306,8 +321,8 @@ const StaffMembers = ({ setActiveTab }) => {
           </button>
 
           <button
-            onClick={openCreateModal}
-            disabled={operationLoading}
+            onClick={handleAddNew}
+            disabled={operationLoading || isAdding || editingId !== null}
             className="flex items-center px-4 py-2 bg-blue-600 text-white font-bold rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <UserPlus size={16} className="mr-2" />
@@ -350,13 +365,25 @@ const StaffMembers = ({ setActiveTab }) => {
         </div>
       )}
 
-      {/* Data status info */}
+      {/* Data status info - Add more debug info */}
       <div className="mb-4 text-sm text-gray-600">
         <p>
-          <strong>Administrators:</strong> {admins.length} |
+          <strong>Total users in the system:</strong> {allUsers?.length || 0} |
+          <strong> Administrators:</strong> {admins.length} |
           <strong> Filtered:</strong> {filteredUsers.length} |
           <strong> Last updated:</strong> {new Date().toLocaleTimeString()}
         </p>
+        {/* Debug info - remove in production */}
+        <details className="mt-2">
+          <summary className="cursor-pointer text-blue-600">Debug Info (Click to expand)</summary>
+          <pre className="mt-2 p-2 bg-gray-100 text-xs overflow-auto max-h-32">
+            {JSON.stringify({
+              totalUsers: allUsers?.length,
+              adminCount: admins.length,
+              userRoles: allUsers?.map(u => ({ id: u.userID, role: u.Role }))
+            }, null, 2)}
+          </pre>
+        </details>
       </div>
 
       <div className="overflow-x-auto flex-grow">
@@ -371,6 +398,295 @@ const StaffMembers = ({ setActiveTab }) => {
               <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Status</th>
               <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Actions</th>
             </tr>
+            {/* Add New Row Form - Appears inline at top of table */}
+            {isAdding && (
+              <>
+                <tr className="bg-blue-50 sticky top-[41px] z-10">
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <span className="text-gray-500 italic">Auto-generated</span>
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <input
+                      type="text"
+                      name="UserName"
+                      value={formData.UserName}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                      placeholder="Username"
+                      required
+                    />
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <input
+                      type="email"
+                      name="Email"
+                      value={formData.Email}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                      placeholder="Email"
+                      required
+                    />
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <input
+                      type="text"
+                      name="PhoneNumber"
+                      value={formData.PhoneNumber}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                      placeholder="Phone Number"
+                    />
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <select
+                      name="Gender"
+                      value={formData.Gender}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <select
+                      name="Status"
+                      value={formData.Status}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="verified">Verified</option>
+                    </select>
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <div className="flex justify-center space-x-2">
+                      <button
+                        onClick={handleSaveNew}
+                        disabled={operationLoading}
+                        className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
+                      >
+                        <FaSave className="mr-1" /> {operationLoading ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        onClick={handleCancel}
+                        disabled={operationLoading}
+                        className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
+                      >
+                        <FaTimes className="mr-1" /> Cancel
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                {/* Additional form fields row */}
+                <tr className="bg-blue-50 sticky top-[82px] z-10">
+                  <td colSpan="7" className="px-4 py-2 border-b border-gray-200">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input
+                          type="password"
+                          name="Password"
+                          value={formData.Password}
+                          onChange={handleInputChange}
+                          disabled={operationLoading}
+                          className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                          placeholder="Password"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                        <input
+                          type="date"
+                          name="DateOfBirth"
+                          value={formData.DateOfBirth}
+                          onChange={handleInputChange}
+                          disabled={operationLoading}
+                          className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                        <select
+                          name="Role"
+                          value={formData.Role}
+                          onChange={handleInputChange}
+                          disabled={operationLoading}
+                          className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                        >
+                          <option value="Customer">Customer</option>
+                          <option value="Admin">Admin</option>
+                        </select>
+                      </div>
+                      <div className="col-span-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                        <textarea
+                          name="Address"
+                          value={formData.Address}
+                          onChange={handleInputChange}
+                          disabled={operationLoading}
+                          rows={2}
+                          className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                          placeholder="Address"
+                        />
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </>
+            )}
+            {/* Edit Row Form - Similar to Add New but appears in place of the row being edited */}
+            {editingId !== null && (
+              <>
+                <tr className="bg-blue-50 sticky top-[41px] z-10">
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    {editingId}
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <input
+                      type="text"
+                      name="UserName"
+                      value={formData.UserName}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                      placeholder="Username"
+                      required
+                    />
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <input
+                      type="email"
+                      name="Email"
+                      value={formData.Email}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                      placeholder="Email"
+                      required
+                    />
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <input
+                      type="text"
+                      name="PhoneNumber"
+                      value={formData.PhoneNumber}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                      placeholder="Phone Number"
+                    />
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <select
+                      name="Gender"
+                      value={formData.Gender}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <select
+                      name="Status"
+                      value={formData.Status}
+                      onChange={handleInputChange}
+                      disabled={operationLoading}
+                      className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="verified">Verified</option>
+                    </select>
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    <div className="flex justify-center space-x-2">
+                      <button
+                        onClick={handleSaveEdit}
+                        disabled={operationLoading}
+                        className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
+                      >
+                        <FaSave className="mr-1" /> {operationLoading ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        onClick={handleCancel}
+                        disabled={operationLoading}
+                        className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
+                      >
+                        <FaTimes className="mr-1" /> Cancel
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                {/* Additional form fields for editing */}
+                <tr className="bg-blue-50 sticky top-[82px] z-10">
+                  <td colSpan="7" className="px-4 py-2 border-b border-gray-200">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Password (leave blank to keep unchanged)</label>
+                        <input
+                          type="password"
+                          name="Password"
+                          value={formData.Password}
+                          onChange={handleInputChange}
+                          disabled={operationLoading}
+                          className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                          placeholder="New Password"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                        <input
+                          type="date"
+                          name="DateOfBirth"
+                          value={formData.DateOfBirth}
+                          onChange={handleInputChange}
+                          disabled={operationLoading}
+                          className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                        <select
+                          name="Role"
+                          value={formData.Role}
+                          onChange={handleInputChange}
+                          disabled={operationLoading}
+                          className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                        >
+                          <option value="Customer">Customer</option>
+                          <option value="Admin">Admin</option>
+                        </select>
+                      </div>
+                      <div className="col-span-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                        <textarea
+                          name="Address"
+                          value={formData.Address}
+                          onChange={handleInputChange}
+                          disabled={operationLoading}
+                          rows={2}
+                          className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                          placeholder="Address"
+                        />
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </>
+            )}
           </thead>
           <tbody className="divide-y divide-gray-200">
             {currentUsers.length === 0 ? (
@@ -398,8 +714,8 @@ const StaffMembers = ({ setActiveTab }) => {
                   <td className="px-4 py-3 text-sm">
                     <div className="flex justify-center space-x-2">
                       <button
-                        onClick={() => openEditModal(user)}
-                        disabled={operationLoading}
+                        onClick={() => handleEdit(user)}
+                        disabled={operationLoading || isAdding || editingId !== null}
                         className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Edit"
                       >
@@ -407,7 +723,7 @@ const StaffMembers = ({ setActiveTab }) => {
                       </button>
                       <button
                         onClick={() => handleDeleteUser(user.userID)}
-                        disabled={operationLoading}
+                        disabled={operationLoading || isAdding || editingId !== null}
                         className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Delete"
                       >
@@ -422,169 +738,6 @@ const StaffMembers = ({ setActiveTab }) => {
         </table>
       </div>
 
-      {/* Modal for create/edit */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
-            <div className="px-6 py-4 border-b flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-900">
-                {modalMode === 'create' ? 'Add New Staff Member' : 'Edit Staff Member'}
-              </h3>
-              <button
-                onClick={() => setShowModal(false)}
-                disabled={operationLoading}
-                className="text-gray-400 hover:text-gray-500 disabled:opacity-50"
-              >
-                <XCircle size={24} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="px-6 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">Username</label>
-                  <input
-                    type="text"
-                    name="UserName"
-                    value={formData.UserName}
-                    onChange={handleInputChange}
-                    disabled={operationLoading}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                    required
-                  />
-                </div>
-
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">Email</label>
-                  <input
-                    type="email"
-                    name="Email"
-                    value={formData.Email}
-                    onChange={handleInputChange}
-                    disabled={operationLoading}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                    required
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    {modalMode === 'create' ? 'Password' : 'New Password (leave blank to keep unchanged)'}
-                  </label>
-                  <input
-                    type="password"
-                    name="Password"
-                    value={formData.Password}
-                    onChange={handleInputChange}
-                    disabled={operationLoading}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                    required={modalMode === 'create'}
-                  />
-                </div>
-
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">Phone Number</label>
-                  <input
-                    type="text"
-                    name="PhoneNumber"
-                    value={formData.PhoneNumber}
-                    onChange={handleInputChange}
-                    disabled={operationLoading}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                  />
-                </div>
-
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">Gender</label>
-                  <select
-                    name="Gender"
-                    value={formData.Gender}
-                    onChange={handleInputChange}
-                    disabled={operationLoading}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                  >
-                    <option value="">Select Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
-                  <input
-                    type="date"
-                    name="DateOfBirth"
-                    value={formData.DateOfBirth}
-                    onChange={handleInputChange}
-                    disabled={operationLoading}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                  />
-                </div>
-
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">Status</label>
-                  <select
-                    name="Status"
-                    value={formData.Status}
-                    onChange={handleInputChange}
-                    disabled={operationLoading}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="verified">Verified</option>
-                  </select>
-                </div>
-
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">Role</label>
-                  <select
-                    name="Role"
-                    value={formData.Role}
-                    onChange={handleInputChange}
-                    disabled={operationLoading}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                  >
-                    <option value="Customer">Customer</option>
-                    <option value="Admin">Admin</option>
-                  </select>
-                </div>
-
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700">Address</label>
-                  <textarea
-                    name="Address"
-                    value={formData.Address}
-                    onChange={handleInputChange}
-                    rows={3}
-                    disabled={operationLoading}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={operationLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {modalMode === 'create' ? 'Create' : 'Update'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       <div className="flex-grow"></div>
 
       {/* Pagination - at the bottom of the page with more spacing */}
@@ -592,13 +745,13 @@ const StaffMembers = ({ setActiveTab }) => {
         {sortedUsers.length > 0 && (
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-600">
-              Showing {indexOfFirstUser + 1}-{Math.min(indexOfLastUser, sortedUsers.length)} of {sortedUsers.length} staff members
+              Showing {indexOfFirstUser + 1}-{Math.min(indexOfLastUser, sortedUsers.length)} of {sortedUsers.length} administrators
             </p>
             <div className="flex space-x-1">
               <button
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className={`px-3 py-1 rounded-md ${currentPage === 1
+                disabled={currentPage === 1 || operationLoading}
+                className={`px-3 py-1 rounded-md ${currentPage === 1 || operationLoading
                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
@@ -610,9 +763,12 @@ const StaffMembers = ({ setActiveTab }) => {
                 <button
                   key={i}
                   onClick={() => setCurrentPage(i + 1)}
+                  disabled={operationLoading}
                   className={`px-3 py-1 rounded-md ${currentPage === i + 1
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    : operationLoading
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                 >
                   {i + 1}
@@ -621,8 +777,8 @@ const StaffMembers = ({ setActiveTab }) => {
 
               <button
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className={`px-3 py-1 rounded-md ${currentPage === totalPages
+                disabled={currentPage === totalPages || operationLoading}
+                className={`px-3 py-1 rounded-md ${currentPage === totalPages || operationLoading
                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
