@@ -7,6 +7,9 @@ import stationService from '../data/Service/stationService';
 import buyTicketService from '../data/Service/buyTicketService';
 import trackService from '../data/Service/trackService';
 import timetableService from '../data/Service/timetableService';
+import coachTypeService from '../data/Service/coachTypeService';
+import coachService from '../data/Service/coachService';
+
 // Set primary color
 document.documentElement.style.setProperty('--primary-color', '#2563eb');
 
@@ -43,6 +46,10 @@ const Buy_Ticket = () => {
   const [showReturnTrainSelection, setShowReturnTrainSelection] = useState(false);
   const [selectedReturnCoach, setSelectedReturnCoach] = useState(null);
   const [selectedReturnItems, setSelectedReturnItems] = useState([]);
+  const [coachTypes, setCoachTypes] = useState([]);
+  const [trainCoaches, setTrainCoaches] = useState([]);
+  const [returnTrainCoaches, setReturnTrainCoaches] = useState([]);
+  const [loadingCoaches, setLoadingCoaches] = useState(false);
   const [returnFormData, setReturnFormData] = useState({
     departureDate: '',
     departureTime: ''
@@ -57,13 +64,6 @@ const Buy_Ticket = () => {
     { id: 'SE6', direction: 'Nam-Bắc', startTime: '11:30', endTime: '03:30', duration: 16 },
     { id: 'SE7', direction: 'Bắc-Nam', startTime: '17:15', endTime: '09:15', duration: 16 },
     { id: 'SE8', direction: 'Nam-Bắc', startTime: '18:15', endTime: '10:15', duration: 16 },
-  ];
-
-  const coachTypes = [
-    { id: 'room-4-bed', name: 'Room 4 beds, Air-Con', price: 1200000, type: 'bed', rows: 2, cols: 14 },
-    { id: 'room-6-bed', name: 'Room 6 beds, Air-Con', price: 900000, type: 'bed', rows: 3, cols: 14 },
-    { id: 'soft-seat', name: 'Soft seat, Air-Con', price: 700000, type: 'seat', rows: 4, cols: 14 },
-    { id: 'hard-seat', name: 'Hard seat, Air-Con', price: 500000, type: 'seat', rows: 4, cols: 14 },
   ];
 
   // Handle responsive design
@@ -105,6 +105,32 @@ const Buy_Ticket = () => {
       }
     };
     fetchStations();
+  }, []);
+
+  // Fetch coach types on mount
+  useEffect(() => {
+    const fetchCoachTypes = async () => {
+      try {
+        const types = await coachTypeService.getAllCoachTypes();
+        // Transform coach types to include UI configuration
+        const transformedTypes = types.map(type => ({
+          id: type.coach_typeID,
+          name: type.type,
+          price: type.price,
+          capacity: type.capacity,
+          type: type.type.toLowerCase().includes('bed') ? 'bed' : 'seat',
+          // Configure rows and cols based on capacity
+          rows: type.type.toLowerCase().includes('bed') ? 
+            (type.type.includes('4') ? 2 : 3) : 4,
+          cols: Math.ceil(type.capacity / (type.type.toLowerCase().includes('bed') ? 
+            (type.type.includes('4') ? 2 : 3) : 4))
+        }));
+        setCoachTypes(transformedTypes);
+      } catch (error) {
+        console.error('Failed to fetch coach types:', error);
+      }
+    };
+    fetchCoachTypes();
   }, []);
 
   // Calculate distance between stations
@@ -340,83 +366,81 @@ const Buy_Ticket = () => {
 
   // Helper function to calculate dates for each station in journey
   const calculateJourneyDates = ({ journeys, fromId, toId, departureJourney, startDate }) => {
-  const journeyWithDates = {};
-  
-  // Find journey indices
-  const fromIndex = journeys.findIndex(j => parseInt(j.stationID) === parseInt(fromId));
-  const toIndex = journeys.findIndex(j => parseInt(j.stationID) === parseInt(toId));
-  
-  if (fromIndex === -1 || toIndex === -1) {
-    console.error('Station not found in journey:', { fromId, toId, fromIndex, toIndex });
-    return journeyWithDates;
-  }
-
-  const isForward = fromIndex < toIndex;
-  
-  // Get stations in the correct order for this journey
-  const relevantJourneys = isForward 
-    ? journeys.slice(fromIndex, toIndex + 1)
-    : journeys.slice(toIndex, fromIndex + 1).reverse();
-
-  // Initialize with start date and reference time
-  const startDateObj = new Date(startDate);
-  let currentDate = new Date(startDate);
-  let dayOffset = 0;
-  let referenceTimeMinutes = timeToMinutes(relevantJourneys[0].departureTime || relevantJourneys[0].arrivalTime);
-  
-  // Process each station in journey order
-  relevantJourneys.forEach((journey, index) => {
-    const currentTimeMinutes = timeToMinutes(journey.arrivalTime);
+    const journeyWithDates = {};
     
-    // Check if we need to increment the day
-    if (index > 0) {
-      // If current time is less than reference time, we've crossed midnight
-      if (currentTimeMinutes < referenceTimeMinutes) {
-        dayOffset++;
-        referenceTimeMinutes = currentTimeMinutes; // Reset reference time
-      } else if (currentTimeMinutes - referenceTimeMinutes > 720) {
-        // If time difference is more than 12 hours in the future,
-        // we probably went backwards across midnight
-        dayOffset--;
-        referenceTimeMinutes = currentTimeMinutes;
-      } else {
-        referenceTimeMinutes = currentTimeMinutes;
-      }
+    // Find journey indices
+    const fromIndex = journeys.findIndex(j => parseInt(j.stationID) === parseInt(fromId));
+    const toIndex = journeys.findIndex(j => parseInt(j.stationID) === parseInt(toId));
+    
+    if (fromIndex === -1 || toIndex === -1) {
+      console.error('Station not found in journey:', { fromId, toId, fromIndex, toIndex });
+      return journeyWithDates;
     }
 
-    // Calculate the date for this station
-    const stationDate = new Date(startDateObj);
-    stationDate.setDate(startDateObj.getDate() + dayOffset);
+    const isForward = fromIndex < toIndex;
+    
+    // Get stations in the correct order for this journey
+    const relevantJourneys = isForward 
+      ? journeys.slice(fromIndex, toIndex + 1)
+      : journeys.slice(toIndex, fromIndex + 1).reverse();
 
-    // Store journey information
-    journeyWithDates[journey.stationID] = {
-      stationID: journey.stationID,
-      arrivalTime: journey.arrivalTime,
-      departureTime: journey.departureTime || journey.arrivalTime,
-      date: stationDate.toISOString().split('T')[0]
-    };
-  });
+    // Initialize with start date and reference time
+    const startDateObj = new Date(startDate);
+    let currentDate = new Date(startDate);
+    let dayOffset = 0;
+    let referenceTimeMinutes = timeToMinutes(relevantJourneys[0].departureTime || relevantJourneys[0].arrivalTime);
+    
+    // Process each station in journey order
+    relevantJourneys.forEach((journey, index) => {
+      const currentTimeMinutes = timeToMinutes(journey.arrivalTime);
+      
+      // Check if we need to increment the day
+      if (index > 0) {
+        // If current time is less than reference time, we've crossed midnight
+        if (currentTimeMinutes < referenceTimeMinutes) {
+          dayOffset++;
+          referenceTimeMinutes = currentTimeMinutes; // Reset reference time
+        } else if (currentTimeMinutes - referenceTimeMinutes > 720) {
+          // If time difference is more than 12 hours in the future,
+          // we probably went backwards across midnight
+          dayOffset--;
+          referenceTimeMinutes = currentTimeMinutes;
+        } else {
+          referenceTimeMinutes = currentTimeMinutes;
+        }
+      }
 
-  return journeyWithDates;
-};
+      // Calculate the date for this station
+      const stationDate = new Date(startDateObj);
+      stationDate.setDate(startDateObj.getDate() + dayOffset);
+
+      // Store journey information
+      journeyWithDates[journey.stationID] = {
+        stationID: journey.stationID,
+        arrivalTime: journey.arrivalTime,
+        departureTime: journey.departureTime || journey.arrivalTime,
+        date: stationDate.toISOString().split('T')[0]
+      };
+    });
+
+    return journeyWithDates;
+  };
 
   const calculateDuration = (startDateTime, endDateTime) => {
     const start = new Date(startDateTime);
     const end = new Date(endDateTime);
-    let duration = (end - start) / (1000 * 60 * 60); // Convert to hours
     
-    // If duration seems too short for the journey (less than 10 hours), 
-    // it likely means we crossed to next day
-    if (duration < 10) {
-      duration += 24;
+    // Calculate duration in hours
+    let duration = (end - start) / (1000 * 60 * 60);
+    
+    // If both times are on the same day
+    if (start.toDateString() === end.toDateString()) {
+      // Simple time difference
+      duration = duration < 0 ? duration + 24 : duration;
     }
     
-    // If duration is negative, add days until it's positive
-    while (duration < 0) {
-      duration += 24;
-    }
-
-    return Math.round(duration);
+    // Round to nearest hour or half hour
+    return Math.round(duration * 2) / 2;
   };
   // Calculate direction based on station indices
   const calculateDirection = (fromId, toId) => {
@@ -435,15 +459,65 @@ const Buy_Ticket = () => {
   };
 
   // Train and coach selection handlers
-  const handleSelectTrain = (train, isReturn = false) => {
+  const handleSelectTrain = async (train, isReturn = false) => {
     if (isReturn) {
       setSelectedReturnTrain(train);
       setSelectedReturnCoach(null);
       setSelectedReturnItems([]);
+      await fetchTrainCoaches(train.id, true); // Pass true for return journey
     } else {
       setSelectedTrain(train);
       setSelectedCoach(null);
       setSelectedItems([]);
+      await fetchTrainCoaches(train.id, false); // Pass false for outbound journey
+    }
+  };
+
+  const fetchTrainCoaches = async (trainId, isReturn = false) => {
+    try {
+      setLoadingCoaches(true);
+      const response = await buyTicketService.getCoachesByTrainName(trainId);
+      
+      console.log('API Response:', response); // Debug log
+      
+      // Handle different response structures
+      let coaches;
+      if (response.data) {
+        coaches = Array.isArray(response.data) ? response.data : [];
+      } else {
+        coaches = Array.isArray(response) ? response : [];
+      }
+      
+      console.log('Processed coaches:', coaches); // Debug log
+
+      const groupedCoaches = coaches.reduce((acc, coach) => {
+        const coachType = coachTypes.find(type => type.id === coach.coach_typeID);
+        if (coachType) {
+          return [...acc, {
+            ...coachType,
+            coachID: coach.coachID,
+            trainID: coach.trainID
+          }];
+        }
+        return acc;
+      }, []);
+      
+      // Set the appropriate coaches state based on isReturn flag
+      if (isReturn) {
+        setReturnTrainCoaches(groupedCoaches);
+      } else {
+        setTrainCoaches(groupedCoaches);
+      }
+    } catch (error) {
+      console.error('Failed to fetch train coaches:', error);
+      // Clear the appropriate coaches state based on isReturn flag
+      if (isReturn) {
+        setReturnTrainCoaches([]);
+      } else {
+        setTrainCoaches([]);
+      }
+    } finally {
+      setLoadingCoaches(false);
     }
   };
 
@@ -458,21 +532,41 @@ const Buy_Ticket = () => {
   };
 
   // Handle seat/bed selection
-  const handleSelectItem = (row, col) => {
+  const handleSelectItem = (row, col, isReturn = false) => {
     const key = `${row}-${col}`;
-    const isBooked = Math.random() > 0.7; // Simulated booked status
+    
 
-    if (isBooked) return;
-
-    setSelectedItems(prev => {
-      const exists = prev.find(item => item.key === key);
-      if (exists) {
-        return prev.filter(item => item.key !== key);
-      } else {
-        setShowSelectionPanel(true);
-        return [...prev, { key, row, col, price: selectedCoach.price }];
-      }
-    });
+    if (isReturn) {
+      setSelectedReturnItems(prev => {
+        const exists = prev.find(item => item.key === key);
+        if (exists) {
+          return prev.filter(item => item.key !== key);
+        } else {
+          setShowSelectionPanel(true);
+          return [...prev, { 
+            key, 
+            row, 
+            col, 
+            price: selectedReturnCoach ? selectedReturnCoach.price : 0 
+          }];
+        }
+      });
+    } else {
+      setSelectedItems(prev => {
+        const exists = prev.find(item => item.key === key);
+        if (exists) {
+          return prev.filter(item => item.key !== key);
+        } else {
+          setShowSelectionPanel(true);
+          return [...prev, { 
+            key, 
+            row, 
+            col, 
+            price: selectedCoach ? selectedCoach.price : 0 
+          }];
+        }
+      });
+    }
   };
 
   const removeSelectedItem = (key) => {
@@ -483,12 +577,16 @@ const Buy_Ticket = () => {
   };
 
   // Render seats or beds based on coach type
-  const renderSeatsOrBeds = () => {
-    if (!selectedCoach) return null;
-    return selectedCoach.type === 'seat' ? renderRegularCoach(selectedCoach) : renderSleeperCoach(selectedCoach);
+  const renderSeatsOrBeds = (isReturn = false) => {
+    const coach = isReturn ? selectedReturnCoach : selectedCoach;
+    if (!coach) return null;
+    return coach.type === 'seat' 
+      ? renderRegularCoach(coach, isReturn) 
+      : renderSleeperCoach(coach, isReturn);
   };
 
-  const renderRegularCoach = (coach) => {
+  const renderRegularCoach = (coach, isReturn = false) => {
+    if (!coach) return null;
     const { rows, cols } = coach;
     const columns = [];
 
@@ -497,22 +595,21 @@ const Buy_Ticket = () => {
       const isAfterSeparator = c >= cols / 2;
 
       for (let r = 0; r < rows; r++) {
-        const seatIndex = c * rows + r;
-        const seatNumber = seatIndex + 1;
         const key = `${r}-${c}`;
-        const booked = isItemBooked(r, c);
-        const selected = selectedItems.some(item => item.key === key);
+        const seatNumber = c * rows + r + 1;
+        const selected = (isReturn ? selectedReturnItems : selectedItems)
+          .some(item => item.key === key);
         const hovered = hoveredItem === key;
 
         if (r === 2 && rows >= 4) {
           columnSeats.push(<div key={`aisle-${c}-${r}`} className="h-[20px] w-full"></div>);
         }
         columnSeats.push(
-          <div key={key} onClick={() => !booked && handleSelectItem(r, c)}>
+          <div key={key} onClick={() => handleSelectItem(r, c, isReturn)}>
             <Seat
               seatNumber={seatNumber}
               price={formatCurrency(coach.price)}
-              isBooked={booked}
+              isBooked={false}
               isSelected={selected}
               isHovered={hovered}
               isReversed={isAfterSeparator}
@@ -550,7 +647,7 @@ const Buy_Ticket = () => {
     return <div className="coach-layout md:transform-none">{columns}</div>;
   };
 
-  const renderSleeperCoach = (coach) => {
+  const renderSleeperCoach = (coach, isReturn = false) => {
     const { rows, cols } = coach;
     const cabins = Math.ceil(cols / 2);
     const tiers = [];
@@ -571,19 +668,19 @@ const Buy_Ticket = () => {
           const actualCol = cabinIdx * 2 + col;
           const key = `${row}-${actualCol}`;
           const bedNumber = isMobile ? actualCol * rows + row + 1 : actualCol * rows + row + 1;
-          const booked = isItemBooked(row, actualCol);
-          const selected = selectedItems.some(item => item.key === key);
+          const selected = (isReturn ? selectedReturnItems : selectedItems)
+            .some(item => item.key === key);
           const hovered = hoveredItem === key;
           const tierNumber = rows - row;
 
           columnBeds.push(
             <div key={key} className="bed-container">
-              <div onClick={() => !booked && handleSelectItem(row, actualCol)}>
+              <div onClick={() => handleSelectItem(row, actualCol, isReturn)}>
                 <Bed
                   bedNumber={bedNumber}
                   tierNumber={tierNumber}
                   price={formatCurrency(coach.price)}
-                  isBooked={booked}
+                  isBooked={false}
                   isSelected={selected}
                   isHovered={hovered}
                   onMouseEnter={() => setHoveredItem(key)}
@@ -641,13 +738,9 @@ const Buy_Ticket = () => {
 
   const today = new Date().toISOString().split('T')[0];
 
-  const isItemBooked = (row, col) => {
-    return ((row * 31 + col * 17) % 10) < 3; // Simulated booked status
-  };
-
   // Render selection panel
   const renderSelectionPanel = () => {
-    if (!showSelectionPanel || selectedItems.length === 0) return null;
+    if (!showSelectionPanel || selectedItems.length === 0 || !selectedCoach) return null;
 
     return (
       <div className="selection-panel bg-white shadow-lg rounded-lg border-gray-200">
@@ -662,7 +755,7 @@ const Buy_Ticket = () => {
         </div>
         <div className="divide-y">
           {selectedItems.map(item => {
-            const itemNumber = item.col * selectedCoach.rows + item.row + 1;
+            const itemNumber = selectedCoach ? (item.col * selectedCoach.rows + item.row + 1) : '-';
             return (
               <div key={item.key} className="selected-item">
                 <div>
@@ -793,7 +886,7 @@ const Buy_Ticket = () => {
                   className="field-input"
                   required
                 />
-                <p className="text-xs mt-1">The return date is automatically calculated based on the distance</p>
+          
               </div>
             )}
             {/* Departure Time */}
@@ -893,21 +986,33 @@ const Buy_Ticket = () => {
         {selectedTrain && (
           <div className="p-6 border-t border-gray-200">
             <h2 className="text-xl font-semibold mb-4">Select Coach</h2>
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
-              {coachTypes.map(coach => (
-                <div
-                  key={coach.id}
-                  className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${
-                    selectedCoach?.id === coach.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                  }`}
-                  onClick={() => handleSelectCoach(coach)}
-                >
-                  <h3 className="font-medium">{coach.name}</h3>
-                  <div className="mt-2 font-semibold text-blue-600">{formatCurrency(coach.price)}</div>
-                  <div className="mt-1 text-sm text-gray-500">{coach.type === 'seat' ? 'Seater' : 'Sleeper'}</div>
-                </div>
-              ))}
-            </div>
+            {loadingCoaches ? (
+              <div className="text-center py-4">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-2 text-gray-600">Loading coaches...</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+                {trainCoaches.map((coach, index) => (
+                  <div
+                    key={`${coach.coachID}-${index}`}
+                    className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${
+                      selectedCoach?.coachID === coach.coachID ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                    }`}
+                    onClick={() => handleSelectCoach(coach)}
+                  >
+                    <h3 className="font-medium">Coach {coach.coachID}</h3>
+                    <div className="text-sm text-gray-600">{coach.name}</div>
+                    <div className="mt-2 font-semibold text-blue-600">
+                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(coach.price)}
+                    </div>
+                    <div className="mt-1 text-sm text-gray-500">
+                      {coach.type === 'seat' ? 'Seater' : 'Sleeper'} - {coach.capacity} seats
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         {/* Seat/Bed Selection */}
@@ -917,52 +1022,6 @@ const Buy_Ticket = () => {
             <div className="bg-gray-100 rounded-lg p-4">
               <div className="seat-selection-container">{renderSeatsOrBeds()}</div>
             </div>
-            {/* Booking Summary */}
-            {selectedItems.length > 0 && (
-              <div className="mt-6 p-4 border border-gray-200 rounded-lg">
-                <h3 className="font-semibold text-lg mb-2">Booking Information</h3>
-                <div className="grid gap-2 grid-cols-1 md:grid-cols-2">
-                  <div>
-                    <p className="text-sm text-gray-600">Train: {selectedTrain.id}</p>
-                    <p className="text-sm text-gray-600">Coach: {selectedCoach.name}</p>
-                    <p className="text-sm text-gray-600">
-                      Journey: {stations.find(s => (s.id || s.stationID) === formData.from)?.name ||
-                                stations.find(s => (s.id || s.stationID) === formData.from)?.stationName} →{' '}
-                      {stations.find(s => (s.id || s.stationID) === formData.to)?.name ||
-                       stations.find(s => (s.id || s.stationID) === formData.to)?.stationName}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Departure: {new Date(selectedTrain.departureDate).toLocaleDateString('vi-VN')} at {formatTime(selectedTrain.startTime)}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Arrival: {new Date(selectedTrain.arrivalDate).toLocaleDateString('vi-VN')} at {formatTime(selectedTrain.endTime)}
-                    </p>
-                    {formData.tripType === 'round-trip' && (
-                      <p className="text-sm text-gray-600">
-                        Return Date: {new Date(selectedTrain.returnDate).toLocaleDateString('vi-VN')}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">
-                      Quantity: {selectedItems.length} {selectedCoach.type === 'seat' ? 'seats' : 'beds'}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Number: {selectedItems.map(item => item.col * selectedCoach.rows + item.row + 1).join(', ')}
-                    </p>
-                    <p className="font-semibold mt-2">
-                      Total: {formatCurrency(calculateTotalPrice())}
-                      {formData.tripType === 'round-trip' && ' (Round-trip)'}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4 flex justify-end">
-                  <button className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors">
-                    Continue
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -1033,25 +1092,134 @@ const Buy_Ticket = () => {
         {selectedReturnTrain && formData.tripType === 'round-trip' && (
           <div className="p-6 border-t border-gray-200">
             <h2 className="text-xl font-semibold mb-4">Select Return Coach</h2>
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
-              {coachTypes.map(coach => (
-                <div
-                  key={coach.id}
-                  className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${
-                    selectedReturnCoach?.id === coach.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                  }`}
-                  onClick={() => handleSelectCoach(coach, true)}
-                >
-                  <h3 className="font-medium">{coach.name}</h3>
-                  <div className="mt-2 font-semibold text-blue-600">{formatCurrency(coach.price)}</div>
-                  <div className="mt-1 text-sm text-gray-500">{coach.type === 'seat' ? 'Seater' : 'Sleeper'}</div>
-                </div>
-              ))}
-            </div>
+            {loadingCoaches ? (
+              <div className="text-center py-4">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-2 text-gray-600">Loading coaches...</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+                {returnTrainCoaches.map((coach, index) => (
+                  <div
+                    key={`${coach.coachID}-${index}`}
+                    className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${
+                      selectedReturnCoach?.coachID === coach.coachID ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                    }`}
+                    onClick={() => handleSelectCoach(coach, true)}
+                  >
+                    <h3 className="font-medium">Coach {coach.coachID}</h3>
+                    <div className="text-sm text-gray-600">{coach.name}</div>
+                    <div className="mt-2 font-semibold text-blue-600">
+                      {formatCurrency(coach.price)}
+                    </div>
+                    <div className="mt-1 text-sm text-gray-500">
+                      {coach.type === 'seat' ? 'Seater' : 'Sleeper'} - {coach.capacity} seats
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
       {renderSelectionPanel()}
+      {/* Return Journey Seat/Bed Selection */}
+      {selectedReturnCoach && formData.tripType === 'round-trip' && (
+        <div className="p-6 border-t border-gray-200 bg-white shadow-lg"> {/* Added bg-white and shadow-lg */}
+          <h2 className="text-xl font-semibold mb-4">Choose Your Return Seat</h2>
+          <div className="bg-gray-100 rounded-lg p-4">
+            <div className="seat-selection-container">
+              {selectedReturnCoach.type === 'seat' 
+                ? renderRegularCoach(selectedReturnCoach) 
+                : renderSleeperCoach(selectedReturnCoach)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Combined Booking Information at the bottom */}
+      {(selectedItems.length > 0 || selectedReturnItems.length > 0) && (
+        <div className="p-6 border-t border-gray-200 bg-white shadow-lg mt-4"> {/* Added bg-white, shadow-lg, and mt-4 */}
+          <h2 className="text-xl font-semibold mb-4">Booking Information</h2>
+          
+          {/* Outbound Journey Information */}
+          {selectedItems.length > 0 && (
+            <div className="mb-6 p-4 border border-gray-200 rounded-lg">
+              <h3 className="font-semibold text-lg mb-2">Outbound Journey</h3>
+              <div className="grid gap-2 grid-cols-1 md:grid-cols-2">
+                <div>
+                  <p className="text-sm text-gray-600">Train: {selectedTrain.id}</p>
+                  <p className="text-sm text-gray-600">Coach: {selectedCoach.name}</p>
+                  <p className="text-sm text-gray-600">
+                    Journey: {stations.find(s => (s.id || s.stationID) === formData.from)?.name ||
+                              stations.find(s => (s.id || s.stationID) === formData.from)?.stationName} →{' '}
+                    {stations.find(s => (s.id || s.stationID) === formData.to)?.name ||
+                     stations.find(s => (s.id || s.stationID) === formData.to)?.stationName}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Departure: {new Date(selectedTrain.departureDate).toLocaleDateString('vi-VN')} at {formatTime(selectedTrain.startTime)}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Arrival: {new Date(selectedTrain.arrivalDate).toLocaleDateString('vi-VN')} at {formatTime(selectedTrain.endTime)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">
+                    Quantity: {selectedItems.length} {selectedCoach.type === 'seat' ? 'seats' : 'beds'}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Number: {selectedItems.map(item => item.col * selectedCoach.rows + item.row + 1).join(', ')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Return Journey Information */}
+          {selectedReturnItems.length > 0 && (
+            <div className="mb-6 p-4 border border-gray-200 rounded-lg">
+              <h3 className="font-semibold text-lg mb-2">Return Journey</h3>
+              <div className="grid gap-2 grid-cols-1 md:grid-cols-2">
+                <div>
+                  <p className="text-sm text-gray-600">Train: {selectedReturnTrain.id}</p>
+                  <p className="text-sm text-gray-600">Coach: {selectedReturnCoach.name}</p>
+                  <p className="text-sm text-gray-600">
+                    Journey: {stations.find(s => (s.id || s.stationID) === formData.to)?.name ||
+                              stations.find(s => (s.id || s.stationID) === formData.to)?.stationName} →{' '}
+                    {stations.find(s => (s.id || s.stationID) === formData.from)?.name ||
+                     stations.find(s => (s.id || s.stationID) === formData.from)?.stationName}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Departure: {new Date(selectedReturnTrain.departureDate).toLocaleDateString('vi-VN')} at {formatTime(selectedReturnTrain.startTime)}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Arrival: {new Date(selectedReturnTrain.arrivalDate).toLocaleDateString('vi-VN')} at {formatTime(selectedReturnTrain.endTime)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">
+                    Quantity: {selectedReturnItems.length} {selectedReturnCoach.type === 'seat' ? 'seats' : 'beds'}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Number: {selectedReturnItems.map(item => item.col * selectedReturnCoach.rows + item.row + 1).join(', ')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Total Price and Continue Button */}
+          <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-200">
+            <div className="font-semibold text-lg">
+              Total: {formatCurrency(calculateTotalPrice())}
+              {formData.tripType === 'round-trip' && ' (Round-trip)'}
+            </div>
+            <button className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors">
+              Continue to Payment
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

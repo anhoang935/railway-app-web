@@ -41,6 +41,21 @@ class Buy_Ticket{
             throw new Error(`Error finding trains: ${error.message}`);
         }
     }
+
+    static async getCoachesByTrainName(trainName) {
+        try {
+            const query = `
+                SELECT c.coachID, t.trainName, c.coach_typeID 
+                FROM coach c
+                JOIN train t ON c.trainID = t.trainID
+                WHERE t.trainName = ?
+            `;
+            const [results] = await pool.execute(query, [trainName]);
+            return results;
+        } catch (error) {
+            throw new Error(`Error fetching coaches: ${error.message}`);
+        }
+    }
 }
 
 export default Buy_Ticket;

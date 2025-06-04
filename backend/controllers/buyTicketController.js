@@ -25,3 +25,29 @@ export const searchTrains = async (req, res) => {
         });
     }
 };
+
+export const getCoachesByTrainName = async (req, res) => {
+    try {
+        const { trainName } = req.query;
+
+        if (!trainName) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide a trainName'
+            });
+        }
+
+        const coaches = await Buy_Ticket.getCoachesByTrainName(trainName);
+
+        res.status(200).json({
+            success: true,
+            count: coaches.length,
+            data: coaches
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
