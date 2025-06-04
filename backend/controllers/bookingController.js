@@ -42,10 +42,13 @@ export const getBooking = async (req, res) => {
     }
 };
 
+// Enhanced getBookingsByUser with more details
 export const getBookingsByUser = async (req, res) => {
     try {
         const { userId } = req.params;
-        const bookings = await Booking.findByUserId(userId);
+        
+        // Get bookings with all details
+        const bookings = await Booking.findByUserIdWithDetails(userId);
 
         res.status(200).json({
             success: true,
@@ -53,6 +56,118 @@ export const getBookingsByUser = async (req, res) => {
             data: bookings
         });
     } catch (error) {
+        console.error('Error fetching user bookings:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+// Get detailed booking information
+export const getBookingDetails = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Get booking with details
+        const booking = await Booking.findByIdWithDetails(id);
+        
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: 'Booking not found'
+            });
+        }
+
+        // Get tickets for this booking
+        const tickets = await Ticket.findByBookingId(id);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                ...booking,
+                tickets: tickets
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching booking details:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+// Get user booking statistics
+export const getUserBookingStats = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        const stats = await Booking.getUserBookingStats(userId);
+
+        res.status(200).json({
+            success: true,
+            data: stats
+        });
+    } catch (error) {
+        console.error('Error fetching user booking stats:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+// Cancel booking (update status)
+export const cancelBooking = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userId } = req.body; // To verify ownership
+        
+        // First check if booking exists and belongs to user
+        const booking = await Booking.findById(id);
+        
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: 'Booking not found'
+            });
+        }
+
+        if (booking.userID !== parseInt(userId)) {
+            return res.status(403).json({
+                success: false,
+                message: 'You can only cancel your own bookings'
+            });
+        }
+
+        if (booking.status === 'cancelled') {
+            return res.status(400).json({
+                success: false,
+                message: 'Booking is already cancelled'
+            });
+        }
+
+        if (booking.status === 'completed') {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot cancel completed booking'
+            });
+        }
+
+        // Update booking status to cancelled
+        const updatedBooking = await Booking.update(id, {
+            ...booking,
+            status: 'cancelled'
+        });
+
+        res.status(200).json({
+            success: true,
+            message: 'Booking cancelled successfully',
+            data: updatedBooking
+        });
+    } catch (error) {
+        console.error('Error cancelling booking:', error);
         res.status(500).json({
             success: false,
             message: error.message
