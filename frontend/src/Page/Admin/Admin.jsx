@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import {
     BarChart3, Train, Users, Calendar, Settings, MapPin,
     LogOut, ArrowLeftToLine, Menu, ChevronDown, ChevronRight,
-    Route, CreditCard, UserCheck, Ticket, User, Bus
+    Route, CreditCard, UserCheck, Ticket, User, Bus, Home, X
 } from 'lucide-react';
 import "./admin.css";
 
 // Import your existing user service instead of useUser hook
 import userService from '../../data/Service/userService';
 import authService from '../../data/Service/authService';
+import LoadingPage from '../../components/LoadingPage';
 
 import Dashboard from './Page/Dashboard';
 import TrainManagement from './Page/TrainManagement';
@@ -52,11 +53,13 @@ export default function AdminPanel() {
     const [showNotification, setShowNotification] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [expandedMenus, setExpandedMenus] = useState([]);
+    const [showLogoutDialog, setShowLogoutDialog] = useState(false);
     const navigate = useNavigate();
 
     // Replace useUser hook with state management for current user
     const [currentUser, setCurrentUser] = useState(null);
     const [userLoading, setUserLoading] = useState(true);
+    const [authChecking, setAuthChecking] = useState(true); // Add auth checking state
 
     const [dashboardLayout, setDashboardLayout] = useState([
         { id: 'alerts', title: 'System Alerts', visible: true, order: 1 },
@@ -77,6 +80,15 @@ export default function AdminPanel() {
         const fetchCurrentUser = async () => {
             try {
                 setUserLoading(true);
+                setAuthChecking(true);
+
+                // Check if user is authenticated and has admin role
+                const userRole = localStorage.getItem('userRole');
+                if (!authService.isAuthenticated() || userRole !== 'Admin') {
+                    console.log('Access denied - not admin or not authenticated');
+                    navigate('/login');
+                    return;
+                }
 
                 // Get current user from auth service
                 const authUser = authService.getCurrentUser();
@@ -85,12 +97,26 @@ export default function AdminPanel() {
                     // Fetch full user details from user service
                     const fullUserData = await userService.getUserByID(authUser.userId);
                     setCurrentUser(fullUserData);
+
+                    // Double-check the user's role from the database
+                    if (fullUserData.Role !== 'Admin') {
+                        console.log('Access denied - user role is not Admin:', fullUserData.Role);
+                        navigate('/home');
+                        return;
+                    }
                 } else {
                     // Fallback: try to get user from localStorage
                     const userId = localStorage.getItem('userId');
                     if (userId) {
                         const userData = await userService.getUserByID(parseInt(userId));
                         setCurrentUser(userData);
+
+                        // Check role from database
+                        if (userData.Role !== 'Admin') {
+                            console.log('Access denied - user role is not Admin:', userData.Role);
+                            navigate('/home');
+                            return;
+                        }
                     } else {
                         // No user found, redirect to login
                         navigate('/login');
@@ -99,18 +125,21 @@ export default function AdminPanel() {
                 }
             } catch (error) {
                 console.error('Error fetching current user:', error);
-                // Set default admin user data as fallback
-                setCurrentUser({
-                    UserName: 'Admin User',
-                    Role: 'Administrator'
-                });
+                // Redirect to login on error
+                navigate('/login');
             } finally {
                 setUserLoading(false);
+                setAuthChecking(false);
             }
         };
 
         fetchCurrentUser();
     }, [navigate]);
+
+    // Show loading page while checking authentication
+    if (authChecking) {
+        return <LoadingPage message="Verifying admin access..." />;
+    }
 
     const toggleWidgetVisibility = (widgetId) => {
         setDashboardLayout(layout =>
@@ -135,10 +164,24 @@ export default function AdminPanel() {
         }, 3000);
     };
 
-    // Enhanced logout function
+    // Enhanced logout function with dialog
+    const handleLogoutClick = () => {
+        setShowLogoutDialog(true);
+    };
+
     const handleLogout = () => {
         authService.logout(); // Clear auth tokens
+        setShowLogoutDialog(false);
+        navigate('/login');
+    };
+
+    const handleGoHome = () => {
+        setShowLogoutDialog(false);
         navigate('/home');
+    };
+
+    const handleCancelLogout = () => {
+        setShowLogoutDialog(false);
     };
 
     const toggleSubmenu = (menu) => {
@@ -353,17 +396,16 @@ export default function AdminPanel() {
                                 </div>
                             )}
                         </div>
-                        <div className="flex items-center space-x-4">
-                            {sidebarOpen && (
-                                <button
-                                    title="Return to the Home page"
-                                    onClick={handleLogout}
-                                    className="p-2 rounded-md hover:bg-blue-700"
-                                >
-                                    <LogOut size={20} />
-                                </button>
-                            )}
-                        </div>
+                        {/* Only keep logout button */}
+                        {sidebarOpen && (
+                            <button
+                                title="Log out"
+                                onClick={handleLogoutClick}
+                                className="p-2 rounded-md hover:bg-blue-700 transition-colors"
+                            >
+                                <LogOut size={20} />
+                            </button>
+                        )}
                     </div>
                 </div>
             </aside>
@@ -372,6 +414,54 @@ export default function AdminPanel() {
             <main className="flex-1 overflow-y-auto">
                 {renderContent()}
             </main>
+
+            {/* Logout Confirmation Dialog */}
+            {showLogoutDialog && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                                What would you like to do?
+                            </h3>
+                            <button
+                                onClick={handleCancelLogout}
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <p className="text-gray-600 mb-6">
+                            Choose whether to log out completely or return to the home page.
+                        </p>
+
+                        <div className="flex flex-col gap-3">
+                            <button
+                                onClick={handleGoHome}
+                                className="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                            >
+                                <Home size={18} className="mr-2" />
+                                Go to Home Page
+                            </button>
+
+                            <button
+                                onClick={handleLogout}
+                                className="flex items-center justify-center px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                            >
+                                <LogOut size={18} className="mr-2" />
+                                Log Out Completely
+                            </button>
+
+                            <button
+                                onClick={handleCancelLogout}
+                                className="px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

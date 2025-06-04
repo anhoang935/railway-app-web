@@ -226,12 +226,94 @@
   color: #aaa;
 }
 
-@media (max-width: 480px) {
-  .login__container{
-      width: 100%;
-      padding: 12px;
+/* Remove or modify these global classes that are affecting other pages */
+
+/* REMOVE THESE GLOBAL CLASSES: */
+/* .perfect-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.login-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  position: relative;
+}
+
+.login-form-wrapper {
+  width: 100%;
+  max-width: 28rem;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  position: relative;
+  z-index: 10;
+} */
+
+/* REPLACE WITH LOGIN-SPECIFIC CLASSES: */
+.login-page-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  position: relative;
+}
+
+.login-form-centered {
+  width: 100%;
+  max-width: 28rem;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  position: relative;
+  z-index: 10;
+}
+
+.login-form-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 1rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  width: 100%;
+  padding: 2rem;
+}
+
+/* Responsive adjustments - only for login */
+@media (max-width: 640px) {
+  .login-form-centered {
+    padding: 1rem;
   }
-  .remember-forgot__box{
-      gap: 20px;
+  
+  .login-form-card {
+    padding: 1.5rem;
   }
 }
+
+/* Keep your existing login styles unchanged */
+.login__background {
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  justify-content: center; 
+  align-items: center;
+  align-content: center;
+  flex-direction: column;
+  min-height: 100vh;
+  background-repeat: no-repeat;
+  animation: backgroundChange 30s infinite ease-in-out;
+}
+
+/* ... rest of your existing login styles ... */

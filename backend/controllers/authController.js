@@ -160,9 +160,19 @@ export const login = async (req, res) => {
       });
     }
 
+    console.log(`Login attempt for user ${user.userID} (${user.Email})`);
+
+    // Clear any existing OTP first
+    await User.clearOTP(user.userID);
+
     // Generate and send OTP
     const otp = await User.generateOTP(user.userID);
+
+    console.log(`Login OTP generated: ${otp} for user ${user.userID}`);
+
     await sendOTPEmail(user.Email, otp, user.UserName);
+
+    console.log(`Login OTP email sent successfully to: ${user.Email}`);
 
     // Send response (don't include token yet)
     res.status(200).json({
@@ -208,21 +218,29 @@ export const verifyLoginOTP = async (req, res) => {
     }
 
     // Generate token after successful OTP verification
-    const token = generateToken(user.userID);
+    const token = jwt.sign(
+      {
+        userId: user.userID,
+        email: user.Email,
+        role: user.Role // Make sure this is included
+      },
+      process.env.JWT_SECRET || 'your-fallback-secret-key', // Fix: Add process.env.
+      { expiresIn: '24h' }
+    );
 
     // Send response with token
     res.status(200).json({
       success: true,
       message: 'Login successful',
       data: {
+        token,
         user: {
           userId: user.userID,
           username: user.UserName,
           email: user.Email,
-          status: user.Status,
-          role: user.Role
-        },
-        token
+          Role: user.Role, // Make sure this is included with correct casing
+          role: user.Role  // Include both casings for compatibility
+        }
       }
     });
   } catch (error) {
@@ -255,9 +273,19 @@ export const resendOTP = async (req, res) => {
       });
     }
 
+    console.log(`Resending OTP for user ${userId}`);
+
+    // Clear any existing OTP first
+    await User.clearOTP(userId);
+
     // Generate and send new OTP
     const otp = await User.generateOTP(user.userID);
+
+    console.log(`New OTP generated: ${otp} for user ${userId}`);
+
     await sendOTPEmail(user.Email, otp, user.UserName);
+
+    console.log(`OTP email sent successfully to: ${user.Email}`);
 
     res.status(200).json({
       success: true,

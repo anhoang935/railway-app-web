@@ -23,13 +23,20 @@ const nav_links = [
 const Header = () => {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [isAuthenticated, setIsAuthenticated] = useState(false); // Add this state
-    const [currentUser, setCurrentUser] = useState(null); // Add this state
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [currentUser, setCurrentUser] = useState(null);
     const [userRole, setUserRole] = useState(null);
+    const [authLoading, setAuthLoading] = useState(true);
+    const [isAdminUser, setIsAdminUser] = useState(false); // Add dedicated admin state
     const navigate = useNavigate();
     const location = useLocation();
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
+
+    // Add the missing toggleMobileMenu function
+    const toggleMobileMenu = () => {
+        setMobileMenuOpen(!isMobileMenuOpen);
+    };
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -54,53 +61,95 @@ const Header = () => {
         };
     }, []);
 
-    // Replace the current useEffect with this simpler version
+    // Stable admin state calculation
     useEffect(() => {
-        const checkAuthStatus = () => {
-            const isAuth = authService.isAuthenticated();
-            const user = authService.getCurrentUser();
+        const calculateAdminStatus = () => {
+            if (authLoading) {
+                setIsAdminUser(false);
+                return;
+            }
+
+            const hasToken = !!localStorage.getItem('authToken');
+            const hasUserId = !!localStorage.getItem('userId');
+            const isFullyAuth = authService.isAuthenticated();
             const role = localStorage.getItem('userRole');
 
-            console.log('Header auth check:', {
-                isAuthenticated: isAuth,
-                currentUser: user,
-                userRole: role
-            });
+            // Check if we're on login-related pages
+            const isOnAuthPages = ['/login', '/register', '/forgot-password', '/verify-email'].some(
+                path => location.pathname.includes(path)
+            );
 
-            setIsAuthenticated(isAuth);
-            setCurrentUser(user);
-            setUserRole(role);
+            const adminStatus = hasToken && hasUserId && isFullyAuth && currentUser && role === 'Admin' && !isOnAuthPages;
+            setIsAdminUser(adminStatus);
         };
 
-        // Check immediately
+        calculateAdminStatus();
+    }, [authLoading, isAuthenticated, currentUser, userRole, location.pathname]);
+
+    // Simplified auth checking with debouncing
+    useEffect(() => {
+        let timeoutId;
+        let intervalId;
+        let isInitialLoad = true;
+
+        const checkAuthStatus = () => {
+            if (isInitialLoad) {
+                setAuthLoading(true);
+            }
+
+            timeoutId = setTimeout(() => {
+                const isAuth = authService.isAuthenticated();
+                const user = authService.getCurrentUser();
+                const role = localStorage.getItem('userRole');
+
+                // Batch state updates to prevent multiple renders
+                const updates = {};
+
+                if (isAuthenticated !== isAuth) {
+                    updates.isAuthenticated = isAuth;
+                }
+                if (JSON.stringify(currentUser) !== JSON.stringify(user)) {
+                    updates.currentUser = user;
+                }
+                if (userRole !== role) {
+                    updates.userRole = role;
+                }
+
+                // Only update if there are actual changes
+                if (Object.keys(updates).length > 0) {
+                    if (updates.hasOwnProperty('isAuthenticated')) setIsAuthenticated(updates.isAuthenticated);
+                    if (updates.hasOwnProperty('currentUser')) setCurrentUser(updates.currentUser);
+                    if (updates.hasOwnProperty('userRole')) setUserRole(updates.userRole);
+                }
+
+                if (isInitialLoad) {
+                    setAuthLoading(false);
+                    isInitialLoad = false;
+                }
+            }, isInitialLoad ? 300 : 0);
+        };
+
+        // Initial check
         checkAuthStatus();
 
-        // Check every 500ms to catch login state changes
-        const interval = setInterval(checkAuthStatus, 500);
+        // Less frequent interval checks
+        intervalId = setInterval(() => {
+            checkAuthStatus();
+        }, 10000); // Check every 10 seconds instead of 5
 
         // Listen for storage changes
         const handleStorageChange = () => {
-            checkAuthStatus();
+            setTimeout(checkAuthStatus, 100);
         };
 
         window.addEventListener('storage', handleStorageChange);
 
         return () => {
-            clearInterval(interval);
+            clearInterval(intervalId);
+            clearTimeout(timeoutId);
             window.removeEventListener('storage', handleStorageChange);
         };
-    }, [location]);
-
-    // Function to check if user is admin
-    const isAdmin = () => {
-        const result = userRole === 'Admin';
-        console.log('isAdmin check - userRole:', userRole, 'result:', result);
-        return result;
-    };
-
-    const toggleMobileMenu = () => {
-        setMobileMenuOpen(!isMobileMenuOpen);
-    };
+    }, []); // Remove all dependencies to prevent unnecessary re-runs
 
     // Add logout handler
     const handleLogout = () => {
@@ -125,8 +174,8 @@ const Header = () => {
     return (
         <header
             className={`w-full sticky top-0 z-50 transition-all duration-300 ${isScrolled
-                ? 'bg-white/30 backdrop-blur-sm shadow-lg'
-                : 'bg-transparent'
+                ? 'bg-white/95 backdrop-blur-sm shadow-lg'
+                : 'bg-white/70 backdrop-blur-sm'
                 }`}
         >
             <Container>
@@ -162,8 +211,8 @@ const Header = () => {
                         {/* Auth Buttons */}
                         <div className={`auth-buttons ${isScrolled ? 'scrolled-button' : ''}`}>
                             {isAuthenticated ? (
-                                // Show user info and logout when authenticated
                                 <>
+                                    {/* User dropdown */}
                                     <div className="user-dropdown-container" ref={dropdownRef}>
                                         <button
                                             className="user-dropdown-trigger"
@@ -202,50 +251,22 @@ const Header = () => {
                                         )}
                                     </div>
 
-                                    {/* ONLY show Admin Panel button for admin users */}
-                                    {isAdmin() && (
+                                    {/* Use isAdminUser state instead of isAdmin() function */}
+                                    {isAdminUser && (
                                         <BlackButton text="Admin Panel" onClick={() => navigate('/admin')} />
                                     )}
-
-                                    {/* Remove or comment out this settings button since it's now in the dropdown */}
-                                    {/* <button
-                                        className="setting-btn"
-                                        title="Settings"
-                                        onClick={() => navigate('/settings')}
-                                    >
-                                        <span className="bar bar1"></span>
-                                        <span className="bar bar2"></span>
-                                        <span className="bar bar1"></span>
-                                    </button> */}
                                 </>
                             ) : (
                                 // Show login/register when not authenticated
                                 <>
-                                    <button
-                                        className="btn btn-outline"
-                                        onClick={handleLogin}
-                                    >
+                                    <button className="btn btn-outline" onClick={handleLogin}>
                                         Log In
                                     </button>
-                                    <button
-                                        className="btn btn-primary"
-                                        onClick={handleRegister}
-                                    >
+                                    <button className="btn btn-primary" onClick={handleRegister}>
                                         Sign Up
                                     </button>
                                 </>
                             )}
-
-                            {/* Remove the settings button from here as it's now in the dropdown */}
-                            {/* <button
-                                className="setting-btn"
-                                title="Settings"
-                                onClick={() => navigate('/settings')}
-                            >
-                                <span className="bar bar1"></span>
-                                <span className="bar bar2"></span>
-                                <span className="bar bar1"></span>
-                            </button> */}
                         </div>
 
                         {/* Mobile Menu */}
@@ -263,8 +284,8 @@ const Header = () => {
                                         <li><Link to="/settings" onClick={toggleMobileMenu}>Settings</Link></li>
                                         <li><Link to="/my-bookings" onClick={toggleMobileMenu}>My Bookings</Link></li>
 
-                                        {/* ONLY show Admin Panel in mobile for admin users */}
-                                        {isAdmin() && (
+                                        {/* Use isAdminUser state in mobile menu too */}
+                                        {isAdminUser && (
                                             <li><Link to="/admin" onClick={toggleMobileMenu}>Admin Panel</Link></li>
                                         )}
 

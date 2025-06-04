@@ -18,7 +18,15 @@ import trackRoutes from './routes/track.js';
 import timetableRoutes from './routes/timetable.js';
 import './utils/ticketExpireService.js';
 
+// Load environment variables FIRST
 dotenv.config();
+
+// Verify JWT_SECRET is loaded
+if (!process.env.JWT_SECRET) {
+  console.warn('Warning: JWT_SECRET not found in environment variables. Using fallback.');
+} else {
+  console.log('JWT_SECRET loaded successfully');
+}
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -43,7 +51,7 @@ app.use('/api/v1/schedules', scheduleRoutes);
 app.use('/api/v1/tickets', ticketRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/buy-ticket', buyTicket);
-app.use('/api/v1/tracks', trackRoutes); 
+app.use('/api/v1/tracks', trackRoutes);
 app.use('/api/timetable', timetableRoutes);
 
 // Error handling middleware

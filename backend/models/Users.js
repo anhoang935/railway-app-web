@@ -289,19 +289,35 @@ class User {
       const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
       const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
 
-      // Store OTP in database
+      console.log(`Generating new OTP: ${otp} for user ${userID}`);
+
+      // Store OTP in database - Make sure this actually updates
       const [result] = await pool.query(
         'UPDATE user SET OTP = ?, OTPExpiry = ? WHERE userID = ?',
         [otp, otpExpiry, userID]
       );
 
       if (result.affectedRows === 0) {
-        throw new Error('Failed to generate OTP');
+        throw new Error('Failed to generate OTP - no rows affected');
       }
 
-      console.log(`Generated OTP ${otp} for user ${userID}, expires at ${otpExpiry}`);
+      // Verify the OTP was actually stored
+      const [verifyRows] = await pool.query(
+        'SELECT OTP, OTPExpiry FROM user WHERE userID = ?',
+        [userID]
+      );
+
+      if (verifyRows.length === 0 || verifyRows[0].OTP !== otp) {
+        console.error(`OTP verification failed after generation. Expected: ${otp}, Stored: ${verifyRows[0]?.OTP}`);
+        throw new Error('Failed to store OTP in database');
+      }
+
+      console.log(`OTP ${otp} successfully stored for user ${userID}, expires at ${otpExpiry}`);
+      console.log(`Database verification - Stored OTP: ${verifyRows[0].OTP}`);
+
       return otp;
     } catch (error) {
+      console.error(`Error generating OTP for user ${userID}:`, error);
       throw error;
     }
   }
@@ -309,23 +325,37 @@ class User {
   // Verify OTP (from database)
   static async verifyOTP(userID, otp) {
     try {
+      console.log(`Attempting to verify OTP for user ${userID} with OTP: ${otp}`);
+
       const [rows] = await pool.query(
         'SELECT OTP, OTPExpiry FROM user WHERE userID = ?',
         [userID]
       );
 
       if (rows.length === 0) {
+        console.log(`User ${userID} not found in database`);
         throw new Error('User not found');
       }
 
       const user = rows[0];
       const now = new Date();
 
+      console.log(`User ${userID} OTP verification:`, {
+        hasOTP: !!user.OTP,
+        storedOTP: user.OTP,
+        providedOTP: otp,
+        hasExpiry: !!user.OTPExpiry,
+        currentTime: now.toISOString(),
+        expiryTime: user.OTPExpiry ? new Date(user.OTPExpiry).toISOString() : 'none'
+      });
+
       if (!user.OTP || !user.OTPExpiry) {
+        console.log(`No OTP found for user ${userID}. OTP: ${user.OTP}, Expiry: ${user.OTPExpiry}`);
         throw new Error('No OTP found for this user');
       }
 
       if (now > new Date(user.OTPExpiry)) {
+        console.log(`OTP expired for user ${userID}. Current: ${now.toISOString()}, Expiry: ${new Date(user.OTPExpiry).toISOString()}`);
         // Clear expired OTP
         await pool.query(
           'UPDATE user SET OTP = NULL, OTPExpiry = NULL WHERE userID = ?',
@@ -335,6 +365,7 @@ class User {
       }
 
       if (user.OTP !== otp) {
+        console.log(`Invalid OTP for user ${userID}. Expected: ${user.OTP}, Received: ${otp}`);
         throw new Error('Invalid OTP');
       }
 
@@ -347,6 +378,7 @@ class User {
       console.log(`OTP verified successfully for user ${userID}`);
       return true;
     } catch (error) {
+      console.error(`OTP verification failed for user ${userID}:`, error.message);
       throw error;
     }
   }

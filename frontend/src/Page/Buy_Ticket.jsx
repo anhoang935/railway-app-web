@@ -101,18 +101,18 @@ const Buy_Ticket = () => {
     // Convert input values to numbers
     const start = Number(fromStationId);
     const end = Number(toStationId);
-    
+
     if (start === end) return 0;
 
     // Get indices to determine direction
     const fromIndex = stations.findIndex(s => Number(s.stationID) === start);
     const toIndex = stations.findIndex(s => Number(s.stationID) === end);
-    
+
     if (fromIndex === -1 || toIndex === -1) return 0;
 
     // Determine direction of travel
     const isForward = fromIndex < toIndex;
-    
+
     // Get all station IDs between start and end (inclusive)
     const stationRange = stations
       .slice(Math.min(fromIndex, toIndex), Math.max(fromIndex, toIndex) + 1)
@@ -120,17 +120,17 @@ const Buy_Ticket = () => {
 
     // Calculate total distance by summing up track segments
     let totalDistance = 0;
-    
+
     for (let i = 0; i < stationRange.length - 1; i++) {
       const currentStation = stationRange[i];
       const nextStation = stationRange[i + 1];
-      
+
       // Find track between these stations (in either direction)
-      const track = tracks.find(t => 
+      const track = tracks.find(t =>
         (t.station1ID === currentStation && t.station2ID === nextStation) ||
         (t.station2ID === currentStation && t.station1ID === nextStation)
       );
-      
+
       if (track) {
         totalDistance += track.distance;
       }
@@ -188,7 +188,7 @@ const Buy_Ticket = () => {
 
       if (result.success) {
         const distance = calculateDistance(fromId, toId);
-        
+
         // Create maps to track dates and times
         const transformedTrains = result.data.map(train => {
           const scheduleID = train['Train Name'];
@@ -680,9 +680,8 @@ const Buy_Ticket = () => {
                 {availableTrains.map(train => (
                   <div
                     key={train.id}
-                    className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
-                      selectedTrain?.id === train.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                    }`}
+                    className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${selectedTrain?.id === train.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                      }`}
                     onClick={() => handleSelectTrain(train)}
                   >
                     <div className="flex justify-between items-center mb-2">
@@ -695,10 +694,10 @@ const Buy_Ticket = () => {
                       <div>
                         <div className="font-semibold text-lg">{formatTime(train.startTime)}</div>
                         <div className="text-gray-500">
-                          {train.journey && train.journey[formData.from] ? 
-                            new Date(train.journey[formData.from].date).toLocaleDateString('vi-VN') 
+                          {train.journey && train.journey[formData.from] ?
+                            new Date(train.journey[formData.from].date).toLocaleDateString('vi-VN')
                             : new Date(train.departureDate).toLocaleDateString('vi-VN')} - {' '}
-                          {formData.from && stations.find(s => 
+                          {formData.from && stations.find(s =>
                             (s.id || s.stationID) === parseInt(formData.from)
                           )?.stationName || 'Loading...'}
                         </div>
@@ -714,7 +713,7 @@ const Buy_Ticket = () => {
                           {train.journey && train.journey[formData.to] ?
                             new Date(train.journey[formData.to].date).toLocaleDateString('vi-VN')
                             : new Date(train.arrivalDate).toLocaleDateString('vi-VN')} - {' '}
-                          {formData.to && stations.find(s => 
+                          {formData.to && stations.find(s =>
                             (s.id || s.stationID) === parseInt(formData.to)
                           )?.stationName || 'Loading...'}
                         </div>
@@ -743,9 +742,8 @@ const Buy_Ticket = () => {
               {coachTypes.map(coach => (
                 <div
                   key={coach.id}
-                  className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${
-                    selectedCoach?.id === coach.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                  }`}
+                  className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${selectedCoach?.id === coach.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                    }`}
                   onClick={() => handleSelectCoach(coach)}
                 >
                   <h3 className="font-medium">{coach.name}</h3>
@@ -773,9 +771,9 @@ const Buy_Ticket = () => {
                     <p className="text-sm text-gray-600">Coach: {selectedCoach.name}</p>
                     <p className="text-sm text-gray-600">
                       Journey: {stations.find(s => (s.id || s.stationID) === formData.from)?.name ||
-                                stations.find(s => (s.id || s.stationID) === formData.from)?.stationName} →{' '}
+                        stations.find(s => (s.id || s.stationID) === formData.from)?.stationName} →{' '}
                       {stations.find(s => (s.id || s.stationID) === formData.to)?.name ||
-                       stations.find(s => (s.id || s.stationID) === formData.to)?.stationName}
+                        stations.find(s => (s.id || s.stationID) === formData.to)?.stationName}
                     </p>
                     <p className="text-sm text-gray-600">
                       Departure: {new Date(selectedTrain.departureDate).toLocaleDateString('vi-VN')} at {formatTime(selectedTrain.startTime)}

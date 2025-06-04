@@ -18,7 +18,7 @@ const Timetable = () => {
   const [routeStations, setRouteStations] = useState([]);
   const [error, setError] = useState('');
   const [tracks, setTracks] = useState([]);
-  
+
   // Fetch stations on component mount
   // Updated fetch stations to ensure better error handling
   useEffect(() => {
@@ -31,7 +31,7 @@ const Timetable = () => {
       } catch (error) {
         console.error('Failed to fetch stations:', error);
         setError('Failed to load stations. Please try again.');
-        
+
         // Complete fallback data from the SQL dump with ALL stations
         setStations([
           { stationID: 1, stationName: 'Ha Noi' },
@@ -94,7 +94,7 @@ const Timetable = () => {
     fetchStations();
     fetchTracks();
   }, []);
-  
+
   // Fetch coach types
   useEffect(() => {
     const fetchCoachTypes = async () => {
@@ -103,7 +103,7 @@ const Timetable = () => {
         setCoachTypes(data);
       } catch (error) {
         console.error('Failed to fetch coach types:', error);
-        
+
         // Fallback data from the SQL dump
         setCoachTypes([
           { coach_typeID: 'CT01', type: 'Soft seat, Air-Con', price: '35000', capacity: 56 },
@@ -116,19 +116,19 @@ const Timetable = () => {
 
     fetchCoachTypes();
   }, []);
-  
+
   // Calculate distance between two station IDs using the track data
   const calculateDistance = (fromStationId, toStationId) => {
     // Convert input values to numbers
     const start = Number(fromStationId);
     const end = Number(toStationId);
-    
+
     if (start === end) return 0;
 
     // Get indices to determine direction
     const fromIndex = stations.findIndex(s => Number(s.stationID) === start);
     const toIndex = stations.findIndex(s => Number(s.stationID) === end);
-    
+
     if (fromIndex === -1 || toIndex === -1) {
       // Fallback: calculate approximate distance based on station IDs
       return Math.abs(start - end) * 45; // Adjusted multiplier for more realistic distances
@@ -142,17 +142,17 @@ const Timetable = () => {
     // If we have track data, use it for accurate calculation
     if (tracks.length > 0) {
       let totalDistance = 0;
-      
+
       for (let i = 0; i < stationRange.length - 1; i++) {
         const currentStation = stationRange[i];
         const nextStation = stationRange[i + 1];
-        
+
         // Find track between these stations (in either direction)
-        const track = tracks.find(t => 
+        const track = tracks.find(t =>
           (t.station1ID === currentStation && t.station2ID === nextStation) ||
           (t.station2ID === currentStation && t.station1ID === nextStation)
         );
-        
+
         if (track) {
           totalDistance += track.distance;
         } else {
@@ -160,26 +160,26 @@ const Timetable = () => {
           totalDistance += 45; // Average distance between stations
         }
       }
-      
+
       return totalDistance;
     }
-    
+
     // Fallback: calculate approximate distance based on station positions
     // Ha Noi (ID: 1) to Sai Gon (ID: 38) should be 1726 km
     const totalStations = 38;
     const totalDistance = 1726;
     const avgDistancePerStation = totalDistance / (totalStations - 1);
-    
+
     return Math.round(Math.abs(end - start) * avgDistancePerStation);
   };
-  
+
   // Search trains function
   const searchTrains = async () => {
     if (!fromStation || !toStation || fromStation === toStation) {
       setError('Please select different departure and arrival stations');
       return;
     }
-    
+
     // Validate departure date is today or in the future
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -188,19 +188,19 @@ const Timetable = () => {
       setError('Departure date cannot be in the past');
       return;
     }
-    
+
     try {
       setLoading(true);
       setError('');
-      
+
       const params = {
         departureStation: stations.find(s => s.stationID === parseInt(fromStation))?.stationName,
         arrivalStation: stations.find(s => s.stationID === parseInt(toStation))?.stationName,
         departureDate: departureDate
       };
-      
+
       const result = await timetableService.searchTrains(params);
-      
+
       if (!result.data || result.data.length === 0) {
         setError('No trains found for this route. Please try different stations or date.');
         setAvailableTrains([]);
@@ -214,14 +214,14 @@ const Timetable = () => {
           departureTime: train['Departure Time'] || train.departureTime,
           arrivalTime: train['Arrival Time'] || train.arrivalTime
         }));
-        
+
         setAvailableTrains(trains);
         setSelectedTrain(null);
         setTimetableData([]);
       }
     } catch (error) {
       console.error('Error searching trains:', error);
-      
+
       // Fallback for development/testing
       if (process.env.NODE_ENV === 'development') {
         // Create mock data for testing
@@ -250,47 +250,47 @@ const Timetable = () => {
     const [hours, minutes] = timeStr.split(':').map(Number);
     return hours * 60 + minutes;
   };
-  
+
   // Handle train selection
   const handleSelectTrain = async (train) => {
     try {
       setLoading(true);
       setSelectedTrain(train);
-      
+
       // Convert to numbers for proper comparison
       const fromStationId = parseInt(fromStation);
       const toStationId = parseInt(toStation);
-      
+
       // Fetch route stations and timetable
       // Instead of getting schedules between selected stations, get the complete route
       const schedules = await timetableService.getSchedulesBetweenStations(1, 38); // Ha Noi (1) to Sai Gon (38)
-      
+
       // Find the schedule for this specific train
       const schedule = schedules.find(s => s.trainName === train.trainName || s.trainID === train.trainID);
-      
+
       if (!schedule) {
         setError('Could not find detailed schedule for this train');
         setTimetableData([]);
         setRouteStations([]);
         return;
       }
-      
+
       // Get all stations on this route
       const allJourneys = await timetableService.getJourneysBySchedule(schedule.scheduleID);
-      
+
       // Sort journeys by their order in the schedule
       const journeys = [...allJourneys].sort((a, b) => {
         return parseInt(a.journeyID) - parseInt(b.journeyID);
       });
-      
+
       // Format timetable data with date handling
       let cumulativeDistance = 0;
       let currentDate = new Date(departureDate);
       let lastDepartureTime = null;
-      
+
       const stationData = journeys.map((journey, index) => {
         const stationObj = stations.find(s => parseInt(s.stationID) === parseInt(journey.stationID));
-        
+
         // Calculate distance from the previous station
         let distanceFromPrevious = 0;
         if (index > 0) {
@@ -299,24 +299,24 @@ const Timetable = () => {
           distanceFromPrevious = calculateDistance(prevStationId, currentStationId);
           cumulativeDistance += distanceFromPrevious;
         }
-        
+
         // Handle date changes when crossing midnight
         if (index > 0 && lastDepartureTime && journey.departureTime) {
           const lastTimeMinutes = timeToMinutes(lastDepartureTime);
           const currentTimeMinutes = timeToMinutes(journey.departureTime);
-          
+
           // If current time is earlier than last time, we've crossed midnight
           if (currentTimeMinutes < lastTimeMinutes) {
             currentDate = new Date(currentDate);
             currentDate.setDate(currentDate.getDate() + 1);
           }
         }
-        
+
         // Update last departure time for next iteration
         if (journey.departureTime) {
           lastDepartureTime = journey.departureTime;
         }
-        
+
         return {
           station: stationObj?.stationName || 'Unknown Station',
           stationID: journey.stationID,
@@ -326,13 +326,13 @@ const Timetable = () => {
           departure: journey.departureTime || (index === journeys.length - 1 ? '-' : '')
         };
       });
-      
+
       setTimetableData(stationData);
-      
+
       // Prepare data for the route map - include ALL stations
       setRouteStations(journeys.map(j => {
         const station = stations.find(s => parseInt(s.stationID) === parseInt(j.stationID));
-        return { 
+        return {
           id: j.stationID,
           name: station?.stationName || 'Unknown',
           isEndpoint: parseInt(j.stationID) === fromStationId || parseInt(j.stationID) === toStationId
@@ -340,7 +340,7 @@ const Timetable = () => {
       }));
     } catch (error) {
       console.error('Error fetching train details:', error);
-      
+
       // Fallback for development/testing
       if (process.env.NODE_ENV === 'development') {
         // Use all stations from our database for fallback
@@ -352,13 +352,13 @@ const Timetable = () => {
             const hourIncrement = index * 0.5; // 30 mins between stations
             const departureHour = (baseHour + hourIncrement) % 24;
             const arrivalHour = (departureHour - 0.1 + 24) % 24; // 6 min earlier
-            
+
             const formatTime = (hour) => {
               const hourStr = Math.floor(hour).toString().padStart(2, '0');
               const minStr = Math.floor((hour % 1) * 60).toString().padStart(2, '0');
               return `${hourStr}:${minStr}:00`;
             };
-            
+
             return {
               stationID: station.stationID,
               stationName: station.stationName,
@@ -367,11 +367,11 @@ const Timetable = () => {
               departure: formatTime(departureHour)
             };
           });
-        
+
         // Set mock route data for all stations with date handling
         let mockCurrentDate = new Date(departureDate || new Date());
         let mockLastDepartureHour = null;
-        
+
         setTimetableData(mockJourneys.map((journey, index) => {
           // Handle date changes for mock data too
           if (index > 0 && mockLastDepartureHour !== null) {
@@ -381,9 +381,9 @@ const Timetable = () => {
               mockCurrentDate.setDate(mockCurrentDate.getDate() + 1);
             }
           }
-          
+
           mockLastDepartureHour = parseInt(journey.departure.split(':')[0]);
-          
+
           return {
             station: journey.stationName,
             stationID: journey.stationID,
@@ -393,7 +393,7 @@ const Timetable = () => {
             departure: journey.departure || (index === mockJourneys.length - 1 ? '-' : '')
           };
         }));
-        
+
         // Set route stations data for the map
         setRouteStations(mockJourneys.map(j => ({
           id: j.stationID,
@@ -407,7 +407,7 @@ const Timetable = () => {
       setLoading(false);
     }
   };
-  
+
   // Format price
   const formatPrice = (price) => {
     return parseInt(price).toLocaleString('vi-VN') + ' VND';
@@ -417,7 +417,7 @@ const Timetable = () => {
   const renderRouteSelection = () => (
     <div className="route-selection">
       <h2>Train Route Selection</h2>
-      <form className="route-form" onSubmit={(e) => { 
+      <form className="route-form" onSubmit={(e) => {
         e.preventDefault();
         searchTrains();
       }}>
@@ -436,7 +436,7 @@ const Timetable = () => {
             ))}
           </select>
         </div>
-        
+
         <div className="form-group">
           <label>To:</label>
           <select
@@ -446,8 +446,8 @@ const Timetable = () => {
           >
             <option value="">Select arrival station</option>
             {stations.map(station => (
-              <option 
-                key={station.stationID} 
+              <option
+                key={station.stationID}
                 value={station.stationID}
                 disabled={parseInt(station.stationID) === parseInt(fromStation)}
               >
@@ -456,7 +456,7 @@ const Timetable = () => {
             ))}
           </select>
         </div>
-        
+
         <div className="form-group">
           <label>Date:</label>
           <input
@@ -467,10 +467,10 @@ const Timetable = () => {
             required
           />
         </div>
-        
+
         <div className="form-group">
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="search-button"
             disabled={loading}
           >
@@ -484,13 +484,13 @@ const Timetable = () => {
   // Render train options
   const renderTrainOptions = () => {
     if (!availableTrains.length) return null;
-    
+
     return (
       <div className="train-options">
         <h3>Available Trains</h3>
         <div className="train-list">
           {availableTrains.map(train => (
-            <div 
+            <div
               key={train.id}
               className={`train-option ${selectedTrain?.id === train.id ? 'selected' : ''}`}
               onClick={() => handleSelectTrain(train)}
@@ -522,7 +522,7 @@ const Timetable = () => {
   // Render timetable
   const renderTimetable = () => {
     if (!selectedTrain || !timetableData.length) return null;
-    
+
     return (
       <div className="timetable">
         <h3>Train Timetable - {selectedTrain.trainName}</h3>
@@ -557,7 +557,7 @@ const Timetable = () => {
   // Render coach types
   const renderCoachTypes = () => {
     if (!selectedTrain) return null;
-    
+
     return (
       <div className="timetable coach-types">
         <h3>Available Coach Types</h3>
@@ -588,13 +588,13 @@ const Timetable = () => {
   return (
     <div className="timetable-container">
       {renderRouteSelection()}
-      
+
       {error && (
         <div className="error-message">
           {error}
         </div>
       )}
-      
+
       {loading && (
         <div className="loading-container">
           <div className="flex flex-col items-center justify-center p-8">
@@ -603,16 +603,16 @@ const Timetable = () => {
           </div>
         </div>
       )}
-      
+
       {renderTrainOptions()}
-      
+
       {selectedTrain && (
         <div className="content-section">
           <div className="map-section">
             <h3>Route Map</h3>
-            <Map 
+            <Map
               stations={routeStations}
-              fromStation={fromStation} 
+              fromStation={fromStation}
               toStation={toStation}
             />
           </div>

@@ -42,12 +42,11 @@ const About = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white relative overflow-hidden -z-10">
+    <div className="about-page min-h-screen bg-white relative overflow-hidden -z-10">
       <div className="absolute inset-0 -z-10">
       </div>
-      <div className="h-16 md:h-24"></div>    {/* separate the header and the video */}
 
-      {/* Video Section */}
+      {/* Video Section - starts immediately after header */}
       <section className="video-section relative w-full">
         <div className="absolute inset-0 z-10">
           {!isVideoLoaded && (
@@ -69,8 +68,8 @@ const About = () => {
         </div>
       </section>
 
-      {/* Hero Section */}
-      <section className="relative pt-20 pb-12 md:py-20 z-20 space-y-6">
+      {/* Hero Section - REDUCE PADDING */}
+      <section className="relative pt-8 pb-12 md:pt-12 md:pb-20 z-20 space-y-6"> {/* Changed from pt-20 to pt-8 md:pt-12 */}
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}

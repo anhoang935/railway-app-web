@@ -6,18 +6,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { User, Lock, Eye, EyeOff } from 'lucide-react';
 import authService from '../data/Service/authService';
 import OTPVerification from '../components/OTPVerification';
+import LoadingPage from '../components/LoadingPage';
 import '../styles/login.css';
-
-
-const LoadingEffect = ({ message }) => (
-  <div className="flex-col gap-4 w-full flex items-center justify-center">
-    <div className="w-20 h-20 border-4 border-transparent text-blue-600 text-4xl animate-spin flex items-center justify-center border-t-blue-600 rounded-full">
-      <div className="w-16 h-16 border-4 border-transparent text-red-500 text-2xl animate-spin flex items-center justify-center border-t-red-500 rounded-full">
-      </div>
-    </div>
-    {message && <p className="text-blue-900 mt-2">{message}</p>}
-  </div>
-);
 
 const Login = () => {
   const [credentials, setCredentials] = useState({
@@ -154,20 +144,50 @@ const Login = () => {
     // Debug the response structure
     console.log('OTP Success Response:', response);
     console.log('Response data:', response.data);
-    console.log('User data:', response.data?.user); // Changed from response.data?.data?.user
-    console.log('User role:', response.data?.user?.role); // Changed from response.data?.data?.user?.role
+    console.log('User data:', response.data?.user);
+    console.log('User role:', response.data?.user?.Role);
 
-    // Store user role for navigation purposes - FIX THE STRUCTURE
     if (response.data && response.data.user) {
-      const userRole = response.data.user.role || 'Customer';
-      localStorage.setItem('userRole', userRole);
-      console.log('Stored user role in localStorage:', userRole);
-    }
+      const userRole = response.data.user.Role || 'Customer';
 
-    setSuccess('Login successful! Welcome back.');
-    setTimeout(() => {
-      navigate('/home');
-    }, 1500);
+      // Show loading page immediately
+      setLoading(true);
+      setLoadingMessage('Authentication successful! Setting up your account...');
+
+      // First delay - prepare authentication data
+      setTimeout(() => {
+        setLoadingMessage('Preparing your dashboard...');
+
+        // Store role in localStorage
+        localStorage.setItem('userRole', userRole);
+        console.log('Stored user role in localStorage:', userRole);
+
+        // Second delay - finalize and redirect
+        setTimeout(() => {
+          if (userRole === 'Admin') {
+            setLoadingMessage('Redirecting to Admin Panel...');
+            setTimeout(() => {
+              setLoading(false);
+              navigate('/admin');
+            }, 800);
+          } else {
+            setLoadingMessage('Redirecting to Home...');
+            setTimeout(() => {
+              setLoading(false);
+              navigate('/home');
+            }, 800);
+          }
+        }, 1000);
+      }, 1000);
+    } else {
+      // Fallback to home if no role data
+      setLoading(true);
+      setLoadingMessage('Authentication successful! Redirecting...');
+      setTimeout(() => {
+        setLoading(false);
+        navigate('/home');
+      }, 2000);
+    }
   };
 
   const handleBackToLogin = () => {
@@ -178,119 +198,134 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-white flex items-center justify-center p-4 relative overflow-hidden">
-
-      {loading ? (
-        <LoadingEffect message={loadingMessage} />
-      ) : showOTPVerification ? (
-        <OTPVerification
-          userId={loginData.userId}
-          email={loginData.email}
-          onSuccess={handleOTPSuccess}
-          onBack={handleBackToLogin}
-        />
-      ) : (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="bg-white bg-opacity-80 backdrop-blur-lg rounded-2xl shadow-2xl p-8 w-full max-w-md z-10 border-4 border-blue-300"
-        >
-          <div className="text-center mb-6">
-            <div className="flex justify-center items-center mb-4">
-              <h1 className="text-3xl font-bold text-blue-800">Welcome back to TAB!</h1>
-            </div>
-            <p className="text-blue-600">Sign in to your account</p>
-          </div>
-
-          {error && <Alert color="danger" className="mb-4">{error}</Alert>}
-          {success && <Alert color="success" className="mb-4">{success}</Alert>}
-
-          <Form onSubmit={handleClick}>
-            <div className="space-y-4">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="text-blue-500" size={20} />
-                </div>
-                <input
-                  type="email"
-                  placeholder="Email Address"
-                  required
-                  id="email"
-                  value={credentials.email}
-                  onChange={handleChange}
-                  className="w-full pl-10 pr-3 py-2 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300"
-                />
-              </div>
-
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="text-blue-500" size={20} />
-                </div>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Password"
-                  required
-                  id="password"
-                  value={credentials.password}
-                  onChange={handleChange}
-                  className="w-full pl-10 pr-3 py-2 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="remember-me"
-                    checked={rememberMe}
-                    onChange={() => setRememberMe(!rememberMe)}
-                    className="mr-2 text-blue-600 focus:ring-blue-500"
-                  />
-                  <label htmlFor="remember-me" className="text-blue-600">Remember me</label>
-                </div>
-
-                <Link to='/forgot-password' className="text-blue-600 hover:underline">
-                  Forgot password?
-                </Link>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center"
-                disabled={loading}
-              >
-                {loading ? 'Signing in...' : 'Log in'}
-              </button>
-            </div>
-          </Form>
-
-          <div className="text-center mt-4">
-            <p className="text-blue-600">
-              Don't have an account?
-              <Link to='/register' className="ml-1 hover:underline font-bold">
-                Sign Up
-              </Link>
-            </p>
-          </div>
-        </motion.div>
+    <>
+      {loading && (
+        <LoadingPage message={loadingMessage} />
       )}
+      {!loading && (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4 relative overflow-hidden">
+          {/* Animated floating elements */}
+          {snowflakes.map((snowflake) => (
+            <div
+              key={snowflake.id}
+              className="absolute text-blue-200 animate-pulse"
+              style={{
+                left: snowflake.left,
+                animationDuration: snowflake.animationDuration,
+                animationDelay: snowflake.delay,
+                fontSize: snowflake.size,
+              }}
+            >
+              ❄
+            </div>
+          ))}
 
-      <style jsx>{`
-        @keyframes float {
-          0% { transform: translateY(0) rotate(0deg); }
-          50% { transform: translateY(50px) rotate(180deg); }
-          100% { transform: translateY(0) rotate(360deg); }
-        }
-      `}</style>
-    </div>
+          {/* Use a simple centered container without affecting other pages */}
+          <div className="w-full max-w-md">
+            {showOTPVerification ? (
+              <OTPVerification
+                userId={loginData.userId}
+                email={loginData.email}
+                onSuccess={handleOTPSuccess}
+                onBack={handleBackToLogin}
+              />
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8 }}
+                className="bg-white bg-opacity-90 backdrop-blur-lg rounded-2xl shadow-2xl p-8 w-full border border-blue-200"
+              >
+                <div className="text-center mb-6">
+                  <div className="flex justify-center items-center mb-4">
+                    <h1 className="text-3xl font-bold text-blue-800">Welcome back to TABB!</h1>
+                  </div>
+                  <p className="text-blue-600">Sign in to your account</p>
+                </div>
+
+                {error && <Alert color="danger" className="mb-4">{error}</Alert>}
+                {success && <Alert color="success" className="mb-4">{success}</Alert>}
+
+                <Form onSubmit={handleClick}>
+                  <div className="space-y-4">
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <User className="text-blue-500" size={20} />
+                      </div>
+                      <input
+                        type="email"
+                        placeholder="Email Address"
+                        required
+                        id="email"
+                        value={credentials.email}
+                        onChange={handleChange}
+                        className="w-full pl-10 pr-3 py-2 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300"
+                      />
+                    </div>
+
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Lock className="text-blue-500" size={20} />
+                      </div>
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Password"
+                        required
+                        id="password"
+                        value={credentials.password}
+                        onChange={handleChange}
+                        className="w-full pl-10 pr-3 py-2 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all duration-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500"
+                      >
+                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="remember-me"
+                          checked={rememberMe}
+                          onChange={() => setRememberMe(!rememberMe)}
+                          className="mr-2 text-blue-600 focus:ring-blue-500"
+                        />
+                        <label htmlFor="remember-me" className="text-blue-600">Remember me</label>
+                      </div>
+
+                      <Link to='/forgot-password' className="text-blue-600 hover:underline">
+                        Forgot password?
+                      </Link>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center"
+                      disabled={loading}
+                    >
+                      {loading ? 'Signing in...' : 'Log in'}
+                    </button>
+                  </div>
+                </Form>
+
+                <div className="text-center mt-4">
+                  <p className="text-blue-600">
+                    Don't have an account?
+                    <Link to='/register' className="ml-1 hover:underline font-bold">
+                      Sign Up
+                    </Link>
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

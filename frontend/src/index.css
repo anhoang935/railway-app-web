@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -8,4 +9,19 @@ body {
   
 h1, h2, h3 {
     margin: 0;
+}
+
+.booking-container,
+.timetable-container {
+    padding-top: 75px; 
+}
+
+.login-page .booking-container,
+.login-page .timetable-container {
+    padding-top: 0;
+}
+
+.about-page .booking-container,
+.about-page .timetable-container {
+    padding-top: 0; 
 }

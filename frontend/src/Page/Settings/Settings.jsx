@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import {
     User, UserRoundPen, Lock, Mail, Phone, MapPin, Calendar, CheckCircle,
-    KeyRound, Save, SlidersHorizontal, ChefHat, Accessibility, School
+    KeyRound, Save
+    // REMOVED: SlidersHorizontal, ChefHat, Accessibility, School
 } from "lucide-react";
 import userService from "../../data/Service/userService";
 import authService from "../../data/Service/authService";
@@ -19,9 +20,6 @@ export default function Settings() {
         email: "",
         phone: "",
         address: "",
-        preferredClass: "first",
-        mealPreference: "veg",
-        specialAssistance: false,
         password: "",
         confirmPassword: "",
     });
@@ -69,9 +67,6 @@ export default function Settings() {
                             email: userData.Email || "",
                             phone: userData.PhoneNumber || "",
                             address: userData.Address || "",
-                            preferredClass: userData.PreferredClass || "first",
-                            mealPreference: userData.MealPreference || "veg",
-                            specialAssistance: userData.SpecialAssistance || false,
                             password: "",
                             confirmPassword: "",
                         });
@@ -123,9 +118,6 @@ export default function Settings() {
                     Email: formData.email,
                     PhoneNumber: formData.phone,
                     Address: formData.address,
-                    PreferredClass: formData.preferredClass,
-                    MealPreference: formData.mealPreference,
-                    SpecialAssistance: formData.specialAssistance
                 };
 
                 await userService.updateUser(currentUser.userId, userUpdateData);
@@ -315,27 +307,7 @@ export default function Settings() {
                                         </select>
                                     </div>
 
-                                    {/* Move preferences here as form fields */}
-                                    <div className="form-group">
-                                        <label className="form-label">
-                                            <School size={16} className="inline mr-2" />
-                                            Preferred Class
-                                        </label>
-                                        <select
-                                            name="preferredClass"
-                                            value={formData.preferredClass}
-                                            onChange={handleChange}
-                                            disabled={!isEditing}
-                                            className="select-input"
-                                        >
-                                            <option value="economy">Economy</option>
-                                            <option value="business">Business</option>
-                                            <option value="first">First Class</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* MOVED: Address field inside the grid next to Gender */}
                                     <div className="form-group">
                                         <label className="form-label">
                                             <MapPin size={16} className="inline mr-2" />
@@ -351,43 +323,9 @@ export default function Settings() {
                                             placeholder="Enter your address"
                                         />
                                     </div>
-
-                                    <div className="form-group">
-                                        <label className="form-label">
-                                            <ChefHat size={16} className="inline mr-2" />
-                                            Meal Preference
-                                        </label>
-                                        <select
-                                            name="mealPreference"
-                                            value={formData.mealPreference}
-                                            onChange={handleChange}
-                                            disabled={!isEditing}
-                                            className="select-input"
-                                        >
-                                            <option value="veg">Vegetarian</option>
-                                            <option value="non-veg">Non-Vegetarian</option>
-                                            <option value="vegan">Vegan</option>
-                                            <option value="halal">Halal</option>
-                                        </select>
-                                    </div>
                                 </div>
 
-                                <div className="form-group">
-                                    <label className="flex items-center space-x-3">
-                                        <input
-                                            type="checkbox"
-                                            name="specialAssistance"
-                                            checked={formData.specialAssistance}
-                                            onChange={handleChange}
-                                            disabled={!isEditing}
-                                            className="w-4 h-4 text-blue-600 rounded"
-                                        />
-                                        <span className="form-label flex items-center">
-                                            <Accessibility size={16} className="mr-2" />
-                                            Require Special Assistance
-                                        </span>
-                                    </label>
-                                </div>
+                                {/* REMOVED: Separate Address field section */}
                             </div>
                         )}
 

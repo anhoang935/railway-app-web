@@ -32,20 +32,20 @@ const Return_Ticket = () => {
   // ];
 
   const [filteredTickets, setFilteredtickets] = useState([]);
-  
+
   const getCoachImage = (coachType) => {
-    if(coachType === 'Room 4 beds') return coachSilver;
-    if(coachType === 'Room 6 beds') return coachBlue;
-    if(coachType === 'Soft seat') return coachGreen;
-    if(coachType === 'Hard seat') return coachYellow;
+    if (coachType === 'Room 4 beds') return coachSilver;
+    if (coachType === 'Room 6 beds') return coachBlue;
+    if (coachType === 'Soft seat') return coachGreen;
+    if (coachType === 'Hard seat') return coachYellow;
     return coachBlack;
   }
 
   const getCoachColor = (coachType) => {
-    if(coachType === 'Room 4 beds') return 'text-gray-400';
-    if(coachType === 'Room 6 beds') return 'text-blue-400';
-    if(coachType === 'Soft seat') return 'text-green-400';
-    if(coachType === 'Hard seat') return 'text-yellow-400';
+    if (coachType === 'Room 4 beds') return 'text-gray-400';
+    if (coachType === 'Room 6 beds') return 'text-blue-400';
+    if (coachType === 'Soft seat') return 'text-green-400';
+    if (coachType === 'Hard seat') return 'text-yellow-400';
     return 'text-black-400';
   }
 
@@ -79,13 +79,13 @@ const Return_Ticket = () => {
   }
 
   const handleDeleteTicket = async (id) => {
-    try{
+    try {
       await ticketService.deleteTicket(id);
       setFilteredtickets(prev => prev.filter(ticket => ticket.ticketId !== id));
       setSearched(false);
 
     } catch (err) {
-      console.error('Error deleting ticket: ',err)
+      console.error('Error deleting ticket: ', err)
     }
   }
 
@@ -102,7 +102,7 @@ const Return_Ticket = () => {
     }
   }
 
-  
+
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -116,24 +116,24 @@ const Return_Ticket = () => {
   const validateForm = () => {
     const validationErrors = [];
 
-    if(!formData.passName){
+    if (!formData.passName) {
       validationErrors.push("Name must not be empty!");
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if(!formData.passEmail){
+    if (!formData.passEmail) {
       validationErrors.push("Email must not be empty!");
     } else {
-      if(!emailRegex.test(formData.passEmail)){
+      if (!emailRegex.test(formData.passEmail)) {
         validationErrors.push("Please enter a valid email address");
       }
     }
 
     const phoneRegex = /^[0-9]{10}$/;
-    if(!formData.phoneNum){
+    if (!formData.phoneNum) {
       validationErrors.push("Phone number must not be empty!");
     } else {
-      if(!phoneRegex.test(formData.phoneNum)){
+      if (!phoneRegex.test(formData.phoneNum)) {
         validationErrors.push("Phone number must be 10 digits long");
       }
     }
@@ -142,18 +142,18 @@ const Return_Ticket = () => {
   }
 
   const renderTickets = () => {
-    
-    if(error.length>0){
+
+    if (error.length > 0) {
       return (
         <motion.div className='mt-10' initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-            {error.map((err) => (
-              <Alert color="danger" className="mb-4 text-center">{err}</Alert>
-            ))}
-          </motion.div>
+          {error.map((err) => (
+            <Alert color="danger" className="mb-4 text-center">{err}</Alert>
+          ))}
+        </motion.div>
       );
     }
 
-    if(searched && filteredTickets.length === 0){
+    if (searched && filteredTickets.length === 0) {
       return (
         <p className="text-center text-gray-500 mt-20">Couldn't find any tickets.</p>
       );
@@ -164,25 +164,25 @@ const Return_Ticket = () => {
         <div className='ticketDetails text-blue-600 flex flex-col p-4 md:flex-row md:gap-6 md:p-6 '>
           <div className='leftTicket flex gap-3 md:flex-col justify-items-center place-self-center md:place-content-center md:place-items-center'>
             <h1 className='font-bold text-lg text-blue-600'>Train Ticket</h1>
-          <img src={getCoachImage(ticket.coachType.split(',')[0])} alt="" className='hidden md:block' />
-          <h1 className={`font-bold text-lg ${getCoachColor(ticket.coachType.split(',')[0])}`}>{ticket.coachType.split(',')[0]}</h1>
+            <img src={getCoachImage(ticket.coachType.split(',')[0])} alt="" className='hidden md:block' />
+            <h1 className={`font-bold text-lg ${getCoachColor(ticket.coachType.split(',')[0])}`}>{ticket.coachType.split(',')[0]}</h1>
           </div>
           <div className='rightTicket flex flex-col flex-1 '>
             <h1 className='font-bold text-lg text-blue-600 place-self-center'>Ticket Details</h1>
             <div className='ticketContents flex flex-row px-4 md:p-3 md:gap-6'>
               <div className='ticketContents1 md:w-[50%]'>
-                <div className='ticketContentElement'> 
+                <div className='ticketContentElement'>
                   <p>Ticket ID: </p>
                   <p className='ticketContentElementDetail'>{ticket.ticketId}</p>
                 </div>
-                <div className='ticketContentElement'> 
+                <div className='ticketContentElement'>
                   <p>Booked at: </p>
                   {/* <p className='ticketContentElementDetail' >{ticket.passengerName}</p> */}
                 </div>
                 <div>
                   <u>{new Date(ticket.bookingDateTime).toLocaleString('sv-SE', { hour12: false })}</u>
                 </div>
-                <div className='ticketContentElement'> 
+                <div className='ticketContentElement'>
                   <p>Expires at: </p>
                   {/* <p className='ticketContentElementDetail' >{ticket.passengerName}</p> */}
                 </div>
@@ -213,8 +213,8 @@ const Return_Ticket = () => {
                     ticket.status === 'paid'
                       ? 'text-green-600'
                       : ticket.status === 'pending'
-                      ? 'text-yellow-600'
-                      : 'text-black'
+                        ? 'text-yellow-600'
+                        : 'text-black'
                   }>
                     {ticket.status}
                   </span>
@@ -235,20 +235,20 @@ const Return_Ticket = () => {
           )}
         </div>
       </div>
-      
+
     ));
   }
 
-  
+
 
   return (
-    <div className='booking-container bg-[#f0f7ff]'>      
+    <div className='booking-container bg-[#f0f7ff]'>
       <div className='booking-content bg-white shadow-lg p-6 text-blue-600'>
         <h1 className='page-title h-1 mb-4'>Return Ticket</h1>
         <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4'>
           <div>
             <span>Passenger Name</span>
-            <input 
+            <input
               type="text"
               name="passengerName"
               className="field-input"
@@ -258,7 +258,7 @@ const Return_Ticket = () => {
           </div>
           <div>
             <span>Passenger Email</span>
-            <input 
+            <input
               type="text"
               name="passengerEmail"
               className="field-input"
@@ -268,7 +268,7 @@ const Return_Ticket = () => {
           </div>
           <div>
             <span>Phone Number</span>
-            <input 
+            <input
               type="text"
               name="passengerEmail"
               className="field-input"
@@ -331,7 +331,7 @@ const Return_Ticket = () => {
               Find My Tickets
             </button>
           </div> */}
-          
+
 
         </div>
         <div className="flex flex-col md:flex-row flex-wrap gap-4 pt-5">
@@ -339,7 +339,7 @@ const Return_Ticket = () => {
           <button className="search-button" onClick={handleFindUserTickets}>Find My Tickets</button>
         </div>
       </div>
-      {loading ? (<LoadingSpinner/>) : (renderTickets())}
+      {loading ? (<LoadingSpinner />) : (renderTickets())}
     </div>
   )
 }

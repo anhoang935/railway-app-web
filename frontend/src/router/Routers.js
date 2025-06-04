@@ -14,6 +14,22 @@ import Admin from "../Page/Admin/Admin"
 import Checkout from '../Page/Checkout'
 import EmailVerification from "../Page/Verification/EmailVerification"
 import ProtectedRoute from './ProtectedRoute';
+import authService from "../data/Service/authService"
+
+const AdminRoute = ({ children }) => {
+  const userRole = localStorage.getItem('userRole');
+  const isAuthenticated = authService.isAuthenticated();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  if (userRole !== 'Admin') {
+    return <Navigate to="/home" />;
+  }
+
+  return children;
+};
 
 const Routers = () => {
   return (
@@ -33,7 +49,7 @@ const Routers = () => {
           <Settings />
         </ProtectedRoute>
       } />
-      <Route path="/admin" element={<Admin />} />
+      <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
       <Route path='/checkout' element={<Checkout />} />
       <Route path="/verify-email" element={<EmailVerification />} />
     </Routes>

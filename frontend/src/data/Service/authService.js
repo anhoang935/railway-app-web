@@ -100,15 +100,24 @@ const authService = {
     },
 
     logout: () => {
-        // Clear all auth-related localStorage items
+        console.log('Logging out user...');
+
+        // Clear ALL auth-related localStorage items
         localStorage.removeItem('authToken');
         localStorage.removeItem('userId');
         localStorage.removeItem('userEmail');
         localStorage.removeItem('userName');
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('email');
-        localStorage.removeItem('password');
-        localStorage.removeItem('rememberMe');
+        localStorage.removeItem('userRole'); // Make sure this is cleared
+
+        // Only clear remember me credentials if the user didn't select remember me
+        const rememberMe = localStorage.getItem('rememberMe') === 'true';
+        if (!rememberMe) {
+            localStorage.removeItem('email');
+            localStorage.removeItem('password');
+            localStorage.removeItem('rememberMe');
+        }
+
+        console.log('User logged out successfully - all auth data cleared');
     },
 
     verifyEmail: async (userId, verifyCode) => {
@@ -165,33 +174,63 @@ const authService = {
     isAuthenticated: () => {
         const token = localStorage.getItem('authToken');
         const userId = localStorage.getItem('userId');
+        const userEmail = localStorage.getItem('userEmail');
 
-        console.log('isAuthenticated check:', {
+        // Must have all three pieces of data to be considered authenticated
+        const result = !!(token && userId && userEmail);
+
+        console.log('AuthService.isAuthenticated:', {
             hasToken: !!token,
             hasUserId: !!userId,
-            token: token ? 'exists' : 'missing',
-            userId: userId || 'missing'
+            hasUserEmail: !!userEmail,
+            result: result
         });
 
-        const isAuth = !!(token && userId);
-        console.log('isAuthenticated result:', isAuth);
-        return isAuth;
+        return result;
     },
 
     getCurrentUser: () => {
-        const token = localStorage.getItem('authToken');
-        const userId = localStorage.getItem('userId');
+        const isAuth = authService.isAuthenticated();
+        if (!isAuth) return null;
 
-        if (!token || !userId) {
-            return null;
-        }
-
-        return {
+        const user = {
             userId: localStorage.getItem('userId'),
-            username: localStorage.getItem('userName'),
             email: localStorage.getItem('userEmail'),
+            username: localStorage.getItem('userName'),
             role: localStorage.getItem('userRole')
         };
+
+        // Only return user if we have the essential data
+        if (user.userId && user.email) {
+            return user;
+        }
+
+        return null;
+    },
+
+    // Add a method to check if authentication is in progress
+    isAuthInProgress: () => {
+        // Check if we have partial auth data (indicating auth in progress)
+        const hasPartialData = localStorage.getItem('authToken') &&
+            !localStorage.getItem('userRole');
+        return hasPartialData;
+    },
+
+    // Clear all auth data cleanly
+    clearAuthData: () => {
+        const keysToRemove = [
+            'authToken',
+            'userId',
+            'userEmail',
+            'userName',
+            'userRole'
+        ];
+
+        keysToRemove.forEach(key => {
+            localStorage.removeItem(key);
+        });
+
+        console.log('All auth data cleared');
     }
 };
 

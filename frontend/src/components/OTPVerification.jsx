@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Alert } from 'reactstrap';
-import { Key, RefreshCw, Clock } from 'lucide-react';
+import { RefreshCw, Clock } from 'lucide-react';
 import authService from '../data/Service/authService';
 
 const OTPVerification = ({ userId, email, onSuccess, onBack }) => {
@@ -118,78 +118,76 @@ const OTPVerification = ({ userId, email, onSuccess, onBack }) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="bg-white bg-opacity-80 backdrop-blur-lg rounded-2xl shadow-2xl p-8 w-full max-w-md z-10 border-4 border-blue-300"
+      className="bg-white bg-opacity-90 backdrop-blur-lg rounded-2xl shadow-2xl p-8 w-full max-w-md border border-blue-200"
     >
+      {/* Header - Remove the lock emoji */}
       <div className="text-center mb-6">
-        <div className="flex justify-center items-center mb-4">
-          <Key className="text-blue-600 mr-2" size={32} />
-          <h1 className="text-3xl font-bold text-blue-800">Verify OTP</h1>
-        </div>
-        <p className="text-blue-600">
-          Enter the 6-digit code sent to<br />
-          <strong>{email}</strong>
+        <h2 className="text-2xl font-bold text-blue-800 mb-2">Verify OTP</h2>
+        <p className="text-blue-600 text-sm">
+          Enter the 6-digit code sent to
+          <br />
+          <span className="font-semibold text-blue-700">{email}</span>
         </p>
       </div>
 
+      {/* Error and Success Messages */}
       {error && <Alert color="danger" className="mb-4">{error}</Alert>}
       {success && <Alert color="success" className="mb-4">{success}</Alert>}
 
-      <div className="space-y-6">
-        {/* OTP Input Fields */}
-        <div className="flex justify-center space-x-3">
-          {otp.map((digit, index) => (
-            <input
-              key={index}
-              id={`otp-${index}`}
-              type="text"
-              maxLength="1"
-              value={digit}
-              onChange={(e) => handleOtpChange(index, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(index, e)}
-              className="w-12 h-12 text-center text-2xl font-bold border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-300"
-              disabled={loading}
-            />
-          ))}
-        </div>
-
-        {/* Timer */}
-        <div className="text-center">
-          <div className="flex items-center justify-center text-blue-600 mb-2">
-            <Clock className="mr-2" size={16} />
-            <span className="text-sm">
-              {timer > 0 ? `Code expires in ${formatTime(timer)}` : 'Code expired'}
-            </span>
-          </div>
-        </div>
-
-        {/* Verify Button */}
-        <button
-          onClick={() => handleSubmit()}
-          disabled={loading || otp.some(digit => digit === '')}
-          className="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? 'Verifying...' : 'Verify OTP'}
-        </button>
-
-        {/* Resend Button */}
-        <button
-          onClick={handleResend}
-          disabled={!canResend || resendLoading}
-          className="w-full text-blue-600 hover:text-blue-800 transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <RefreshCw className={`mr-2 ${resendLoading ? 'animate-spin' : ''}`} size={16} />
-          {resendLoading ? 'Sending...' : canResend ? 'Resend OTP' : `Resend in ${formatTime(timer)}`}
-        </button>
-
-        {/* Back Button */}
-        <button
-          onClick={onBack}
-          disabled={loading}
-          className="w-full text-gray-600 hover:text-gray-800 transition"
-        >
-          Back to Login
-        </button>
+      {/* OTP Input Fields */}
+      <div className="flex justify-center space-x-3 mb-4">
+        {otp.map((digit, index) => (
+          <input
+            key={index}
+            id={`otp-${index}`}
+            type="text"
+            maxLength="1"
+            value={digit}
+            onChange={(e) => handleOtpChange(index, e.target.value)}
+            onKeyDown={(e) => handleKeyDown(index, e)}
+            className="w-12 h-12 text-center text-2xl font-bold border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-300"
+            disabled={loading}
+          />
+        ))}
       </div>
+
+      {/* Timer */}
+      <div className="text-center mb-4">
+        <div className="flex items-center justify-center text-blue-600 mb-2">
+          <Clock className="mr-2" size={16} />
+          <span className="text-sm">
+            {timer > 0 ? `Code expires in ${formatTime(timer)}` : 'Code expired'}
+          </span>
+        </div>
+      </div>
+
+      {/* Verify Button */}
+      <button
+        onClick={() => handleSubmit()}
+        disabled={loading || otp.some(digit => digit === '')}
+        className="w-full bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed mb-3"
+      >
+        {loading ? 'Verifying...' : 'Verify OTP'}
+      </button>
+
+      {/* Resend Button */}
+      <button
+        onClick={handleResend}
+        disabled={!canResend || resendLoading}
+        className="w-full text-blue-600 hover:text-blue-800 transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed mb-3"
+      >
+        <RefreshCw className={`mr-2 ${resendLoading ? 'animate-spin' : ''}`} size={16} />
+        {resendLoading ? 'Sending...' : canResend ? 'Resend OTP' : `Resend in ${formatTime(timer)}`}
+      </button>
+
+      {/* Back Button */}
+      <button
+        onClick={onBack}
+        disabled={loading}
+        className="w-full text-gray-600 hover:text-gray-800 transition"
+      >
+        Back to Login
+      </button>
     </motion.div>
   );
 };
