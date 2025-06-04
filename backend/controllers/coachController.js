@@ -3,9 +3,9 @@ import pool from '../Config/db.js';
 
 export const getAllCoaches = async (req, res) => {
     try {
-        // Add timeout for database query
+        // Increase timeout for database query
         const queryTimeout = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Database query timed out')), 8000)
+            setTimeout(() => reject(new Error('Database query timed out')), 25000) // Increase to 25s
         );
 
         const coaches = await Promise.race([
@@ -23,7 +23,7 @@ export const getAllCoaches = async (req, res) => {
         if (error.message === 'Database query timed out') {
             return res.status(408).json({
                 success: false,
-                message: 'Request timed out. Please try again.'
+                message: 'Database query timed out. Please try again.'
             });
         }
         res.status(500).json({
@@ -100,8 +100,9 @@ export const getCoachesByTrain = async (req, res) => {
 
 export const createCoach = async (req, res) => {
     try {
+        // Increase timeout for create operations
         const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Operation timed out')), 15000) // Reduced timeout
+            setTimeout(() => reject(new Error('Operation timed out')), 25000) // Increase to 25s
         );
 
         let coachData;
@@ -138,7 +139,7 @@ export const createCoach = async (req, res) => {
 
         // Create coach without auto-updating counts
         const coach = await Promise.race([
-            Coach.create({ coachID, trainID, coach_typeID }, false), // false = don't auto-update
+            Coach.create({ coachID, trainID, coach_typeID }),
             timeoutPromise
         ]);
 
@@ -152,7 +153,7 @@ export const createCoach = async (req, res) => {
         if (error.message === 'Operation timed out') {
             return res.status(408).json({
                 success: false,
-                message: 'Request timed out. Please try again.'
+                message: 'Create operation timed out. Please try again.'
             });
         }
         res.status(500).json({

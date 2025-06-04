@@ -13,6 +13,7 @@ function PassengerManagement() {
     const [expandedContent, setExpandedContent] = useState(null);
     const [expandedContentLoading, setExpandedContentLoading] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
+    const [editingId, setEditingId] = useState(null);
     const [formData, setFormData] = useState({
         fullname: '',
         email: '',
@@ -69,9 +70,64 @@ function PassengerManagement() {
         }
     };
 
-    const handleEdit = (id) => {
-        console.log('Edit passenger', id);
-        setOperationError('Edit functionality not yet implemented');
+    const handleEdit = (passenger) => {
+        setFormData({
+            fullname: passenger.fullname || '',
+            email: passenger.email || '',
+            phone_number: passenger.phone_number || '',
+            id_number: passenger.id_number || '',
+            address: passenger.address || '',
+            status: passenger.status || 'active'
+        });
+        setEditingId(passenger.passengerID);
+        setIsAdding(false);
+        setOperationError(null);
+    };
+
+    const handleUpdate = async () => {
+        try {
+            if (!validateForm()) return;
+
+            startLoading();
+
+            const passengerToUpdate = {
+                fullname: formData.fullname.trim(),
+                email: formData.email.trim(),
+                phone_number: formData.phone_number.trim(),
+                id_number: formData.id_number?.trim() || null,
+                address: formData.address?.trim() || null,
+                status: formData.status
+            };
+
+            const updatedPassenger = await passengerService.updatePassenger(editingId, passengerToUpdate);
+
+            // Optimistic update
+            if (updatedPassenger) {
+                setPassengers(prevPassengers =>
+                    prevPassengers.map(passenger =>
+                        passenger.passengerID === editingId ? updatedPassenger : passenger
+                    )
+                );
+            } else {
+                await refetchPassengers();
+            }
+
+            // Reset form and state
+            setEditingId(null);
+            setFormData({
+                fullname: '',
+                email: '',
+                phone_number: '',
+                id_number: '',
+                address: '',
+                status: 'active'
+            });
+
+            stopLoading();
+        } catch (error) {
+            setLoadingError('Failed to update passenger: ' + (error.toString() || 'Unknown error'));
+            console.error(error);
+        }
     };
 
     const handleViewTickets = async (passengerID) => {
@@ -299,7 +355,16 @@ function PassengerManagement() {
 
     const handleCancel = () => {
         setIsAdding(false);
+        setEditingId(null);
         setOperationError(null);
+        setFormData({
+            fullname: '',
+            email: '',
+            phone_number: '',
+            id_number: '',
+            address: '',
+            status: 'active'
+        });
     };
 
     const validateForm = () => {
@@ -577,56 +642,168 @@ function PassengerManagement() {
                         {filteredPassengers.length > 0 ? (
                             filteredPassengers.map(passenger => (
                                 <React.Fragment key={passenger.passengerID}>
-                                    <tr className="hover:bg-gray-50">
+                                    <tr className={`hover:bg-gray-50 ${editingId === passenger.passengerID ? 'bg-yellow-50' : ''}`}>
                                         <td className="px-4 py-2 border-b border-gray-200 font-bold">{passenger.passengerID}</td>
-                                        <td className="px-4 py-2 border-b border-gray-200">{passenger.fullname}</td>
-                                        <td className="px-4 py-2 border-b border-gray-200">{passenger.phone_number}</td>
-                                        <td className="px-4 py-2 border-b border-gray-200">{passenger.email}</td>
-                                        <td className="px-4 py-2 border-b border-gray-200">{getStatusBadge(passenger.status)}</td>
+                                        <td className="px-4 py-2 border-b border-gray-200">
+                                            {editingId === passenger.passengerID ? (
+                                                <input
+                                                    type="text"
+                                                    name="fullname"
+                                                    value={formData.fullname}
+                                                    onChange={handleInputChange}
+                                                    disabled={operationLoading}
+                                                    className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                                                    placeholder="Full Name*"
+                                                />
+                                            ) : (
+                                                passenger.fullname
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-2 border-b border-gray-200">
+                                            {editingId === passenger.passengerID ? (
+                                                <input
+                                                    type="text"
+                                                    name="phone_number"
+                                                    value={formData.phone_number}
+                                                    onChange={handleInputChange}
+                                                    disabled={operationLoading}
+                                                    className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                                                    placeholder="Phone Number*"
+                                                />
+                                            ) : (
+                                                passenger.phone_number
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-2 border-b border-gray-200">
+                                            {editingId === passenger.passengerID ? (
+                                                <input
+                                                    type="email"
+                                                    name="email"
+                                                    value={formData.email}
+                                                    onChange={handleInputChange}
+                                                    disabled={operationLoading}
+                                                    className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                                                    placeholder="Email Address*"
+                                                />
+                                            ) : (
+                                                passenger.email
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-2 border-b border-gray-200">
+                                            {editingId === passenger.passengerID ? (
+                                                <select
+                                                    name="status"
+                                                    value={formData.status}
+                                                    onChange={handleInputChange}
+                                                    disabled={operationLoading}
+                                                    className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                                                >
+                                                    <option value="active">Active</option>
+                                                    <option value="inactive">Inactive</option>
+                                                    <option value="pending">Pending</option>
+                                                </select>
+                                            ) : (
+                                                getStatusBadge(passenger.status)
+                                            )}
+                                        </td>
                                         <td className="px-4 py-2 border-b border-gray-200">
                                             <div className="flex justify-center space-x-2">
-                                                <button
-                                                    onClick={() => handleEdit(passenger.passengerID)}
-                                                    disabled={isAdding || operationLoading}
-                                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    title="Edit passenger"
-                                                >
-                                                    <Edit size={14} className="mr-1" /> Edit
-                                                </button>
-                                                <button
-                                                    onClick={() => handleViewTickets(passenger.passengerID)}
-                                                    disabled={isAdding || operationLoading}
-                                                    className={`${expandedRow === passenger.passengerID && expandedContent === 'tickets' ? 'bg-orange-500 hover:bg-orange-700' : 'bg-purple-500 hover:bg-purple-700'} text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed`}
-                                                    title="View tickets"
-                                                >
-                                                    <Ticket size={14} className="mr-1" />
-                                                    {expandedRow === passenger.passengerID && expandedContent === 'tickets' ?
-                                                        <ChevronUp size={14} /> :
-                                                        <ChevronDown size={14} />}
-                                                </button>
-                                                <button
-                                                    onClick={() => handleViewBookings(passenger.passengerID)}
-                                                    disabled={isAdding || operationLoading}
-                                                    className={`${expandedRow === passenger.passengerID && expandedContent === 'bookings' ? 'bg-orange-500 hover:bg-orange-700' : 'bg-indigo-500 hover:bg-indigo-700'} text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed`}
-                                                    title="View bookings"
-                                                >
-                                                    <BookOpen size={14} className="mr-1" />
-                                                    {expandedRow === passenger.passengerID && expandedContent === 'bookings' ?
-                                                        <ChevronUp size={14} /> :
-                                                        <ChevronDown size={14} />}
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(passenger.passengerID)}
-                                                    disabled={isAdding || operationLoading}
-                                                    className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    title="Delete passenger"
-                                                >
-                                                    <Trash2 size={14} className="mr-1" /> Delete
-                                                </button>
+                                                {editingId === passenger.passengerID ? (
+                                                    <>
+                                                        <button
+                                                            onClick={handleUpdate}
+                                                            disabled={operationLoading}
+                                                            className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
+                                                        >
+                                                            <FaSave className="mr-1" /> {operationLoading ? 'Saving...' : 'Save'}
+                                                        </button>
+                                                        <button
+                                                            onClick={handleCancel}
+                                                            disabled={operationLoading}
+                                                            className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
+                                                        >
+                                                            <FaTimes className="mr-1" /> Cancel
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleEdit(passenger)}
+                                                            disabled={isAdding || editingId !== null || operationLoading}
+                                                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            title="Edit passenger"
+                                                        >
+                                                            <Edit size={14} className="mr-1" /> Edit
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleViewTickets(passenger.passengerID)}
+                                                            disabled={isAdding || editingId !== null || operationLoading}
+                                                            className={`${expandedRow === passenger.passengerID && expandedContent === 'tickets' ? 'bg-orange-500 hover:bg-orange-700' : 'bg-purple-500 hover:bg-purple-700'} text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed`}
+                                                            title="View tickets"
+                                                        >
+                                                            <Ticket size={14} className="mr-1" />
+                                                            {expandedRow === passenger.passengerID && expandedContent === 'tickets' ?
+                                                                <ChevronUp size={14} /> :
+                                                                <ChevronDown size={14} />}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleViewBookings(passenger.passengerID)}
+                                                            disabled={isAdding || editingId !== null || operationLoading}
+                                                            className={`${expandedRow === passenger.passengerID && expandedContent === 'bookings' ? 'bg-orange-500 hover:bg-orange-700' : 'bg-indigo-500 hover:bg-indigo-700'} text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed`}
+                                                            title="View bookings"
+                                                        >
+                                                            <BookOpen size={14} className="mr-1" />
+                                                            {expandedRow === passenger.passengerID && expandedContent === 'bookings' ?
+                                                                <ChevronUp size={14} /> :
+                                                                <ChevronDown size={14} />}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(passenger.passengerID)}
+                                                            disabled={isAdding || editingId !== null || operationLoading}
+                                                            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            title="Delete passenger"
+                                                        >
+                                                            <Trash2 size={14} className="mr-1" /> Delete
+                                                        </button>
+                                                    </>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
-                                    {expandedRow === passenger.passengerID && (
+                                    {/* Additional edit form fields row - only show when editing this passenger */}
+                                    {editingId === passenger.passengerID && (
+                                        <tr className="bg-yellow-50">
+                                            <td colSpan="6" className="px-4 py-2 border-b border-gray-200">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">ID Number</label>
+                                                        <input
+                                                            type="text"
+                                                            name="id_number"
+                                                            value={formData.id_number}
+                                                            onChange={handleInputChange}
+                                                            disabled={operationLoading}
+                                                            className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                                                            placeholder="ID Number (Optional)"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                                                        <textarea
+                                                            name="address"
+                                                            value={formData.address}
+                                                            onChange={handleInputChange}
+                                                            disabled={operationLoading}
+                                                            className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                                                            rows="2"
+                                                            placeholder="Address (Optional)"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                    {expandedRow === passenger.passengerID && expandedContent && (
                                         <tr>
                                             <td colSpan="6" className="p-0 border-b-0">
                                                 {renderExpandedContent(passenger)}

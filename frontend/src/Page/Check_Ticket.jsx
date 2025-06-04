@@ -4,13 +4,22 @@ import coachSilver from '../images/coach2.png';
 import coachBlack from '../images/coach3.png';
 import coachBlue from '../images/coach4.png';
 import coachGreen from '../images/coach5.png';
-import LoadingSpinner from './Admin/Components/LoadingSpinner.jsx';
+// Remove the problematic LoadingSpinner import and replace with a simple loading component
+// import LoadingSpinner from './Admin/Components/LoadingSpinner.jsx';
 import { motion } from 'framer-motion';
-import { Alert } from 'reactstrap';
 
 import '../styles/check_ticket.css';
 import axios from 'axios';
 import ticketService from '../data/Service/ticketService.js';
+
+// Simple loading component to replace LoadingSpinner
+const SimpleLoadingSpinner = () => (
+  <div className="flex justify-center items-center py-20">
+    <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200">
+      <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+    </div>
+  </div>
+);
 
 const Check_Ticket = () => {
   const [formData, setFormData] = useState({
@@ -134,8 +143,11 @@ const Check_Ticket = () => {
     if (error.length > 0) {
       return (
         <motion.div className='mt-10' initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-          {error.map((err) => (
-            <Alert color="danger" className="mb-4 text-center">{err}</Alert>
+          {error.map((err, index) => (
+            // Replace Alert with a div element
+            <div key={index} className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-center">
+              {err}
+            </div>
           ))}
         </motion.div>
       );
@@ -147,8 +159,8 @@ const Check_Ticket = () => {
       );
     }
 
-    return filteredTickets.map((ticket) => (
-      <div className='ticketDetails bg-white shadow-lg p-4 text-blue-600 rounded-xl border-4 border-blue-400 flex flex-col md:flex-row md:gap-6 md:p-6 md:w-[750px] mx-auto mt-4'>
+    return filteredTickets.map((ticket, index) => (
+      <div key={ticket.ticketId || index} className='ticketDetails bg-white shadow-lg p-4 text-blue-600 rounded-xl border-4 border-blue-400 flex flex-col md:flex-row md:gap-6 md:p-6 md:w-[750px] mx-auto mt-4'>
         <div className='leftTicket flex gap-3 md:flex-col justify-items-center place-self-center md:place-content-center md:place-items-center'>
           <h1 className='font-bold text-lg text-blue-600'>Train Ticket</h1>
           <img src={getCoachImage(ticket.coachType.split(',')[0])} alt="" className='hidden md:block' />
@@ -303,7 +315,7 @@ const Check_Ticket = () => {
           <button className="search-button" onClick={handleFindUserTickets}>Find My Tickets</button>
         </div>
       </div>
-      {loading ? (<LoadingSpinner />) : (renderTickets())}
+      {loading ? (<SimpleLoadingSpinner />) : (renderTickets())}
     </div>
   )
 }
