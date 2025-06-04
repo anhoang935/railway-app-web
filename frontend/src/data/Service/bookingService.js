@@ -41,13 +41,14 @@ const bookingService = {
         }
     },
 
+    // Enhanced method for user bookings with details
     getBookingsByUser: async (userId) => {
         try {
             const response = await axios.get(`${BASE_URL}/user/${userId}`);
             return response.data.data;
         } catch (error) {
             console.error('Error fetching bookings by user:', error);
-            throw error.response?.data?.message || error.message || 'Failed to fetch bookings by user';
+            throw error.response?.data?.message || error.message || 'Failed to fetch user bookings';
         }
     },
 
@@ -89,7 +90,40 @@ const bookingService = {
             console.error('Error fetching booking tickets:', error);
             throw error.response?.data?.message || error.message || 'Failed to fetch booking tickets';
         }
-    }
+    },
+
+    // Get detailed booking information
+    getBookingDetails: async (bookingId) => {
+        try {
+            const response = await axios.get(`${BASE_URL}/${bookingId}/details`);
+            return response.data.data;
+        } catch (error) {
+            console.error('Error fetching booking details:', error);
+            throw error.response?.data?.message || error.message || 'Failed to fetch booking details';
+        }
+    },
+
+    // Get user booking statistics
+    getUserBookingStats: async (userId) => {
+        try {
+            const response = await axios.get(`${BASE_URL}/user/${userId}/stats`);
+            return response.data.data;
+        } catch (error) {
+            console.error('Error fetching user booking stats:', error);
+            throw error.response?.data?.message || error.message || 'Failed to fetch booking statistics';
+        }
+    },
+
+    // Cancel booking
+    cancelBooking: async (bookingId, userId) => {
+        try {
+            const response = await axios.patch(`${BASE_URL}/${bookingId}/cancel`, { userId });
+            return response.data.data;
+        } catch (error) {
+            console.error('Error cancelling booking:', error);
+            throw error.response?.data?.message || error.message || 'Failed to cancel booking';
+        }
+    },
 };
 
 export default bookingService;

@@ -14,7 +14,8 @@ import Admin from "../Page/Admin/Admin"
 import Checkout from '../Page/Checkout'
 import EmailVerification from "../Page/Verification/EmailVerification"
 import ProtectedRoute from './ProtectedRoute';
-import authService from "../data/Service/authService"
+import authService from "../data/Service/authService";
+import MyBooking from '../Page/MyBooking/MyBooking';
 
 const AdminRoute = ({ children }) => {
   const userRole = localStorage.getItem('userRole');
@@ -52,6 +53,7 @@ const Routers = () => {
       <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
       <Route path='/checkout' element={<Checkout />} />
       <Route path="/verify-email" element={<EmailVerification />} />
+      <Route path="/my-bookings" element={<MyBooking />} />
     </Routes>
   )
 }

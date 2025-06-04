@@ -93,6 +93,71 @@ class Booking {
             throw error;
         }
     }
+
+    // Enhanced method for user bookings with passenger details
+    static async findByUserIdWithDetails(userID) {
+        try {
+            const [rows] = await pool.query(`
+                SELECT 
+                    b.*,
+                    p.fullname AS passengerName,
+                    p.phone_number AS passengerPhone,
+                    p.email AS passengerEmail,
+                    u.UserName,
+                    u.email AS userEmail
+                FROM booking b
+                LEFT JOIN passenger p ON b.passengerID = p.passengerID
+                LEFT JOIN user u ON b.userID = u.userID
+                WHERE b.userID = ?
+                ORDER BY b.bookingDate DESC
+            `, [userID]);
+            return rows;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // Get booking with all related details
+    static async findByIdWithDetails(bookingID) {
+        try {
+            const [rows] = await pool.query(`
+                SELECT 
+                    b.*,
+                    p.fullname AS passengerName,
+                    p.phone_number AS passengerPhone,
+                    p.email AS passengerEmail,
+                    u.UserName,
+                    u.email AS userEmail
+                FROM booking b
+                LEFT JOIN passenger p ON b.passengerID = p.passengerID
+                LEFT JOIN user u ON b.userID = u.userID
+                WHERE b.bookingID = ?
+            `, [bookingID]);
+            return rows[0];
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    // Get booking statistics for user
+    static async getUserBookingStats(userID) {
+        try {
+            const [rows] = await pool.query(`
+                SELECT 
+                    COUNT(*) as totalBookings,
+                    SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END) as confirmedBookings,
+                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pendingBookings,
+                    SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelledBookings,
+                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completedBookings,
+                    SUM(totalPrice) as totalSpent
+                FROM booking 
+                WHERE userID = ?
+            `, [userID]);
+            return rows[0];
+        } catch (error) {
+            throw error;
+        }
+    }
 }
 
 export default Booking;
