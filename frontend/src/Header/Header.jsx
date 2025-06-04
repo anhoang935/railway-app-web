@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row } from 'reactstrap';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, LogOut, User, Settings, CreditCard, History, Bell, ChevronDown } from 'lucide-react';
+import { Menu, X, LogOut, User, Settings, CreditCard, History, Bell, ChevronDown, ShoppingCart } from 'lucide-react';
 import logo from '../images/TAB.gif';
 import authService from '../data/Service/authService';
 import './header.css';
@@ -222,6 +222,10 @@ const Header = () => {
                                                             <CreditCard size={16} className="item-icon" />
                                                             <span>My Bookings</span>
                                                         </Link>
+                                                        <Link to="/checkout" className="dropdown-item" onClick={() => setDropdownOpen(false)}>
+                                                            <ShoppingCart size={16} className="item-icon" />
+                                                            <span>Checkout</span>
+                                                        </Link>
                                                         <div className="dropdown-divider"></div>
                                                         <button className="dropdown-item logout-item" onClick={handleLogout}>
                                                             <LogOut size={16} className="item-icon" />
@@ -269,6 +273,7 @@ const Header = () => {
                                             <>
                                                 <li><Link to="/settings" onClick={toggleMobileMenu}>Settings</Link></li>
                                                 <li><Link to="/my-bookings" onClick={toggleMobileMenu}>My Bookings</Link></li>
+                                                <li><Link to="/checkout" onClick={toggleMobileMenu}>Checkout</Link></li>
 
                                                 {/* Use isAdminUser state in mobile menu too */}
                                                 {isAdminUser && (
