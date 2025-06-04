@@ -19,6 +19,6 @@
     "build-backend": "npm install --prefix backend",
     "build-frontend": "cd frontend && npm install && GENERATE_SOURCEMAP=false CI=false npm run build",
     "start-backend": "npm run start-dev --prefix backend",
-    "start-frontend": "npx serve -s frontend/build -l 3000"
+    "start-frontend": "npm run start-test --prefix frontend"
   }
 }
