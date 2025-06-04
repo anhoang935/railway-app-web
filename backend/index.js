@@ -63,6 +63,10 @@ app.use((err, req, res, next) => {
   });
 });
 
+app.get('/', (req, res) => {
+  res.send('Backend is working!');
+});
+
 // Start server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
