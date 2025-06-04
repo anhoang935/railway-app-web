@@ -118,18 +118,59 @@ const Timetable = () => {
   }, []);
   
   // Calculate distance between two station IDs using the track data
-  const calculateDistance = (startStationId, endStationId) => {
-    // If we have track data, use it
+  const calculateDistance = (fromStationId, toStationId) => {
+    // Convert input values to numbers
+    const start = Number(fromStationId);
+    const end = Number(toStationId);
+    
+    if (start === end) return 0;
+
+    // Get indices to determine direction
+    const fromIndex = stations.findIndex(s => Number(s.stationID) === start);
+    const toIndex = stations.findIndex(s => Number(s.stationID) === end);
+    
+    if (fromIndex === -1 || toIndex === -1) {
+      // Fallback: calculate approximate distance based on station IDs
+      return Math.abs(start - end) * 45; // Adjusted multiplier for more realistic distances
+    }
+
+    // Get all station IDs between start and end (inclusive)
+    const stationRange = stations
+      .slice(Math.min(fromIndex, toIndex), Math.max(fromIndex, toIndex) + 1)
+      .map(s => Number(s.stationID));
+
+    // If we have track data, use it for accurate calculation
     if (tracks.length > 0) {
-      const track = tracks.find(t => 
-        (t.station1ID === startStationId && t.station2ID === endStationId) || 
-        (t.station1ID === endStationId && t.station2ID === startStationId)
-      );
-      if (track) return track.distance;
+      let totalDistance = 0;
+      
+      for (let i = 0; i < stationRange.length - 1; i++) {
+        const currentStation = stationRange[i];
+        const nextStation = stationRange[i + 1];
+        
+        // Find track between these stations (in either direction)
+        const track = tracks.find(t => 
+          (t.station1ID === currentStation && t.station2ID === nextStation) ||
+          (t.station2ID === currentStation && t.station1ID === nextStation)
+        );
+        
+        if (track) {
+          totalDistance += track.distance;
+        } else {
+          // Fallback distance if track not found
+          totalDistance += 45; // Average distance between stations
+        }
+      }
+      
+      return totalDistance;
     }
     
-    // Fallback: calculate approximate distance based on station IDs
-    return Math.abs(startStationId - endStationId) * 100;
+    // Fallback: calculate approximate distance based on station positions
+    // Ha Noi (ID: 1) to Sai Gon (ID: 38) should be 1726 km
+    const totalStations = 38;
+    const totalDistance = 1726;
+    const avgDistancePerStation = totalDistance / (totalStations - 1);
+    
+    return Math.round(Math.abs(end - start) * avgDistancePerStation);
   };
   
   // Search trains function
