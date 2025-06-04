@@ -1,117 +1,280 @@
 @startuml BackendComponentDiagram
 
+!theme plain
 hide empty members
 skinparam linetype ortho
 skinparam monochrome false
+skinparam defaultFontName Signika
+skinparam defaultFontSize 10
 
-' Entity style
+' Enhanced styling for better readability
 skinparam class {
-  BackgroundColor white
-  BorderColor black
-  ArrowColor black
+  BackgroundColor #F8F9FA
+  BorderColor #343A40
+  ArrowColor #007BFF
+  FontColor #212529
+  HeaderBackgroundColor #E9ECEF
+  HeaderFontColor #495057
 }
 
+skinparam note {
+  BackgroundColor #FFF3CD
+  BorderColor #856404
+  FontColor #856404
+}
+
+' Core User Management
 class user {
-  userID: int <<PK>>
-  UserName: varchar
-  Email: varchar
-  Password: varchar
-  Gender: varchar
-  PhoneNumber: varchar
-  DateOfBirth: date
-  Address: varchar
-  VerifyCode: varchar
-  Status: varchar
-  OTP: varchar
-  OTPExpiry: datetime
+  + userID: int <<PK>>
+  + UserName: varchar(50)
+  + Email: varchar(100) <<unique>>
+  + Password: varchar(255) <<hashed>>
+  + Gender: varchar(10)
+  + PhoneNumber: varchar(15)
+  + DateOfBirth: date
+  + Address: text
+  + VerifyCode: varchar(10)
+  + Status: enum('active','inactive','pending')
+  + Role: enum('User','Admin')
+  + OTP: varchar(6)
+  + OTPExpiry: datetime
+  + CreatedAt: timestamp
+  + UpdatedAt: timestamp
+  --
+  + validateCredentials()
+  + generateOTP()
+  + verifyOTP()
+  + hashPassword()
 }
 
+' Transportation Infrastructure
+class station {
+  + stationID: int <<PK>>
+  + stationName: varchar(100) <<unique>>
+  + CreatedAt: timestamp
+  + UpdatedAt: timestamp
+  --
+  + validateStationName()
+  + checkDuplicateRoutes()
+}
+
+class track {
+  + trackID: int <<PK>>
+  + station1ID: int <<FK>>
+  + station2ID: int <<FK>>
+  + distance: decimal(8,2)
+  + CreatedAt: timestamp
+  + UpdatedAt: timestamp
+  --
+  + validateStationDifference()
+  + calculateDistance()
+  + checkDuplicateTrack()
+}
+
+' Train Management
 class train {
-  trainID: int <<PK>>
-  trainName: varchar
-  trainType: varchar
-  coachTotal: int
-}
-
-class coach {
-  coachID: int <<PK>>
-  coach_typeID: int <<FK>>
-  trainID: int <<FK>>
+  + trainID: int <<PK>>
+  + trainName: varchar(50) <<unique>>
+  + trainType: varchar(30)
+  + coachTotal: int <<auto-calculated>>
+  + status: enum('active','maintenance','retired')
+  + CreatedAt: timestamp
+  + UpdatedAt: timestamp
+  --
+  + syncCoachCount()
+  + validateTrainName()
 }
 
 class coach_type {
-  coach_typeID: int <<PK>>
-  type: varchar
-  price: decimal
-  capacity: int
+  + coach_typeID: int <<PK>>
+  + type: varchar(30) <<unique>>
+  + price: decimal(10,2)
+  + capacity: int
+  + description: text
+  + CreatedAt: timestamp
+  + UpdatedAt: timestamp
+  --
+  + validatePricing()
+  + calculateRevenue()
 }
 
-class station {
-  stationID: int <<PK>>
-  stationName: varchar
+class coach {
+  + coachID: int <<PK>>
+  + trainID: int <<FK>>
+  + coach_typeID: int <<FK>>
+  + status: enum('active','maintenance','retired')
+  + CreatedAt: timestamp
+  + UpdatedAt: timestamp
+  --
+  + updateTrainCoachCount()
+  + validateAssignment()
 }
 
+' Scheduling System
 class schedule {
-  scheduleID: int <<PK>>
-  start_stationID: int <<FK>>
-  end_stationID: int <<FK>>
-  departureTime: datetime
-  arrivalTime: datetime
-  scheduleStatus: varchar
-  trainID: int <<FK>>
-}
-
-class passenger {
-  passengerID: int <<PK>>
-  fullname: varchar
-  phone_number: varchar
-  email: varchar
-  status: varchar
-}
-
-class ticket {
-  ticketID: int <<PK>>
-  bookingID: int <<FK>>
-  trainID: int <<FK>>
-  coachID: int <<FK>>
-  departure_stationID: int <<FK>>
-  arrival_stationID: int <<FK>>
-  seatNumber: varchar
-  departureTime: datetime
-  departureDate: date
-  ticketPrice: decimal
+  + scheduleID: int <<PK>>
+  + trainID: int <<FK>>
+  + start_stationID: int <<FK>>
+  + end_stationID: int <<FK>>
+  + departureTime: datetime
+  + arrivalTime: datetime
+  + scheduleStatus: enum('on-time','delayed','cancelled')
+  + CreatedAt: timestamp
+  + UpdatedAt: timestamp
+  --
+  + validateStationDifference()
+  + validateTimeSequence()
+  + checkTrainAvailability()
 }
 
 class journey {
-  journeyID: int <<PK>>
-  scheduleID: int <<FK>>
-  stationID: int <<FK>>
-  arrivalTime: datetime
-  departureTime: datetime
+  + journeyID: int <<PK>>
+  + scheduleID: int <<FK>>
+  + stationID: int <<FK>>
+  + arrivalTime: datetime
+  + departureTime: datetime
+  + sequence: int
+  + CreatedAt: timestamp
+  + UpdatedAt: timestamp
+  --
+  + validateJourneySequence()
+  + calculateTravelTime()
 }
 
+' Customer Management
+class passenger {
+  + passengerID: int <<PK>>
+  + fullname: varchar(100)
+  + phone_number: varchar(15)
+  + email: varchar(100)
+  + status: enum('active','inactive')
+  + CreatedAt: timestamp
+  + UpdatedAt: timestamp
+  --
+  + validateContactInfo()
+  + formatPhoneNumber()
+}
+
+' Booking & Ticketing
 class booking {
-  bookingID: int <<PK>>
-  userID: int <<FK>>
-  passengerID: int <<FK>>
-  bookingDate: datetime
-  totalPrice: decimal
-  status: varchar
+  + bookingID: int <<PK>>
+  + userID: int <<FK>>
+  + passengerID: int <<FK>>
+  + bookingDate: datetime
+  + totalPrice: decimal(10,2)
+  + status: enum('pending','confirmed','cancelled','completed')
+  + paymentStatus: enum('pending','paid','refunded')
+  + CreatedAt: timestamp
+  + UpdatedAt: timestamp
+  --
+  + calculateTotalPrice()
+  + validateBookingLimits()
+  + processPayment()
 }
 
-' Relationships
-train "1" -- "many" coach
-coach "many" -- "1" coach_type
-train "1" -- "many" schedule
-station "1" -- "many" schedule : is start of >
-station "1" -- "many" schedule : is end of >
-schedule "1" -- "many" journey
-passenger "1" -- "many" booking
-user "1" -- "many" booking
-booking "1" -- "many" ticket
-train "1" -- "many" ticket
-coach "1" -- "many" ticket
-station "1" -- "many" ticket : departure >
-station "1" -- "many" ticket : arrival >
+class ticket {
+  + ticketID: int <<PK>>
+  + bookingID: int <<FK>>
+  + trainID: int <<FK>>
+  + coachID: int <<FK>>
+  + departure_stationID: int <<FK>>
+  + arrival_stationID: int <<FK>>
+  + seatNumber: varchar(10)
+  + departureTime: datetime
+  + departureDate: date
+  + ticketPrice: decimal(10,2)
+  + status: enum('active','used','cancelled')
+  + CreatedAt: timestamp
+  + UpdatedAt: timestamp
+  --
+  + generateSeatNumber()
+  + validateSeatAvailability()
+  + calculatePrice()
+}
+
+' Administrative Tables
+class admin_logs {
+  + logID: int <<PK>>
+  + adminID: int <<FK>>
+  + action: varchar(100)
+  + tableName: varchar(50)
+  + recordID: int
+  + oldValues: json
+  + newValues: json
+  + timestamp: datetime
+  --
+  + logAdminAction()
+  + generateAuditReport()
+}
+
+class system_settings {
+  + settingID: int <<PK>>
+  + settingKey: varchar(50) <<unique>>
+  + settingValue: text
+  + category: varchar(30)
+  + description: text
+  + UpdatedAt: timestamp
+  + UpdatedBy: int <<FK>>
+  --
+  + validateSetting()
+  + getSettingValue()
+}
+
+' Relationships with improved cardinality and constraints
+user ||--o{ booking : "creates"
+user ||--o{ admin_logs : "generates"
+user ||--o{ system_settings : "updates"
+
+station ||--o{ track : "connects (station1)"
+station ||--o{ track : "connects (station2)"
+station ||--o{ schedule : "starts from"
+station ||--o{ schedule : "ends at"
+station ||--o{ journey : "stops at"
+station ||--o{ ticket : "departure from"
+station ||--o{ ticket : "arrival to"
+
+track }o--|| station : "station1"
+track }o--|| station : "station2"
+
+train ||--o{ coach : "contains"
+train ||--o{ schedule : "operates"
+train ||--o{ ticket : "assigned to"
+
+coach_type ||--o{ coach : "defines type"
+coach }o--|| train : "belongs to"
+coach }o--|| coach_type : "has type"
+coach ||--o{ ticket : "seats in"
+
+schedule }o--|| train : "operated by"
+schedule }o--|| station : "starts from"
+schedule }o--|| station : "ends at"
+schedule ||--o{ journey : "contains stops"
+
+journey }o--|| schedule : "part of"
+journey }o--|| station : "stops at"
+
+passenger ||--o{ booking : "books travel"
+booking }o--|| user : "made by"
+booking }o--|| passenger : "for passenger"
+booking ||--o{ ticket : "contains"
+
+ticket }o--|| booking : "part of"
+ticket }o--|| train : "on train"
+ticket }o--|| coach : "in coach"
+ticket }o--|| station : "departs from"
+ticket }o--|| station : "arrives at"
+
+' Notes for key improvements
+note top of track : "NEW: Track distance\ncalculation for pricing\nand route optimization"
+
+note right of coach : "AUTO-SYNC: Coach count\nautomatically updates\ntrain.coachTotal field"
+
+note top of admin_logs : "NEW: Comprehensive\naudit logging for\nadmin actions"
+
+note right of system_settings : "NEW: Configurable\nsystem parameters\nfor flexibility"
+
+note bottom of user : "ENHANCED: Role-based\naccess control with\nAdmin/User distinction"
+
+note left of schedule : "IMPROVED: Better\nvalidation for station\ndifference and timing"
 
 @enduml

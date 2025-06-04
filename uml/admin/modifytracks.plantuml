@@ -1,0 +1,83 @@
+@startuml ModifyTracks
+!theme plain
+hide footbox
+
+' Compact layout
+skinparam roundcorner 10
+skinparam maxmessagesize 120
+skinparam ParticipantPadding 10
+skinparam BoxPadding 10
+skinparam minClassWidth 120
+skinparam defaultFontName Signika
+skinparam defaultFontSize 8
+
+skinparam participant {
+    Padding 5
+    BackgroundColor #E8F4FD
+    BorderColor #4A90E2
+    FontColor #2C3E50
+}
+
+skinparam actor {
+    BackgroundColor #E8F4FD
+    BorderColor #4A90E2
+    FontColor #2C3E50
+    FontSize 8
+}
+
+skinparam sequence {
+    ArrowColor #4A90E2
+    MessageAlignment center
+    GroupHeaderFontSize 0
+    GroupBorderThickness 0
+}
+
+actor Administrator
+participant "UI\n(TrackManagement.jsx)" as UI
+participant "Controller\n(trackController.js)" as Controller
+participant "Database\n(MySQL)" as DB
+
+'-- Load & Setup --
+Administrator -> UI: navigateToTrackManagement()
+UI -> Controller: fetchTracksAndStations()
+Controller -> DB: SELECT JOIN tracks + stations
+DB --> Controller: tracks + stations
+Controller --> UI: setTracks(), setStations()
+UI --> Administrator: showInterface()
+
+'-- CRUD with Validation --
+Administrator -> UI: Add | Edit | Delete Track
+UI -> Administrator: showForm() | confirmAction()
+Administrator -> UI: inputData + validateForm()
+UI -> Controller: create | update | delete track
+Controller -> DB: validate + modify track
+DB --> Controller: operation result
+Controller --> UI: return updated data
+UI --> Administrator: showSuccess() + updateList()
+
+'-- Form Errors & Refresh --
+Administrator -> UI: invalidFormInputs()
+UI -> UI: detectErrors(), disableSave()
+UI --> Administrator: showErrorMessage()
+
+Administrator -> UI: refreshData()
+UI -> Controller: refetchAll()
+Controller -> DB: get current data
+DB --> Controller: return data
+Controller --> UI: updateAll()
+UI --> Administrator: showRefreshedData()
+
+'-- Error Handling --
+alt DB Error
+  Controller -> DB: invalid ops
+  DB --> Controller: error (e.g. FK failure)
+  Controller --> UI: returnError()
+  UI --> Administrator: showDBError()
+end
+
+alt Validation Error
+  UI -> UI: form validation fails
+  UI --> Administrator: showValidationAlert()
+end
+
+@enduml

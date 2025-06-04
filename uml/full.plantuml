@@ -1,177 +1,282 @@
 @startuml Railway Management System
 left to right direction
 
-' Color scheme
+' Enhanced styling for better readability
 skinparam class {
-  BackgroundColor #F0F7FF
-  BorderColor #009CFF
-  ArrowColor #1E32C5
-  HeaderBackgroundColor #009CFF
+  BackgroundColor #E8F4FD
+  BorderColor #4A90E2
+  ArrowColor #4A90E2
+  FontColor #2C3E50
+  HeaderBackgroundColor #4A90E2
+  HeaderFontColor #FFFFFF
+}
+
+skinparam note {
+  BackgroundColor #FFF3CD
+  BorderColor #856404
+  FontColor #856404
 }
 
 skinparam packageStyle rectangle
-skinparam padding 2
+skinparam padding 5
 skinparam roundCorner 8
+skinparam defaultFontName Signika
+skinparam defaultFontSize 11
+skinparam classAttributeFontSize 10
+skinparam classFontSize 12
+skinparam packageFontSize 13
 
-package "Railway Management System" {
-  class Train {
-    +trainID: int
-    +trainName: string
-    +trainType: string
-    +coachTotal: int
-    --
-    +findAll(): Train[]
-    +findById(trainID): Train
-    +create(trainData): Train
-    +update(trainID, trainData): Train
-    +delete(trainID): boolean
-  }
-  
-  class Coach {
-    +coachID: int
-    +coach_typeID: int
-    +trainID: int
-    --
-    +findAll(): Coach[]
-    +findById(coachID): Coach
-    +findByTrainId(trainID): Coach[]
-    +create(coachData): Coach
-    +update(coachID, coachData): Coach
-    +delete(coachID): boolean
-  }
-  
-  class CoachType {
-    +coach_typeID: int
-    +type: string
-    +price: decimal
-    +capacity: int
-    --
-    +findAll(): CoachType[]
-    +findById(typeId): CoachType
-    +create(coachTypeData): CoachType
-    +update(typeId, coachTypeData): CoachType
-    +delete(typeId): boolean
-  }
-  
-  class Station {
-    +stationID: int
-    +stationName: string
-    --
-    +findAll(): Station[]
-    +findById(stationID): Station
-    +create(stationData): Station
-    +update(stationID, stationData): Station
-    +delete(stationID): boolean
-  }
-  
-  class Schedule {
-    +scheduleID: int
-    +start_stationID: int
-    +end_stationID: int
-    +departureTime: dateTime
-    +arrivalTime: dateTime
-    +scheduleStatus: string
-    +trainID: int
-    --
-    +findAll(): Schedule[]
-    +findById(scheduleID): Schedule
-    +findByTrainId(trainID): Schedule[]
-    +findByStationId(stationID): Schedule[]
-    +findBetweenStations(startStationID, endStationID): Schedule[]
-    +create(scheduleData): Schedule
-    +update(scheduleID, scheduleData): Schedule
-    +delete(scheduleID): boolean
-  }
-  
-  class Passenger {
-    +passengerID: int
-    +fullname: string
-    +email: string
-    +phone: string
-    --
-    +findAll(): Passenger[]
-    +findById(passengerID): Passenger
-    +create(passengerData): Passenger
-    +update(passengerID, passengerData): Passenger
-    +delete(passengerID): boolean
-  }
-  
-  class Ticket {
-    +ticketID: int
-    +bookingID: int
-    +trainID: int
-    +coachID: int
-    +departure_stationID: int
-    +arrival_stationID: int
-    +seatNumber: string
-    +departureTime: dateTime
-    +departureDate: date
-    +ticketPrice: decimal
-    --
-    +findAll(): Ticket[]
-    +findById(ticketID): Ticket
-    +create(ticketData): Ticket
-    +update(ticketID, ticketData): Ticket
-    +delete(ticketID): boolean
-  }
-  
-  class Journey {
-    +journeyID: int
-    +scheduleID: int
-    +journeyDate: date
-    +availableSeats: int
-    --
-    +findAll(): Journey[]
-    +findById(journeyID): Journey
-    +findByTrainId(trainID): Journey[]
-    +create(journeyData): Journey
-    +update(journeyID, journeyData): Journey
-    +delete(journeyID): boolean
-  }
-  
+package "Core User Management" {
   class User {
-    +userID: int
-    +userName: string
-    +email: string
-    +password: string
-    +role: string
+    + userID: int
+    + userName: string
+    + email: string
+    + password: string
+    + role: string
+    + phoneNumber: string
+    + dateOfBirth: date
+    + address: text
+    + status: string
     --
-    +findAll(): User[]
-    +findById(userID): User
-    +create(userData): User
-    +update(userID, userData): User
-    +delete(userID): boolean
-  }
-  
-  class Booking {
-    +bookingID: int
-    +userID: int
-    +passengerID: int
-    +bookingDate: dateTime
-    +totalAmount: decimal
-    +paymentStatus: string
-    --
-    +findAll(): Booking[]
-    +findById(bookingID): Booking
-    +create(bookingData): Booking
-    +update(bookingID, bookingData): Booking
-    +delete(bookingID): boolean
+    + findAll(): User[]
+    + findById(userID): User
+    + validateCredentials(): boolean
+    + generateOTP(): string
+    + verifyOTP(otp): boolean
+    + create(userData): User
+    + update(userID, userData): User
+    + delete(userID): boolean
   }
 }
 
-' Relationships
-Train "1" -- "many" Coach : has >
-Coach "many" -- "1" CoachType : is of type >
-Train "1" -- "many" Schedule : operates >
-Station "1" -- "many" Schedule : is start of >
-Station "1" -- "many" Schedule : is end of >
-Schedule "1" -- "many" Journey : has >
-Passenger "1" -- "many" Booking : makes >
-User "1" -- "many" Booking : creates >
-Booking "1" -- "many" Ticket : includes >
-Train "1" -- "many" Ticket : belongs to >
-Coach "1" -- "many" Ticket : assigns seat in >
-Station "1" -- "many" Ticket : departure >
-Station "1" -- "many" Ticket : arrival >
+package "Infrastructure Management" {
+  class Station {
+    + stationID: int
+    + stationName: string
+    + createdAt: timestamp
+    + updatedAt: timestamp
+    --
+    + findAll(): Station[]
+    + findById(stationID): Station
+    + validateStationName(): boolean
+    + checkDuplicateRoutes(): boolean
+    + create(stationData): Station
+    + update(stationID, stationData): Station
+    + delete(stationID): boolean
+  }
+
+  class Track {
+    + trackID: int
+    + station1ID: int
+    + station2ID: int
+    + distance: decimal
+    + createdAt: timestamp
+    + updatedAt: timestamp
+    --
+    + findAll(): Track[]
+    + findById(trackID): Track
+    + validateStationDifference(): boolean
+    + calculateDistance(): decimal
+    + create(trackData): Track
+    + update(trackID, trackData): Track
+    + delete(trackID): boolean
+  }
+}
+
+package "Fleet Management" {
+  class Train {
+    + trainID: int
+    + trainName: string
+    + trainType: string
+    + coachTotal: int
+    + status: string
+    + createdAt: timestamp
+    + updatedAt: timestamp
+    --
+    + findAll(): Train[]
+    + findById(trainID): Train
+    + syncCoachCount(): void
+    + validateTrainName(): boolean
+    + create(trainData): Train
+    + update(trainID, trainData): Train
+    + delete(trainID): boolean
+  }
+
+  class CoachType {
+    + coach_typeID: int
+    + type: string
+    + price: decimal
+    + capacity: int
+    + description: text
+    + createdAt: timestamp
+    + updatedAt: timestamp
+    --
+    + findAll(): CoachType[]
+    + findById(typeId): CoachType
+    + validatePricing(): boolean
+    + calculateRevenue(): decimal
+    + create(coachTypeData): CoachType
+    + update(typeId, coachTypeData): CoachType
+    + delete(typeId): boolean
+  }
+
+  class Coach {
+    + coachID: int
+    + coach_typeID: int
+    + trainID: int
+    + status: string
+    + createdAt: timestamp
+    + updatedAt: timestamp
+    --
+    + findAll(): Coach[]
+    + findByCoachID(): Coach
+    + findByTrainId(trainID): Coach[]
+    + updateTrainCoachCount(): void
+    + validateAssignment(): boolean
+    + create(coachData): Coach
+    + update(coachID, coachData): Coach
+    + delete(coachID): boolean
+    + syncAllTrainCoachCounts(): void
+  }
+}
+
+package "Customer Management" {
+  class Passenger {
+    + passengerID: int
+    + fullname: string
+    + email: string
+    + phoneNumber: string
+    + status: string
+    + createdAt: timestamp
+    + updatedAt: timestamp
+    --
+    + findAll(): Passenger[]
+    + findById(passengerID): Passenger
+    + validateContactInfo(): boolean
+    + formatPhoneNumber(): string
+    + create(passengerData): Passenger
+    + update(passengerID, passengerData): Passenger
+    + delete(passengerID): boolean
+  }
+
+  class Booking {
+    + bookingID: int
+    + userID: int
+    + passengerID: int
+    + bookingDate: dateTime
+    + totalPrice: decimal
+    + status: string
+    + paymentStatus: string
+    + createdAt: timestamp
+    + updatedAt: timestamp
+    --
+    + findAll(): Booking[]
+    + findById(bookingID): Booking
+    + findByUserId(userID): Booking[]
+    + calculateTotalPrice(): decimal
+    + validateBookingLimits(): boolean
+    + processPayment(): boolean
+    + create(bookingData): Booking
+    + update(bookingID, bookingData): Booking
+    + delete(bookingID): boolean
+  }
+
+  class Ticket {
+    + ticketID: int
+    + bookingID: int
+    + trainID: int
+    + coachID: int
+    + departure_stationID: int
+    + arrival_stationID: int
+    + seatNumber: string
+    + departureTime: dateTime
+    + departureDate: date
+    + ticketPrice: decimal
+    + status: string
+    + createdAt: timestamp
+    + updatedAt: timestamp
+    --
+    + findAll(): Ticket[]
+    + findById(ticketID): Ticket
+    + findByBookingId(bookingID): Ticket[]
+    + generateSeatNumber(): string
+    + validateSeatAvailability(): boolean
+    + calculatePrice(): decimal
+    + create(ticketData): Ticket
+    + update(ticketID, ticketData): Ticket
+    + delete(ticketID): boolean
+  }
+}
+
+package "Operations Management" {
+  class Schedule {
+    + scheduleID: int
+    + trainID: int
+    + start_stationID: int
+    + end_stationID: int
+    + departureTime: dateTime
+    + arrivalTime: dateTime
+    + scheduleStatus: string
+    + createdAt: timestamp
+    + updatedAt: timestamp
+    --
+    + findAll(): Schedule[]
+    + findById(scheduleID): Schedule
+    + findByTrainId(trainID): Schedule[]
+    + findByStationId(stationID): Schedule[]
+    + findBetweenStations(startStationID, endStationID): Schedule[]
+    + validateStationDifference(): boolean
+    + validateTimeSequence(): boolean
+    + create(scheduleData): Schedule
+    + update(scheduleID, scheduleData): Schedule
+    + delete(scheduleID): boolean
+  }
+
+  class Journey {
+    + journeyID: int
+    + scheduleID: int
+    + stationID: int
+    + arrivalTime: dateTime
+    + departureTime: dateTime
+    + sequence: int
+    + createdAt: timestamp
+    + updatedAt: timestamp
+    --
+    + findAll(): Journey[]
+    + findById(journeyID): Journey
+    + findByScheduleId(scheduleID): Journey[]
+    + validateJourneySequence(): boolean
+    + calculateTravelTime(): int
+    + create(journeyData): Journey
+    + update(journeyID, journeyData): Journey
+    + delete(journeyID): boolean
+  }
+}
+
+' Enhanced Relationships with better labels
+User ||--o{ Booking : "creates bookings"
+Passenger ||--o{ Booking : "books travel"
+Booking ||--o{ Ticket : "contains tickets"
+
+Train ||--o{ Coach : "has coaches"
+CoachType ||--o{ Coach : "defines type"
+Coach ||--o{ Ticket : "assigns seat"
+
+Station ||--o{ Track : "connects from"
+Station ||--o{ Track : "connects to"
+Station ||--o{ Schedule : "starts journey"
+Station ||--o{ Schedule : "ends journey"
+Station ||--o{ Journey : "stops at"
+
+Train ||--o{ Schedule : "operates on"
+Schedule ||--o{ Journey : "includes stops"
+
+Ticket }o--|| Train : "travels on"
+Ticket }o--|| Coach : "seat in"
+Ticket }o--|| Station : "departs from"
+Ticket }o--|| Station : "arrives at"
+
+Track }o--|| Station : "connects station1"
+Track }o--|| Station : "connects station2"
 
 @enduml

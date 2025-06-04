@@ -1,0 +1,81 @@
+@startuml ModifyBooking
+!theme plain
+hide footbox
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 20
+skinparam maxmessagesize 120
+skinparam ParticipantPadding 40
+skinparam BoxPadding 20
+
+' Make diagram much wider and shorter
+skinparam minClassWidth 150
+skinparam participant {
+    Padding 35
+}
+skinparam sequenceMessageAlign center
+
+' Font settings
+skinparam defaultFontName Signika
+skinparam defaultFontSize 9
+
+' Actor styling
+skinparam actor {
+    BackgroundColor #E8F4FD
+    BorderColor #4A90E2
+    FontColor #2C3E50
+    FontSize 9
+}
+
+' Participant styling
+skinparam participant {
+    BackgroundColor #E8F4FD
+    BorderColor #4A90E2
+    FontColor #2C3E50
+    FontSize 8
+}
+
+' Arrow styling
+skinparam sequence {
+    ArrowColor #4A90E2
+    MessageAlignment center
+    GroupHeaderFontSize 10
+    GroupHeaderFontColor #2C3E50
+}
+
+actor Administrator
+participant "UI\n(BookingManagement.jsx)" as UI
+participant "Controller\n(bookingController.js)" as Controller
+participant "Database\n(MySQL)" as DB
+
+== Load & Operations ==
+Administrator -> UI: navigateToBookingManagement()
+UI -> Controller: getAllBookings()
+Controller -> DB: SELECT bookings with JOINs
+DB -> Controller: return bookings data
+Controller -> UI: setBookings() & displayInterface()
+
+Administrator -> UI: handleCRUD() | handleViewTickets() | handleSearch()
+UI -> Administrator: showForm() | displayTickets() | updateFilter()
+Administrator -> UI: handleInputs() & handleActions()
+UI -> Controller: createBooking() | updateBooking() | deleteBooking() | getTickets()
+Controller -> DB: INSERT|UPDATE|DELETE & validate | SELECT tickets
+DB -> Controller: return operation results
+Controller -> UI: returnData()
+UI -> Administrator: showMessages() & updateLists()
+
+== Refresh & Errors ==
+Administrator -> UI: handleRefresh()
+UI -> Controller: refetchBookings()
+Controller -> DB: getCurrentData()
+DB -> Controller: return fresh data
+Controller -> UI: setUpdatedBookings()
+UI -> Administrator: showRefreshed()
+
+alt Errors
+    UI -> UI: validateForm() | Controller -> DB: anyOperation()
+    UI -> Administrator: showError() | DB -> Controller: errorResponse()
+    Controller -> UI: returnError()
+    UI -> Administrator: displayAlert()
+end
+
+@enduml
