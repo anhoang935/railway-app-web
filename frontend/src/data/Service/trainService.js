@@ -34,7 +34,7 @@ const trainService = {
     },
     getTrainByName: async (trainName) => {
         try {
-            const response = await axios.get(`${BASE_URL}/${trainName}`);
+            const response = await axios.get(`${BASE_URL}/trainName/${trainName}`);
             return response.data.data;
         } catch (error) {
             console.error('Error fetching train by ID:', error);

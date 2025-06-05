@@ -49,7 +49,10 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
       const bookingData = {
         userID: userId,
         passengerID: passengerResponse.passengerID,
-        bookingDate: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        bookingDate: new Date().toLocaleString('sv-SE', {
+          timeZone: 'Asia/Ho_Chi_Minh',
+          hour12: false
+        }).replace('T', ' '),
         totalPrice: booking.totalPrice,
         status: paymentStatus
       }
@@ -102,7 +105,6 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
 
       //   const ticketResponse2 = await ticketService.createTicket(ticketData2);        
       // }
-      // Loop through selectedItems for outbound trip
       for (const item of booking.selectedItems) {
         const ticketData1 = {
           bookingId: bookingResponse.bookingID,
@@ -118,11 +120,11 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
           expireDateTime: expireDateTime1
         };
 
-        const ticketResponse1 = await ticketService.getFilteredTickets(ticketData1);
-        // Optionally, handle response here (e.g., collect or display)
+        const ticketResponse1 = await ticketService.createTicket(ticketData1);
+        console.log(ticketResponse1);
+
       }
 
-      // Check for round-trip
       if (booking.tripType === 'round-trip') {
         const trainData2 = await trainService.getTrainByName(booking.returnTrain.id);
 
@@ -132,7 +134,6 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
           expireDateTime2 = new Date(trainDeparture2.getTime() - 30 * 60 * 1000).toISOString();
         }
 
-        // Loop through returnItems
         for (const item of booking.returnItems) {
           const ticketData2 = {
             bookingId: bookingResponse.bookingID,
@@ -148,8 +149,8 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
             expireDateTime: expireDateTime2
           };
 
-          const ticketResponse2 = await ticketService.getFilteredTickets(ticketData2);
-          // Optionally, handle response here
+          const ticketResponse2 = await ticketService.createTicket(ticketData2);
+          console.log(ticketResponse2);
         }
       }
     } catch (error) {

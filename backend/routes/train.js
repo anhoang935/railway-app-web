@@ -13,7 +13,7 @@ const router = express.Router();
 // Public routes
 router.get('/', getAllTrains);
 router.get('/:id', getTrain);
-router.get('/:trainName', getTrainByName);
+router.get('/trainName/:trainName', getTrainByName);
 // Admin routes
 router.post('/', createTrain);
 router.put('/:id', updateTrain);
