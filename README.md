@@ -109,39 +109,122 @@ Without an integrated, automated system, coordinating among users and administra
 <!-- GETTING STARTED -->
 ## Getting Started
 
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
+To get a local copy up and running, follow these simple steps.
 
 ### Prerequisites
 
-This is an example of how to list things you need to use the software and how to install them.
-* npm
-  ```sh
-  npm install npm@latest -g
-  ```
+Make sure you have the following installed on your system:
+
+* **Node.js** (version 14 or higher)
+    ```sh
+    # Check your Node.js version
+    node --version
+    ```
+
+* **npm** (comes with Node.js)
+    ```sh
+    npm install npm@latest -g
+    ```
+
+* **MySQL** (version 8.0 or higher)
+    - Download and install from [MySQL Official Website](https://dev.mysql.com/downloads/)
+    - Make sure MySQL server is running
 
 ### Installation
 
-_Below is an example of how you can instruct your audience on installing and setting up your app. This template doesn't rely on any external dependencies or services._
+1. **Clone the repository**
+    ```sh
+    git clone https://github.com/binhbb2204/railway-app-web.git
+    cd railway-app-web
+    ```
 
-1. Get a free API Key at [https://example.com](https://example.com)
-2. Clone the repo
-   ```sh
-   git clone https://github.com/github_username/repo_name.git
-   ```
-3. Install NPM packages
-   ```sh
-   npm install
-   ```
-4. Enter your API in `config.js`
-   ```js
-   const API_KEY = 'ENTER YOUR API';
-   ```
-5. Change git remote url to avoid accidental pushes to base project
-   ```sh
-   git remote set-url origin github_username/repo_name
-   git remote -v # confirm the changes
-   ```
+2. **Install root dependencies**
+    ```sh
+    npm install
+    ```
+
+3. **Set up the Backend**
+    ```sh
+    cd backend
+    npm install
+    ```
+
+4. **Create environment variables**
+   
+    Create a `.env` file in the `backend` folder with the following content:
+    ```env
+    # Database Configuration
+    DB_HOST=localhost
+    DB_USER=root
+    DB_PASSWORD=your_mysql_password
+    DB_NAME=railway_web
+    
+    # Server Configuration
+    PORT=5000
+    
+    # JWT Secret
+    JWT_SECRET=your_jwt_secret_key
+    
+    # Email Configuration (for OTP verification)
+    EMAIL_USER=your_email@gmail.com
+    EMAIL_PASS=your_app_password
+    ```
+
+5. **Set up MySQL Database**
+    - Create a new database named `railway_web`
+    - Import the database schema (if provided) or let the application create tables automatically
+
+6. **Set up the Frontend**
+    ```sh
+    cd ../frontend
+    npm install
+    ```
+
+7. **Configure Frontend Environment (Optional)**
+    
+    Create a `.env` file in the `frontend` folder:
+    ```env
+    REACT_APP_BACKEND_URL=https://your-backend-url.com
+    ```
+    
+    For local development, you can skip this step as it defaults to `localhost:5000`
+
+8. **Start the Application**
+   
+    **Option 1: Run both frontend and backend simultaneously (Recommended)**
+    ```sh
+    # From the root directory
+    npm run dev
+    # This will start both backend (localhost:5000) and frontend (localhost:3000)
+    ```
+    
+    **Option 2: Run separately**
+    
+    Backend (Terminal 1):
+    ```sh
+    cd backend
+    npm start
+    # Server will run on http://localhost:5000
+    ```
+    
+    Frontend (Terminal 2):
+    ```sh
+    cd frontend
+    npm start
+    # Application will open on http://localhost:3000
+    ```
+
+### Quick Start for Development
+
+The easiest way to get started is using the `npm run dev` command from the root directory, which will:
+
+1. Start the backend server on `http://localhost:5000`
+2. Start the frontend development server on `http://localhost:3000`  
+3. Automatically handle API requests between frontend and backend
+
+### Live Demo
+
+You can also view the live application at: [https://railway-tabb.onrender.com/](https://railway-tabb.onrender.com/)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -150,9 +233,61 @@ _Below is an example of how you can instruct your audience on installing and set
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+## Usage
 
-_For more examples, please refer to the [Documentation](https://example.com)_
+Our Railway Management System provides a comprehensive platform for both passengers and administrators. Below are the key features and how to use them:
+
+### For Passengers
+
+**Home Page**
+This is the main home page of the application. This page will capture some background information about the team.
+
+![Home Page Screenshot][home-screenshot]
+
+**About Page**
+This page provides a closer look at what we do, our objectives, as well as the members of the project.
+
+![About Page Screenshot][about-screenshot]
+
+**Timetable**
+This page includes the train route information.
+
+![Timetable Screenshot][timetable-screenshot]
+
+**Buy Ticket**
+In this page, users can book their tickets by choosing their preferred options.
+
+![Buy Ticket Screenshot][buy-ticket-screenshot]
+
+**Check Ticket**
+In this page, users can check for their booked tickets.
+
+![Check Ticket Screenshot][check-ticket-screenshot]
+
+**User Menu**
+This is an extra drop-down menu for the users. In this menu, they can change settings and view their processed bookings.
+
+![User Menu Screenshot][user-menu-screenshot]
+
+**Settings Page**
+This is the Settings page of the user. It displays personal information of their account, as well as some options to modify their credentials and view the bookings.
+
+![Settings Page Screenshot][settings-screenshot]
+
+![My Booking Page Screenshot][mybooking-screenshot]
+
+### For Administrators
+
+**Admin Dashboard**
+This is the main dashboard of the Admin Panel – where administrators will manage the system. In this page, general information are shown, including:
+- **System Alerts** - Important notices about train delays, cancellations, and maintenance work
+- **Train Status** - Charts showing how many trains are running on time, delayed, or cancelled
+- **Station Traffic** - Information about which stations are busiest
+- **Maintenance Schedule** - List of upcoming repair work
+
+![Admin Dashboard Screenshot][admin-dashboard-screenshot]
+
+_For more examples, please refer to the [Documentation](https://mphcmiuedu-my.sharepoint.com/:w:/g/personal/itcsiu22269_student_hcmiu_edu_vn/ESD91aukkTFNkMJzY4Cho7oBZCaJKTV6lwXJEZphetW0GQ?e=LjgS0b)_
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -290,3 +425,13 @@ Reference
 [Bootstrap-url]: https://getbootstrap.com
 [FramerMotion]: https://img.shields.io/badge/Framer_Motion-black?style=for-the-badge&logo=framer&logoColor=blue
 [Framer-url]: https://www.framer.com/motion/
+
+[home-screenshot]: images/home-page.png
+[about-screenshot]: images/about-page.png
+[timetable-screenshot]: images/timetable-page.png
+[buy-ticket-screenshot]: images/buy-ticket-page.png
+[check-ticket-screenshot]: images/check-ticket-page.png
+[user-menu-screenshot]: images/user-menu.png
+[settings-screenshot]: images/settings-page.png
+[mybooking-screenshot]: images/mybooking-page.png
+[admin-dashboard-screenshot]: images/admin-dashboard.png
