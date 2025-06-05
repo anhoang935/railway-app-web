@@ -149,7 +149,46 @@ Make sure you have the following installed on your system:
     npm install
     ```
 
-4. **Create environment variables**
+4. **Set up MySQL Database**
+    
+    **Option 1: Import existing schema (Recommended)**
+    ```sh
+    # Create the database
+    mysql -u root -p -e "CREATE DATABASE railway_web;"
+    
+    # Import the database schema from mysql_files
+    mysql -u root -p railway_web < mysql_files/railway_web.sql
+    ```
+    
+    **Option 2: Let the application create tables automatically**
+    - Create a new database named `railway_web`
+    - The application will create tables when first run
+
+5. **Configure Gmail App Password**
+    
+    For email verification and OTP functionality:
+    
+    a. **Enable 2-Factor Authentication** on your Gmail account:
+       - Go to [Google Account Security](https://myaccount.google.com/security)
+       - Enable 2-Step Verification
+    
+    b. **Generate App Password**:
+       - Go to [App Passwords](https://myaccount.google.com/apppasswords)
+       - Select "Mail" and your device
+       - Copy the 16-character password (remove spaces)
+
+6. **Generate JWT Secret**
+    
+    Create a secure JWT secret key:
+    ```sh
+    # Option 1: Use Node.js crypto (Recommended)
+    node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+    
+    # Option 2: Use online generator
+    # Visit: https://jwt.io/ and generate a secure secret
+    ```
+
+7. **Create environment variables**
    
     Create a `.env` file in the `backend` folder with the following content:
     ```env
@@ -162,25 +201,21 @@ Make sure you have the following installed on your system:
     # Server Configuration
     PORT=5000
     
-    # JWT Secret
-    JWT_SECRET=your_jwt_secret_key
+    # JWT Secret (use the generated secret from step 6)
+    JWT_SECRET=your_generated_jwt_secret_key_here
     
-    # Email Configuration (for OTP verification)
+    # Email Configuration (use credentials from step 5)
     EMAIL_USER=your_email@gmail.com
-    EMAIL_PASS=your_app_password
+    EMAIL_PASS=your_16_character_app_password
     ```
 
-5. **Set up MySQL Database**
-    - Create a new database named `railway_web`
-    - Import the database schema (if provided) or let the application create tables automatically
-
-6. **Set up the Frontend**
+8. **Set up the Frontend**
     ```sh
     cd ../frontend
     npm install
     ```
 
-7. **Configure Frontend Environment (Optional)**
+9. **Configure Frontend Environment (Optional)**
     
     Create a `.env` file in the `frontend` folder:
     ```env
@@ -189,7 +224,7 @@ Make sure you have the following installed on your system:
     
     For local development, you can skip this step as it defaults to `localhost:5000`
 
-8. **Start the Application**
+10. **Start the Application**
    
     **Option 1: Run both frontend and backend simultaneously (Recommended)**
     ```sh
@@ -221,6 +256,22 @@ The easiest way to get started is using the `npm run dev` command from the root 
 1. Start the backend server on `http://localhost:5000`
 2. Start the frontend development server on `http://localhost:3000`  
 3. Automatically handle API requests between frontend and backend
+
+### Troubleshooting
+
+**Database Connection Issues:**
+- Ensure MySQL server is running
+- Verify database credentials in `.env` file
+- Check if the `railway_web` database exists
+
+**Email/OTP Issues:**
+- Verify Gmail app password is correct (16 characters, no spaces)
+- Ensure 2-Factor Authentication is enabled on Gmail
+- Check EMAIL_USER and EMAIL_PASS in `.env` file
+
+**JWT Authentication Issues:**
+- Ensure JWT_SECRET is properly set in `.env` file
+- Use a sufficiently long and random secret key
 
 ### Live Demo
 
