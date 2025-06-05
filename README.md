@@ -233,8 +233,6 @@ You can also view the live application at: [https://railway-tabb.onrender.com/](
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-## Usage
-
 Our Railway Management System provides a comprehensive platform for both passengers and administrators. Below are the key features and how to use them:
 
 ### For Passengers
