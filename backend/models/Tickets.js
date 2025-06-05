@@ -56,12 +56,12 @@ class Tickets {
     }
 
     static async create(ticketData) {
-        const { bookingId, passengerId, coachId, trainId, seatNumber, departureId, arrivalId, departureTime, departureDate, ticketPrice } = ticketData;
+        const { bookingId, passengerId, coachId, trainId, seatNumber, departureId, arrivalId, departureTime, departureDate, ticketPrice, expireDateTime } = ticketData;
         try {
             const [result] = await pool.query(
-                `INSERT INTO ticket (bookingID, passengerID, coachID, trainID, seatNumber, departure_stationID, arrival_stationID, departureTime, departureDate, ticketPrice)
-                VALUES(?,?,?,?,?,?,?,?,?,?)`,
-                [bookingId, passengerId, coachId, trainId, seatNumber, departureId, arrivalId, departureTime, departureDate, ticketPrice]
+                `INSERT INTO ticket (bookingID, passengerID, coachID, trainID, seatNumber, departure_stationID, arrival_stationID, departureTime, departureDate, ticketPrice, expire_date_time)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+                [bookingId, passengerId, coachId, trainId, seatNumber, departureId, arrivalId, departureTime, departureDate, ticketPrice, expireDateTime]
             );
             return result;
         } catch (error) {

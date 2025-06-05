@@ -32,6 +32,16 @@ const trainService = {
             
         }
     },
+    getTrainByName: async (trainName) => {
+        try {
+            const response = await axios.get(`${BASE_URL}/${trainName}`);
+            return response.data.data;
+        } catch (error) {
+            console.error('Error fetching train by ID:', error);
+            throw error.response?.data?.message || error.message || 'Failed to fetch train';
+            
+        }
+    },
     createTrain: async (trainData) => {
         try{
             const dataWithID = { 

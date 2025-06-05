@@ -43,6 +43,31 @@ export const getTrain = async (req, res) => {
   }
 };
 
+export const getTrainByName = async (req, res) => {
+  try {
+    const { trainName } = req.params;
+    const train = await Trains.findByName(trainName);
+    
+    if (!train) {
+      return res.status(404).json({
+        success: false,
+        message: 'Train not found'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: train
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+
 // Create a new train
 export const createTrain = async (req, res) => {
   try {

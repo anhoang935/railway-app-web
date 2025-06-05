@@ -24,6 +24,18 @@ class Trains {
     }
   }
 
+  static async findByName(trainName) {
+    try {
+      const [rows] = await pool.query(
+        'SELECT * FROM train WHERE trainName = ?',
+        [trainName]
+      );
+      return rows[0];
+    } catch (error) {
+      throw error;
+    }
+  }
+
   // Create new train
   static async create({trainName, trainType, coachTotal }) {
     try {

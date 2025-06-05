@@ -1,19 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CreditCard, User, Mail, Phone, MapPin, Calendar, Clock, Train, Bed, Users, CheckCircle, AlertCircle } from 'lucide-react';
+import ticketService from '../data/Service/ticketService.js';
+import passengerService from '../data/Service/passengerService.js';
+import authService from '../data/Service/authService';
+import bookingService from '../data/Service/bookingService.js';
+import trainService from '../data/Service/trainService.js';
 
 const Checkout = ({ bookingData, onBack, onComplete }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [booking, setBooking] = useState(null);
+  const [paymentStatus, setPaymentStatu] = useState('paid');
   const [passengerInfo, setPassengerInfo] = useState({
     fullName: '',
     email: '',
     phone: '',
-    idNumber: '',
-    dateOfBirth: '',
-    address: ''
+    // idNumber: '',
+    // dateOfBirth: '',
+    // address: ''
   });
 
   const [paymentInfo, setPaymentInfo] = useState({
@@ -23,6 +29,135 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
     cardholderName: '',
     billingAddress: ''
   });
+
+  const handlePayment = async () => {
+    try {
+      let userId = null;
+      const user = authService.getCurrentUser();
+      if(user){
+        userId = user.userId
+      }
+
+      const passengerData = {
+        fullname: passengerInfo.fullName || "undefined",
+        phone_number: passengerInfo.phone || "000000000",
+        email: passengerInfo.email || "undefined",
+        status: "Active"
+      }
+      const passengerResponse = await passengerService.createPassenger(passengerData);
+      
+      const bookingData = {
+        userID: userId,
+        passengerID: passengerResponse.passengerID,
+        bookingDate: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        totalPrice: booking.totalPrice,
+        status: paymentStatus
+      }
+      const bookingResponse = await bookingService.createBooking(bookingData);
+      
+      const trainData1 = await trainService.getTrainByName(booking.train.id);
+      let expireDateTime1 = null;
+      if(paymentStatus === 'pending'){
+        const trainDeparture1 = new Date(`${booking.departureDate}T${booking.train.startTime}`);
+        expireDateTime1 = new Date(trainDeparture1.getTime() - 30 * 60 * 1000).toISOString();
+      }
+
+      // const ticketData1 = {
+      //   bookingId: bookingResponse.bookingID,
+      //   passengerId: passengerResponse.passengerID,
+      //   coachId: booking.selectedItems[0].coachId,
+      //   trainId: trainData1.trainID,
+      //   seatNumber: `${booking.selectedItems[0].row}-${booking.selectedItems[0].col}`,
+      //   departureId: booking.from,
+      //   arrivalId: booking.to,
+      //   departureTime: booking.train.startTime,
+      //   departureDate: booking.departureDate,
+      //   ticketPrice: booking.selectedItems[0].price, 
+      //   expireDateTime: expireDateTime1
+      // };
+
+      // const ticketResponse1 = await ticketService.createTicket(ticketData1);
+
+      // if (booking.tripType === 'round-trip') {
+      //   const trainData2 = await trainService.getTrainByName(booking.returnTrain.id);
+      //   var expireDateTime2 = null;
+      //   if(paymentStatus === 'pending'){
+      //     const trainDeparture2 = new Date(`${booking.returnDate}T${booking.returnTrain.startTime}`);
+      //     expireDateTime2 = new Date(trainDeparture2.getTime() - 30 * 60 * 1000).toISOString();
+      //   }
+
+      //   const ticketData2 = {
+      //     bookingId: bookingResponse.bookingID,
+      //     passengerId: passengerResponse.passengerID,
+      //     coachId: booking.returnItems[0].coachId,
+      //     trainId: trainData2.trainID,
+      //     seatNumber: `${booking.returnItems[0].row}-${booking.returnItems[0].col}`,
+      //     departureId: booking.to,
+      //     arrivalId: booking.from,
+      //     departureTime: booking.train.startTime,
+      //     departureDate: booking.departureDate,
+      //     ticketPrice: booking.returnItems[0].price, 
+      //     expireDateTime: expireDateTime2
+      //   };
+
+      //   const ticketResponse2 = await ticketService.createTicket(ticketData2);        
+      // }
+      // Loop through selectedItems for outbound trip
+      for (const item of booking.selectedItems) {
+        const ticketData1 = {
+          bookingId: bookingResponse.bookingID,
+          passengerId: passengerResponse.passengerID,
+          coachId: item.coachId,
+          trainId: trainData1.trainID,
+          seatNumber: `${item.row}-${item.col}`,
+          departureId: booking.from,
+          arrivalId: booking.to,
+          departureTime: booking.train.startTime,
+          departureDate: booking.departureDate,
+          ticketPrice: item.price,
+          expireDateTime: expireDateTime1
+        };
+
+        const ticketResponse1 = await ticketService.getFilteredTickets(ticketData1);
+        // Optionally, handle response here (e.g., collect or display)
+      }
+
+      // Check for round-trip
+      if (booking.tripType === 'round-trip') {
+        const trainData2 = await trainService.getTrainByName(booking.returnTrain.id);
+
+        let expireDateTime2 = null;
+        if (paymentStatus === 'pending') {
+          const trainDeparture2 = new Date(`${booking.returnDate}T${booking.returnTrain.startTime}`);
+          expireDateTime2 = new Date(trainDeparture2.getTime() - 30 * 60 * 1000).toISOString();
+        }
+
+        // Loop through returnItems
+        for (const item of booking.returnItems) {
+          const ticketData2 = {
+            bookingId: bookingResponse.bookingID,
+            passengerId: passengerResponse.passengerID,
+            coachId: item.coachId,
+            trainId: trainData2.trainID,
+            seatNumber: `${item.row}-${item.col}`,
+            departureId: booking.to,
+            arrivalId: booking.from,
+            departureTime: booking.returnTrain.startTime,
+            departureDate: booking.returnDate,
+            ticketPrice: item.price,
+            expireDateTime: expireDateTime2
+          };
+
+          const ticketResponse2 = await ticketService.getFilteredTickets(ticketData2);
+          // Optionally, handle response here
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching tickets:', error);
+    } finally {
+      // setLoading(false);
+    }
+  }
 
   const [isLoading, setIsLoading] = useState(true);
   const [errors, setErrors] = useState({});
@@ -41,6 +176,7 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
     const storedData = localStorage.getItem('checkoutData');
     if (storedData) {
       setBooking(JSON.parse(storedData));
+      console.log('Booking data:', JSON.parse(storedData)); // ← this shows the full value in dev tools
     }
     setIsLoading(false);
   }, []);
@@ -94,8 +230,8 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
     else if (!/\S+@\S+\.\S+/.test(passengerInfo.email)) newErrors.email = 'Email is invalid';
     if (!passengerInfo.phone.trim()) newErrors.phone = 'Phone number is required';
     else if (!/^[0-9]{10,11}$/.test(passengerInfo.phone.replace(/\s/g, ''))) newErrors.phone = 'Phone number is invalid';
-    if (!passengerInfo.idNumber.trim()) newErrors.idNumber = 'ID number is required';
-    if (!passengerInfo.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
+    // if (!passengerInfo.idNumber.trim()) newErrors.idNumber = 'ID number is required';
+    // if (!passengerInfo.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -344,7 +480,7 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
           {errors.phone && <span className="text-red-500 text-sm">{errors.phone}</span>}
         </div>
 
-        <div className="space-y-2">
+        {/* <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">ID Number *</label>
           <input
             type="text"
@@ -356,9 +492,9 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
             placeholder="ID/Passport number"
           />
           {errors.idNumber && <span className="text-red-500 text-sm">{errors.idNumber}</span>}
-        </div>
+        </div> */}
 
-        <div className="space-y-2">
+        {/* <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">Date of Birth *</label>
           <input
             type="date"
@@ -369,9 +505,9 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
             }`}
           />
           {errors.dateOfBirth && <span className="text-red-500 text-sm">{errors.dateOfBirth}</span>}
-        </div>
+        </div> */}
 
-        <div className="space-y-2 md:col-span-2">
+        {/* <div className="space-y-2 md:col-span-2">
           <label className="block text-sm font-medium text-gray-700">Address</label>
           <input
             type="text"
@@ -380,7 +516,7 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
             placeholder="Your address (optional)"
           />
-        </div>
+        </div> */}
       </div>
     </div>
   );
@@ -480,7 +616,7 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
             <p><span className="font-medium">Name:</span> {passengerInfo.fullName}</p>
             <p><span className="font-medium">Email:</span> {passengerInfo.email}</p>
             <p><span className="font-medium">Phone:</span> {passengerInfo.phone}</p>
-            <p><span className="font-medium">ID Number:</span> {passengerInfo.idNumber}</p>
+            {/* <p><span className="font-medium">ID Number:</span> {passengerInfo.idNumber}</p> */}
           </div>
         </div>
 
