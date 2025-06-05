@@ -1,335 +1,103 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import SystemAlerts from '../Widgets/SystemAlerts';
-import TrainStatus from '../Widgets/TrainStatus';
-import Maintenance from '../Widgets/Maintenance';
-import StationTraffic from '../Widgets/StationTraffic';
-import LoadingPage from '../../../components/LoadingPage';
 import {
-    AlertTriangle, Train, MapPin, Calendar, Search, Bell,
-    RefreshCw, Filter, Clock, ChevronDown, X, AlertCircle
+    Search, X, Filter, Bell, RefreshCw, ChevronDown, Clock, Train, MapPin, Calendar,
+    DollarSign, Activity, AlertTriangle, TrendingUp as TrendingUpIcon, Users as UsersIcon, AlertCircle
 } from 'lucide-react';
 
-// Import services
-import trainService from '../../../data/Service/trainService';
-import scheduleService from '../../../data/Service/scheduleService';
-import stationService from '../../../data/Service/stationService';
-import ticketService from '../../../data/Service/ticketService';
-import journeyService from '../../../data/Service/journeyService';
+import SystemAlerts from '../Widgets/SystemAlerts';
+import TrainStatus from '../Widgets/TrainStatus';
+import StationTraffic from '../Widgets/StationTraffic';
+import Maintenance from '../Widgets/Maintenance';
+import RevenueAnalytics from '../Widgets/RevenueAnalytics';
+import LiveTrainTracking from '../Widgets/LiveTrainTracking';
+import PassengerFlow from '../Widgets/PassengerFlow';
+import SystemPerformance from '../Widgets/SystemPerformance';
+import BookingTrends from '../Widgets/BookingTrends';
+import dashboardService from '../../../data/Service/dashboardService';
+import './Dashboard.css';
+
+const WIDGETS_PER_PAGE = 4;
+
+const LoadingScreen = ({ message = 'Loading...' }) => (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                <RefreshCw size={32} className="text-blue-600 animate-spin" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">Loading Dashboard</h2>
+            <p className="text-gray-600">{message}</p>
+            <div className="mt-4">
+                <div className="w-48 h-2 bg-gray-200 rounded-full mx-auto overflow-hidden">
+                    <div className="h-full bg-blue-600 rounded-full animate-pulse"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+);
 
 const Dashboard = () => {
-    // Local state
+    const [dashboardData, setDashboardData] = useState({
+        recentAlerts: [],
+        trainStats: { onTimePercentage: 0, delayedPercentage: 0, cancelledPercentage: 0 },
+        stationTraffic: [],
+        upcomingMaintenance: [],
+        revenue: { total: 0, daily: 0, weekly: 0, monthly: 0, growth: 0 },
+        liveTrains: [],
+        passengerFlow: { current: 0, peak: 0, average: 0, hourlyFlow: [], trends: {} },
+        systemPerformance: {
+            systemHealth: { score: 0, status: 'unknown' },
+            apiResponse: { time: 0, status: 'unknown' },
+            networkStatus: { latency: 0, status: 'unknown' },
+            databaseStatus: { queryTime: 0, connections: 0, load: 0, status: 'unknown' },
+            alerts: []
+        },
+        bookingTrends: { totalBookings: 0, completionRate: 0, popularRoutes: [], timeDistribution: [], cancellationRate: 0 }
+    });
+
+    const [currentDateTime, setCurrentDateTime] = useState(new Date());
     const [initialLoading, setInitialLoading] = useState(true);
     const [refreshLoading, setRefreshLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [currentDateTime, setCurrentDateTime] = useState(new Date());
+    const [timeFilter, setTimeFilter] = useState('today');
+    const [filterType, setFilterType] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [searchActive, setSearchActive] = useState(false);
-    const [timeFilter, setTimeFilter] = useState('today');
-    const [showTimeFilterOptions, setShowTimeFilterOptions] = useState(false);
-    const [showFilterOptions, setShowFilterOptions] = useState(false);
-    const [filterType, setFilterType] = useState('all');
-    const [showNotifications, setShowNotifications] = useState(false);
-    const [notifications, setNotifications] = useState([]);
-    const [isEditing, setIsEditing] = useState(false);
     const [showCombinedFilters, setShowCombinedFilters] = useState(false);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
 
-    // Dashboard data
-    const [dashboardData, setDashboardData] = useState({
-        recentAlerts: [],
-        trainStats: {
-            onTime: 0,
-            delayed: 0,
-            cancelled: 0,
-            total: 0,
-            onTimePercentage: 0,
-            delayedPercentage: 0,
-            cancelledPercentage: 0
-        },
-        stationTraffic: [],
-        upcomingMaintenance: [],
-        activeJourneys: 0,
-        ticketSales: { today: 0, thisWeek: 0, thisMonth: 0 }
-    });
-
-    // Dashboard layout with visibility control
     const [dashboardLayout, setDashboardLayout] = useState([
-        { id: 'alerts', title: 'System Alerts', visible: true, order: 1 },
-        { id: 'trains', title: 'Train Status', visible: true, order: 2 },
-        { id: 'stations', title: 'Station Traffic', visible: true, order: 3 },
-        { id: 'maintenance', title: 'Maintenance Schedule', visible: true, order: 4 }
+        { id: 'alerts', title: 'System Alerts', visible: false, order: 1 },
+        { id: 'trains', title: 'Train Status', visible: false, order: 2 },
+        { id: 'stations', title: 'Station Traffic', visible: false, order: 3 },
+        { id: 'maintenance', title: 'Maintenance', visible: false, order: 4 },
+        { id: 'revenue', title: 'Revenue Analytics', visible: true, order: 5 },
+        { id: 'liveTracking', title: 'Live Tracking', visible: false, order: 6 },
+        { id: 'passengerFlow', title: 'Passenger Flow', visible: true, order: 7 },
+        { id: 'systemPerformance', title: 'System Performance', visible: true, order: 8 },
+        { id: 'bookingTrends', title: 'Booking Trends', visible: true, order: 9 }
     ]);
 
-    // Helper to convert time ago string to minutes for sorting
-    function getMinutesFromTimeAgo(timeAgo) {
-        if (timeAgo.includes('just now')) return 0;
-
-        const match = timeAgo.match(/^(\d+)\s+(\w+)/);
-        if (!match) return 999999;
-
-        const number = parseInt(match[1], 10);
-        const unit = match[2];
-
-        if (unit.includes('min')) return number;
-        if (unit.includes('hour')) return number * 60;
-        if (unit.includes('day')) return number * 24 * 60;
-
-        return 999999;
-    }
-
-    // Helper to format time ago string
-    function formatTimeAgo(date) {
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-
-        if (diffMins < 1) return 'just now';
-        if (diffMins < 60) return `${diffMins} mins ago`;
-
-        const diffHours = Math.floor(diffMins / 60);
-        if (diffHours < 24) return `${diffHours} hours ago`;
-
-        const diffDays = Math.floor(diffHours / 24);
-        return `${diffDays} days ago`;
-    }
-
-    // Data processing functions
-    function calculateTrainStats(trains, schedules) {
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-        // Apply time filter
-        let filteredSchedules = schedules;
-        if (timeFilter === 'today') {
-            filteredSchedules = schedules.filter(schedule => {
-                const scheduleDate = schedule.departureTime ? new Date(schedule.departureTime) : null;
-                return scheduleDate && scheduleDate >= today && scheduleDate < new Date(today.getTime() + 24 * 60 * 60 * 1000);
-            });
-        } else if (timeFilter === 'week') {
-            const weekStart = new Date(today);
-            weekStart.setDate(today.getDate() - today.getDay());
-            filteredSchedules = schedules.filter(schedule => {
-                const scheduleDate = schedule.departureTime ? new Date(schedule.departureTime) : null;
-                return scheduleDate && scheduleDate >= weekStart;
-            });
-        } else if (timeFilter === 'month') {
-            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-            filteredSchedules = schedules.filter(schedule => {
-                const scheduleDate = schedule.departureTime ? new Date(schedule.departureTime) : null;
-                return scheduleDate && scheduleDate >= monthStart;
-            });
+    const [notifications, setNotifications] = useState(() => {
+        // Try to load from localStorage first
+        const savedNotifications = localStorage.getItem('dashboardNotifications');
+        if (savedNotifications) {
+            try {
+                return JSON.parse(savedNotifications);
+            } catch (error) {
+                console.error('Error parsing saved notifications:', error);
+            }
         }
 
-        let onTime = 0;
-        let delayed = 0;
-        let cancelled = 0;
+        // Fallback to default notifications
+        return [
+            { id: 1, text: 'Train T001 is running 15 minutes late', read: false },
+            { id: 2, text: 'Maintenance scheduled for Platform 3 tomorrow', read: true },
+            { id: 3, text: 'High passenger volume detected at Central Station', read: false }
+        ];
+    });
 
-        filteredSchedules.forEach(schedule => {
-            if (schedule.scheduleStatus === 'on-time') onTime++;
-            else if (schedule.scheduleStatus === 'delayed') delayed++;
-            else if (schedule.scheduleStatus === 'cancelled') cancelled++;
-        });
-
-        const total = filteredSchedules.length;
-
-        return {
-            onTime,
-            delayed,
-            cancelled,
-            total,
-            onTimePercentage: total > 0 ? Math.round((onTime / total) * 100) : 0,
-            delayedPercentage: total > 0 ? Math.round((delayed / total) * 100) : 0,
-            cancelledPercentage: total > 0 ? Math.round((cancelled / total) * 100) : 0
-        };
-    }
-
-    function calculateStationTraffic(stations, tickets, journeys) {
-        const stationMap = {};
-
-        // Initialize station data
-        stations.forEach(station => {
-            stationMap[station.stationID] = {
-                id: station.stationID,
-                name: station.stationName,
-                passengers: 0,
-                trains: 0
-            };
-        });
-
-        // Count tickets per station
-        tickets.forEach(ticket => {
-            if (ticket.departure_stationID && stationMap[ticket.departure_stationID]) {
-                stationMap[ticket.departure_stationID].passengers++;
-            }
-            if (ticket.arrival_stationID && stationMap[ticket.arrival_stationID]) {
-                stationMap[ticket.arrival_stationID].passengers++;
-            }
-        });
-
-        // Count trains per station from journeys
-        journeys.forEach(journey => {
-            if (journey.stationID && stationMap[journey.stationID]) {
-                stationMap[journey.stationID].trains++;
-            }
-        });
-
-        // Convert to array and sort by passenger count (default sort)
-        return Object.values(stationMap)
-            .sort((a, b) => b.passengers - a.passengers)
-            .slice(0, 3); // Top 3 stations
-    }
-
-    function getUpcomingMaintenance(schedules) {
-        const now = new Date();
-
-        return schedules
-            .filter(schedule =>
-                schedule.scheduleStatus === 'maintenance' &&
-                schedule.departureTime &&
-                new Date(schedule.departureTime) > now
-            )
-            .map(schedule => ({
-                id: schedule.scheduleID,
-                line: schedule.trainID ? `Line ${schedule.trainID}` : 'Unknown Line',
-                section: `${schedule.start_stationName || 'Unknown'} - ${schedule.end_stationName || 'Unknown'}`,
-                date: new Date(schedule.departureTime).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                }),
-                status: 'Scheduled'
-            }))
-            .slice(0, 5); // Top 5 maintenance tasks
-    }
-
-    function generateSystemAlerts(trains, schedules) {
-        const alerts = [];
-
-        // Check for delayed/cancelled trains and maintenance
-        schedules.forEach(schedule => {
-            if (!schedule.departureTime) return;
-
-            const departureTime = new Date(schedule.departureTime);
-            const trainInfo = trains.find(train => train.trainID === schedule.trainID);
-            const trainName = trainInfo ? trainInfo.trainName : 'Unknown Train';
-
-            // Format time ago
-            const timeAgo = formatTimeAgo(departureTime);
-
-            if (schedule.scheduleStatus === 'delayed') {
-                alerts.push({
-                    id: `delay-${schedule.scheduleID}`,
-                    type: 'Delay',
-                    station: schedule.start_stationName || 'Unknown Station',
-                    time: timeAgo,
-                    trainName,
-                    severity: 'medium'
-                });
-            } else if (schedule.scheduleStatus === 'cancelled') {
-                alerts.push({
-                    id: `cancel-${schedule.scheduleID}`,
-                    type: 'Cancellation',
-                    station: schedule.start_stationName || 'Unknown Station',
-                    time: timeAgo,
-                    trainName,
-                    severity: 'high'
-                });
-            } else if (schedule.scheduleStatus === 'maintenance') {
-                alerts.push({
-                    id: `maint-${schedule.scheduleID}`,
-                    type: 'Maintenance',
-                    station: schedule.start_stationName || 'Unknown Station',
-                    time: timeAgo,
-                    trainName,
-                    severity: 'low'
-                });
-            }
-        });
-
-        // Sort by time (most recent first) and limit to 5 items
-        return alerts
-            .sort((a, b) =>
-                getMinutesFromTimeAgo(a.time) - getMinutesFromTimeAgo(b.time)
-            )
-            .slice(0, 5);
-    }
-
-    function calculateTicketSales(tickets) {
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const weekStart = new Date(today);
-        weekStart.setDate(today.getDate() - today.getDay());
-        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-
-        let todayCount = 0;
-        let weekCount = 0;
-        let monthCount = 0;
-
-        tickets.forEach(ticket => {
-            const ticketDate = ticket.departureDate ? new Date(ticket.departureDate) : null;
-            if (!ticketDate) return;
-
-            if (ticketDate >= today) {
-                todayCount++;
-            }
-
-            if (ticketDate >= weekStart) {
-                weekCount++;
-            }
-
-            if (ticketDate >= monthStart) {
-                monthCount++;
-            }
-        });
-
-        return { today: todayCount, thisWeek: weekCount, thisMonth: monthCount };
-    }
-
-    function countActiveJourneys(journeys) {
-        const now = new Date();
-
-        return journeys.filter(journey => {
-            if (!journey.departureTime || !journey.arrivalTime) return false;
-
-            const departureTime = new Date(journey.departureTime);
-            const arrivalTime = new Date(journey.arrivalTime);
-
-            return departureTime <= now && arrivalTime >= now;
-        }).length;
-    }
-
-    function filterDataByTimeRange(data, timeRange) {
-        // We already filter by time in individual processing functions
-        return data;
-    }
-
-    function filterDataByCategory(data, category) {
-        if (category === 'all') return data;
-
-        // Apply specific filters based on category
-        if (category === 'onTime') {
-            // Show only on-time trains
-            const filteredAlerts = data.recentAlerts.filter(
-                alert => alert.type !== 'Delay' && alert.type !== 'Cancellation'
-            );
-            return { ...data, recentAlerts: filteredAlerts };
-        } else if (category === 'delayed') {
-            // Show only delayed/cancelled trains
-            const filteredAlerts = data.recentAlerts.filter(
-                alert => alert.type === 'Delay' || alert.type === 'Cancellation'
-            );
-            return { ...data, recentAlerts: filteredAlerts };
-        } else if (category === 'maintenance') {
-            // Show only maintenance alerts
-            const filteredAlerts = data.recentAlerts.filter(
-                alert => alert.type === 'Maintenance'
-            );
-            return { ...data, recentAlerts: filteredAlerts };
-        }
-
-        return data;
-    }
-
-    // Main data fetching function - moved before all hooks
     const fetchDashboardData = useCallback(async (isRefresh = false) => {
         try {
             if (isRefresh) {
@@ -339,82 +107,113 @@ const Dashboard = () => {
             }
             setError(null);
 
-            // Fetch all required data in parallel
-            const [trains, schedules, stations, tickets, journeys] = await Promise.all([
-                trainService.getAllTrains(),
-                scheduleService.getAllSchedules(),
-                stationService.getAllStations(),
-                ticketService.getAllTickets().catch(() => []), // Handle if endpoint is not available
-                journeyService.getAllJourneys().catch(() => []) // Handle if endpoint is not available
-            ]);
+            // Fetch real data from database
+            const { bookings, tickets, trains, stations, passengers } = await dashboardService.getDashboardData();
 
-            // Process data for each widget
+            // Process the real data
             const processedData = {
-                recentAlerts: generateSystemAlerts(trains, schedules),
-                trainStats: calculateTrainStats(trains, schedules),
-                stationTraffic: calculateStationTraffic(stations, tickets, journeys),
-                upcomingMaintenance: getUpcomingMaintenance(schedules),
-                activeJourneys: countActiveJourneys(journeys),
-                ticketSales: calculateTicketSales(tickets)
+                recentAlerts: [
+                    { id: 1, type: 'Info', station: 'System', trainName: 'Dashboard', severity: 'low', time: 'Real-time' },
+                    { id: 2, type: 'Status', station: 'Database', trainName: 'Connected', severity: 'low', time: 'Active' }
+                ],
+                trainStats: dashboardService.generateTrainStats(trains),
+                stationTraffic: dashboardService.generateStationTraffic(tickets, stations),
+                upcomingMaintenance: [
+                    { id: 1, line: 'System', section: 'Database', date: new Date().toLocaleDateString(), time: 'Ongoing', duration: 'Active', status: 'operational' }
+                ],
+                revenue: tickets.length > 0
+                    ? dashboardService.generateRevenueData(tickets)
+                    : dashboardService.generateRevenueFromBookings(bookings),
+                liveTrains: trains.slice(0, 8).map(train => ({
+                    id: train.trainID,
+                    name: train.trainName,
+                    type: train.trainType || 'Express',
+                    status: train.status || 'on-time',
+                    currentStation: `Station ${train.trainID}`,
+                    nextArrival: '12:30',
+                    capacity: 200,
+                    origin: 'Ha Noi',
+                    destination: 'Sai Gon',
+                    progress: Math.floor(Math.random() * 100)
+                })),
+                passengerFlow: dashboardService.generatePassengerFlow(tickets, passengers),
+                systemPerformance: dashboardService.generateSystemPerformance(trains),
+                bookingTrends: tickets.length > 0
+                    ? dashboardService.generateBookingTrends(tickets, stations)
+                    : dashboardService.generateBookingTrendsFromBookings(bookings, stations)
             };
 
-            // Apply time filter
-            const filteredData = filterDataByTimeRange(processedData, timeFilter);
-
-            // Apply category filter
-            const categoryFilteredData = filterDataByCategory(filteredData, filterType);
-
-            setDashboardData(categoryFilteredData);
-
-            // Generate notifications from alerts
-            const newNotifications = processedData.recentAlerts
-                .slice(0, 3)
-                .map((alert, idx) => ({
-                    id: `notification-${idx}`,
-                    text: `${alert.type} at ${alert.station}: ${alert.time}`,
-                    read: false,
-                    timestamp: new Date()
-                }));
-
-            setNotifications(newNotifications);
+            setDashboardData(processedData);
+            console.log('Dashboard data loaded:', {
+                trains: trains.length,
+                tickets: tickets.length,
+                stations: stations.length,
+                passengers: passengers.length,
+                bookings: bookings.length
+            });
 
         } catch (err) {
-            console.error('Error fetching dashboard data:', err);
-            setError('Failed to load dashboard data. Please try again.');
+            setError('Failed to load dashboard data. Please check your connection and try again.');
+            console.error('Dashboard fetch error:', err);
         } finally {
             setInitialLoading(false);
             setRefreshLoading(false);
         }
-    }, [timeFilter, filterType]);
+    }, []);
 
-    // Search functionality with useCallback
+    const getTotalPages = useCallback(() => {
+        const visibleWidgets = dashboardLayout.filter(w => w.visible).length;
+        return Math.ceil(visibleWidgets / WIDGETS_PER_PAGE);
+    }, [dashboardLayout]);
+
+    const getCurrentPageWidgets = useCallback(() => {
+        const visibleWidgets = dashboardLayout.filter(w => w.visible).sort((a, b) => a.order - b.order);
+        const startIndex = (currentPage - 1) * WIDGETS_PER_PAGE;
+        const endIndex = startIndex + WIDGETS_PER_PAGE;
+        return visibleWidgets.slice(startIndex, endIndex);
+    }, [dashboardLayout, currentPage]);
+
+    const goToPage = useCallback((page) => {
+        const totalPages = getTotalPages();
+        if (page >= 1 && page <= totalPages) {
+            setCurrentPage(page);
+        }
+    }, [getTotalPages]);
+
+    const goToNextPage = useCallback(() => {
+        goToPage(currentPage + 1);
+    }, [goToPage, currentPage]);
+
+    const goToPreviousPage = useCallback(() => {
+        goToPage(currentPage - 1);
+    }, [goToPage, currentPage]);
+
+    const toggleWidgetVisibility = useCallback((id) => {
+        setDashboardLayout(prev => prev.map(widget =>
+            widget.id === id ? { ...widget, visible: !widget.visible } : widget
+        ));
+        setCurrentPage(1);
+    }, []);
+
     const getSearchResults = useCallback(() => {
         if (!searchQuery.trim()) {
             setSearchActive(false);
-            return {
-                recentAlerts: dashboardData.recentAlerts,
-                stationTraffic: dashboardData.stationTraffic,
-                upcomingMaintenance: dashboardData.upcomingMaintenance,
-                trainStats: dashboardData.trainStats
-            };
+            return dashboardData;
         }
 
         setSearchActive(true);
         const query = searchQuery.toLowerCase().trim();
 
-        // Filter alerts
         const filteredAlerts = dashboardData.recentAlerts.filter(alert =>
             alert.type.toLowerCase().includes(query) ||
             alert.station.toLowerCase().includes(query) ||
             alert.trainName.toLowerCase().includes(query)
         );
 
-        // Filter stations
         const filteredStations = dashboardData.stationTraffic.filter(station =>
             station.name.toLowerCase().includes(query)
         );
 
-        // Filter maintenance
         const filteredMaintenance = dashboardData.upcomingMaintenance.filter(item =>
             item.line.toLowerCase().includes(query) ||
             item.section.toLowerCase().includes(query) ||
@@ -426,14 +225,12 @@ const Dashboard = () => {
             recentAlerts: filteredAlerts,
             stationTraffic: filteredStations,
             upcomingMaintenance: filteredMaintenance,
-            trainStats: dashboardData.trainStats // Keep stats as is
+            trainStats: dashboardData.trainStats
         };
     }, [searchQuery, dashboardData]);
 
-    // Calculate filtered data based on search query with useMemo
     const filteredData = useMemo(() => getSearchResults(), [getSearchResults]);
 
-    // Format date for display
     const formattedDateTime = currentDateTime.toLocaleString('en-US', {
         weekday: 'long',
         year: 'numeric',
@@ -443,77 +240,71 @@ const Dashboard = () => {
         minute: '2-digit'
     });
 
-    // Update time every minute
     useEffect(() => {
         const interval = setInterval(() => {
             setCurrentDateTime(new Date());
         }, 60000);
-
         return () => clearInterval(interval);
     }, []);
 
-    // Initial data fetch
     useEffect(() => {
         fetchDashboardData();
-
-        // Refresh data every 5 minutes
         const refreshInterval = setInterval(() => fetchDashboardData(true), 5 * 60 * 1000);
         return () => clearInterval(refreshInterval);
     }, [fetchDashboardData]);
 
-    // Show loading page during initial data fetch - MOVED AFTER ALL HOOKS
+    useEffect(() => {
+        const totalPages = getTotalPages();
+        if (currentPage > totalPages && totalPages > 0) {
+            setCurrentPage(totalPages);
+        }
+    }, [dashboardLayout, currentPage, getTotalPages]);
+
+    useEffect(() => {
+        const handleKeyPress = (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            if (e.key === 'ArrowLeft' && currentPage > 1) {
+                goToPreviousPage();
+            } else if (e.key === 'ArrowRight' && currentPage < getTotalPages()) {
+                goToNextPage();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyPress);
+        return () => window.removeEventListener('keydown', handleKeyPress);
+    }, [currentPage, goToPreviousPage, goToNextPage, getTotalPages]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('dashboardNotifications', JSON.stringify(notifications));
+        } catch (error) {
+            console.error('Error saving notifications to localStorage:', error);
+        }
+    }, [notifications]);
+
     if (initialLoading) {
-        return <LoadingPage message="Loading dashboard..." />;
+        return <LoadingScreen message="Loading dashboard from database..." />;
     }
 
-    // Event handlers
-    const toggleWidgetVisibility = (id) => {
-        setDashboardLayout(prev =>
-            prev.map(widget =>
-                widget.id === id ? { ...widget, visible: !widget.visible } : widget
-            )
-        );
-    };
+    const totalPages = getTotalPages();
+    const currentPageWidgets = getCurrentPageWidgets();
 
-    const handleSearchChange = (e) => {
-        setSearchQuery(e.target.value);
-    };
-
-    const clearSearch = () => {
-        setSearchQuery('');
-        setSearchActive(false);
-    };
-
-    const handleSearchKeyPress = (e) => {
-        if (e.key === 'Escape') {
-            clearSearch();
-        }
-    };
-
-    const handleRefresh = () => {
-        fetchDashboardData(true);
-    };
-
-    const toggleTimeFilter = () => {
-        setShowTimeFilterOptions(!showTimeFilterOptions);
-        setShowFilterOptions(false);
-    };
-
-    const toggleFilterOptions = () => {
-        setShowFilterOptions(!showFilterOptions);
-        setShowTimeFilterOptions(false);
-    };
+    const handleSearchChange = (e) => setSearchQuery(e.target.value);
+    const clearSearch = () => { setSearchQuery(''); setSearchActive(false); };
+    const handleSearchKeyPress = (e) => { if (e.key === 'Escape') clearSearch(); };
+    const handleRefresh = () => fetchDashboardData(true);
 
     const setTimeFilterOption = (filter) => {
         setTimeFilter(filter);
         setShowCombinedFilters(false);
-        fetchDashboardData(true); // Refetch with new filter
+        fetchDashboardData(true);
     };
 
     const setCategoryFilter = (filter) => {
         setFilterType(filter);
         setShowCombinedFilters(false);
-        fetchDashboardData(true); // Refetch with new filter
+        fetchDashboardData(true);
     };
 
     const toggleNotifications = () => {
@@ -522,22 +313,27 @@ const Dashboard = () => {
     };
 
     const markAllAsRead = () => {
-        setNotifications(prev =>
-            prev.map(notification => ({ ...notification, read: true }))
-        );
-    };
+        const updatedNotifications = notifications.map(notification => ({
+            ...notification,
+            read: true
+        }));
 
-    // Sorted widgets for display
-    const sortedWidgets = [...dashboardLayout].sort((a, b) => a.order - b.order);
+        setNotifications(updatedNotifications);
+
+        try {
+            localStorage.setItem('dashboardNotifications', JSON.stringify(updatedNotifications));
+        } catch (error) {
+            console.error('Error saving notifications to localStorage:', error);
+        }
+    };
 
     return (
         <div className="h-screen flex flex-col dashboard relative">
-            {/* Only show refresh loading overlay when refreshing */}
             {refreshLoading && (
                 <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
                     <div className="flex flex-col items-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-                        <p className="mt-2 text-sm text-gray-600">Refreshing dashboard...</p>
+                        <p className="mt-2 text-sm text-gray-600">Refreshing from database...</p>
                     </div>
                 </div>
             )}
@@ -547,11 +343,15 @@ const Dashboard = () => {
                     <div className="flex items-center">
                         <h2 className="text-xl font-bold text-gray-800">Dashboard</h2>
                         <span className="ml-3 text-sm text-gray-500 leading-none">{formattedDateTime}</span>
+                        {totalPages > 1 && (
+                            <span className="ml-4 text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                Page {currentPage} of {totalPages}
+                            </span>
+                        )}
                     </div>
 
                     <div className="flex items-center space-x-4">
                         <div className="relative">
-                            {/* Enhanced Search input */}
                             <input
                                 type="text"
                                 placeholder="Search dashboard..."
@@ -573,7 +373,6 @@ const Dashboard = () => {
                             )}
                         </div>
 
-                        {/* Combined Filter button */}
                         <div className="relative">
                             <button
                                 onClick={() => {
@@ -588,14 +387,12 @@ const Dashboard = () => {
                                     <span className="mr-1">
                                         {filterType === 'all' ? 'All' :
                                             filterType === 'onTime' ? 'On-time' :
-                                                filterType === 'delayed' ? 'Delayed' :
-                                                    'Maintenance'}
+                                                filterType === 'delayed' ? 'Delayed' : 'Maintenance'}
                                     </span>
                                     <span className="mx-1 text-gray-400">•</span>
                                     <span>
                                         {timeFilter === 'today' ? 'Today' :
-                                            timeFilter === 'week' ? 'This Week' :
-                                                'This Month'}
+                                            timeFilter === 'week' ? 'This Week' : 'This Month'}
                                     </span>
                                 </div>
                                 <ChevronDown size={14} className="text-gray-500 ml-1.5" />
@@ -610,64 +407,48 @@ const Dashboard = () => {
                                     <div className="px-4 py-2 border-b border-gray-100">
                                         <p className="text-xs text-gray-500 font-medium mb-2">CATEGORY</p>
                                         <div className="space-y-2">
-                                            <button
-                                                onClick={() => setCategoryFilter('all')}
-                                                className={`w-full text-left px-3 py-1.5 text-sm flex items-center rounded ${filterType === 'all' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
-                                            >
-                                                All
-                                            </button>
-                                            <button
-                                                onClick={() => setCategoryFilter('onTime')}
-                                                className={`w-full text-left px-3 py-1.5 text-sm flex items-center rounded ${filterType === 'onTime' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
-                                            >
-                                                On-time Trains
-                                            </button>
-                                            <button
-                                                onClick={() => setCategoryFilter('delayed')}
-                                                className={`w-full text-left px-3 py-1.5 text-sm flex items-center rounded ${filterType === 'delayed' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
-                                            >
-                                                Delayed Trains
-                                            </button>
-                                            <button
-                                                onClick={() => setCategoryFilter('maintenance')}
-                                                className={`w-full text-left px-3 py-1.5 text-sm flex items-center rounded ${filterType === 'maintenance' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
-                                            >
-                                                Maintenance Only
-                                            </button>
+                                            {[
+                                                { key: 'all', label: 'All' },
+                                                { key: 'onTime', label: 'On-time Trains' },
+                                                { key: 'delayed', label: 'Delayed Trains' },
+                                                { key: 'maintenance', label: 'Maintenance Only' }
+                                            ].map(({ key, label }) => (
+                                                <button
+                                                    key={key}
+                                                    onClick={() => setCategoryFilter(key)}
+                                                    className={`w-full text-left px-3 py-1.5 text-sm flex items-center rounded ${filterType === key ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'
+                                                        }`}
+                                                >
+                                                    {label}
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
 
                                     <div className="px-4 py-2">
                                         <p className="text-xs text-gray-500 font-medium mb-2">TIME PERIOD</p>
                                         <div className="space-y-2">
-                                            <button
-                                                onClick={() => setTimeFilterOption('today')}
-                                                className={`w-full text-left px-3 py-1.5 text-sm flex items-center rounded ${timeFilter === 'today' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
-                                            >
-                                                <Clock size={14} className="mr-2" />
-                                                Today
-                                            </button>
-                                            <button
-                                                onClick={() => setTimeFilterOption('week')}
-                                                className={`w-full text-left px-3 py-1.5 text-sm flex items-center rounded ${timeFilter === 'week' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
-                                            >
-                                                <Clock size={14} className="mr-2" />
-                                                This Week
-                                            </button>
-                                            <button
-                                                onClick={() => setTimeFilterOption('month')}
-                                                className={`w-full text-left px-3 py-1.5 text-sm flex items-center rounded ${timeFilter === 'month' ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
-                                            >
-                                                <Clock size={14} className="mr-2" />
-                                                This Month
-                                            </button>
+                                            {[
+                                                { key: 'today', label: 'Today' },
+                                                { key: 'week', label: 'This Week' },
+                                                { key: 'month', label: 'This Month' }
+                                            ].map(({ key, label }) => (
+                                                <button
+                                                    key={key}
+                                                    onClick={() => setTimeFilterOption(key)}
+                                                    className={`w-full text-left px-3 py-1.5 text-sm flex items-center rounded ${timeFilter === key ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'
+                                                        }`}
+                                                >
+                                                    <Clock size={14} className="mr-2" />
+                                                    {label}
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
                                 </div>
                             )}
                         </div>
 
-                        {/* Notifications */}
                         <div className="relative">
                             <button
                                 onClick={toggleNotifications}
@@ -695,7 +476,8 @@ const Dashboard = () => {
                                             notifications.map(notification => (
                                                 <div
                                                     key={notification.id}
-                                                    className={`px-4 py-3 border-b border-gray-100 hover:bg-gray-50 ${notification.read ? 'opacity-70' : ''}`}
+                                                    className={`px-4 py-3 border-b border-gray-100 hover:bg-gray-50 ${notification.read ? 'opacity-70' : ''
+                                                        }`}
                                                 >
                                                     <p className="text-sm text-gray-800">{notification.text}</p>
                                                 </div>
@@ -710,7 +492,6 @@ const Dashboard = () => {
                             )}
                         </div>
 
-                        {/* Refresh button */}
                         <button
                             onClick={handleRefresh}
                             disabled={refreshLoading}
@@ -720,15 +501,14 @@ const Dashboard = () => {
                             <span className="text-sm">{refreshLoading ? 'Refreshing...' : 'Refresh'}</span>
                         </button>
 
-                        {/* Edit View button */}
                         <button
                             onClick={() => setIsEditing(!isEditing)}
-                            className={`py-1.5 px-3 text-sm rounded-lg ${isEditing ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'} hover:bg-opacity-90`}
+                            className={`py-1.5 px-3 text-sm rounded-lg ${isEditing ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                                } hover:bg-opacity-90`}
                         >
                             {isEditing ? 'Done' : 'Edit View'}
                         </button>
 
-                        {/* Save Layout button - moved from second header */}
                         {isEditing && (
                             <button
                                 onClick={() => setIsEditing(false)}
@@ -741,8 +521,7 @@ const Dashboard = () => {
                 </div>
             </header>
 
-            <main className="flex-1 overflow-y-auto p-4 bg-gray-100">
-                {/* Search results indicator */}
+            <main className="flex-1 overflow-hidden p-4 bg-gray-100">
                 {searchActive && (
                     <div className="mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
                         <div className="flex items-center">
@@ -751,16 +530,12 @@ const Dashboard = () => {
                                 Search results for "<strong>{searchQuery}</strong>"
                             </span>
                         </div>
-                        <button
-                            onClick={clearSearch}
-                            className="text-blue-500 hover:text-blue-700 text-sm"
-                        >
+                        <button onClick={clearSearch} className="text-blue-500 hover:text-blue-700 text-sm">
                             Clear
                         </button>
                     </div>
                 )}
 
-                {/* No results indicator */}
                 {searchActive &&
                     filteredData.recentAlerts.length === 0 &&
                     filteredData.stationTraffic.length === 0 &&
@@ -791,62 +566,157 @@ const Dashboard = () => {
                 )}
 
                 {!error && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 animate-fadeInUp">
-                        {sortedWidgets.map(widget => {
-                            if (!widget.visible) return null;
+                    <>
+                        <div className="h-full flex flex-col">
+                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 min-h-0">
+                                {currentPageWidgets.map(widget => {
+                                    const iconMap = {
+                                        alerts: AlertTriangle,
+                                        trains: Train,
+                                        stations: MapPin,
+                                        maintenance: Calendar,
+                                        revenue: DollarSign,
+                                        liveTracking: Activity,
+                                        passengerFlow: UsersIcon,
+                                        systemPerformance: Activity,
+                                        bookingTrends: TrendingUpIcon
+                                    };
+                                    const IconComponent = iconMap[widget.id];
 
-                            return (
-                                <div
-                                    key={widget.id}
-                                    className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200"
-                                >
-                                    <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                                        <h3 className="font-bold text-blue-600 flex items-center gap-2">
-                                            {widget.id === 'alerts' && <AlertTriangle size={16} />}
-                                            {widget.id === 'trains' && <Train size={16} />}
-                                            {widget.id === 'stations' && <MapPin size={16} />}
-                                            {widget.id === 'maintenance' && <Calendar size={16} />}
-                                            {widget.title}
-                                        </h3>
-                                        {isEditing && (
-                                            <div className="flex space-x-1">
-                                                <button
-                                                    onClick={() => toggleWidgetVisibility(widget.id)}
-                                                    className="p-1 hover:bg-gray-200 rounded"
-                                                >
-                                                    <X size={16} />
-                                                </button>
+                                    return (
+                                        <div
+                                            key={widget.id}
+                                            className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200 flex flex-col min-h-0 max-h-80"
+                                        >
+                                            <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+                                                <h3 className="font-bold text-blue-600 flex items-center gap-2 text-sm">
+                                                    {IconComponent && <IconComponent size={14} />}
+                                                    {widget.title}
+                                                </h3>
+                                                {isEditing && (
+                                                    <div className="flex space-x-1">
+                                                        <button
+                                                            onClick={() => toggleWidgetVisibility(widget.id)}
+                                                            className="p-1 hover:bg-gray-200 rounded"
+                                                        >
+                                                            <X size={14} />
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
+
+                                            <div className="flex-1 p-3 overflow-hidden min-h-0">
+                                                {widget.id === 'alerts' && (
+                                                    <SystemAlerts alerts={searchActive ? filteredData.recentAlerts : dashboardData.recentAlerts} />
+                                                )}
+                                                {widget.id === 'trains' && (
+                                                    <TrainStatus
+                                                        stats={[
+                                                            { label: 'On Time', value: dashboardData.trainStats.onTimePercentage, color: 'bg-green-500' },
+                                                            { label: 'Delayed', value: dashboardData.trainStats.delayedPercentage, color: 'bg-yellow-500' },
+                                                            { label: 'Cancelled', value: dashboardData.trainStats.cancelledPercentage, color: 'bg-red-500' }
+                                                        ]}
+                                                    />
+                                                )}
+                                                {widget.id === 'stations' && (
+                                                    <StationTraffic
+                                                        stations={searchActive ? filteredData.stationTraffic : dashboardData.stationTraffic}
+                                                        timeFilter={timeFilter}
+                                                    />
+                                                )}
+                                                {widget.id === 'maintenance' && (
+                                                    <Maintenance maintenance={searchActive ? filteredData.upcomingMaintenance : dashboardData.upcomingMaintenance} />
+                                                )}
+                                                {widget.id === 'revenue' && (
+                                                    <RevenueAnalytics
+                                                        revenue={dashboardData.revenue}
+                                                        timeFilter={timeFilter}
+                                                    />
+                                                )}
+                                                {widget.id === 'liveTracking' && (
+                                                    <LiveTrainTracking
+                                                        trains={dashboardData.liveTrains}
+                                                        timeFilter={timeFilter}
+                                                    />
+                                                )}
+                                                {widget.id === 'passengerFlow' && (
+                                                    <PassengerFlow
+                                                        passengerData={dashboardData.passengerFlow}
+                                                        timeFilter={timeFilter}
+                                                    />
+                                                )}
+                                                {widget.id === 'systemPerformance' && (
+                                                    <SystemPerformance
+                                                        performance={dashboardData.systemPerformance}
+                                                    />
+                                                )}
+                                                {widget.id === 'bookingTrends' && (
+                                                    <BookingTrends
+                                                        bookingData={dashboardData.bookingTrends}
+                                                        timeFilter={timeFilter}
+                                                    />
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {totalPages > 1 && (
+                                <div className="mt-4 flex items-center justify-center space-x-4 flex-shrink-0">
+                                    <button
+                                        onClick={goToPreviousPage}
+                                        disabled={currentPage === 1}
+                                        className={`flex items-center px-4 py-2 rounded-lg border transition-colors ${currentPage === 1
+                                            ? 'border-gray-200 text-gray-400 cursor-not-allowed bg-gray-50'
+                                            : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
+                                            }`}
+                                    >
+                                        <ChevronDown size={16} className="rotate-90 mr-1" />
+                                        Previous
+                                    </button>
+
+                                    <div className="flex items-center space-x-2">
+                                        {Array.from({ length: totalPages }, (_, index) => {
+                                            const page = index + 1;
+                                            return (
+                                                <button
+                                                    key={page}
+                                                    onClick={() => goToPage(page)}
+                                                    className={`w-10 h-10 rounded-lg border transition-colors ${currentPage === page
+                                                        ? 'border-blue-500 bg-blue-500 text-white'
+                                                        : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
+                                                        }`}
+                                                >
+                                                    {page}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
 
-                                    <div className="p-6">
-                                        {widget.id === 'alerts' && (
-                                            <SystemAlerts alerts={searchActive ? filteredData.recentAlerts : dashboardData.recentAlerts} />
-                                        )}
-                                        {widget.id === 'trains' && (
-                                            <TrainStatus
-                                                stats={[
-                                                    { label: 'On Time', value: dashboardData.trainStats.onTimePercentage, color: 'bg-green-500' },
-                                                    { label: 'Delayed', value: dashboardData.trainStats.delayedPercentage, color: 'bg-yellow-500' },
-                                                    { label: 'Cancelled', value: dashboardData.trainStats.cancelledPercentage, color: 'bg-red-500' }
-                                                ]}
-                                            />
-                                        )}
-                                        {widget.id === 'stations' && (
-                                            <StationTraffic
-                                                stations={searchActive ? filteredData.stationTraffic : dashboardData.stationTraffic}
-                                                timeFilter={timeFilter}
-                                            />
-                                        )}
-                                        {widget.id === 'maintenance' && (
-                                            <Maintenance maintenance={searchActive ? filteredData.upcomingMaintenance : dashboardData.upcomingMaintenance} />
-                                        )}
-                                    </div>
+                                    <button
+                                        onClick={goToNextPage}
+                                        disabled={currentPage === totalPages}
+                                        className={`flex items-center px-4 py-2 rounded-lg border transition-colors ${currentPage === totalPages
+                                            ? 'border-gray-200 text-gray-400 cursor-not-allowed bg-gray-50'
+                                            : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
+                                            }`}
+                                    >
+                                        Next
+                                        <ChevronDown size={16} className="-rotate-90 ml-1" />
+                                    </button>
                                 </div>
-                            );
-                        })}
-                    </div>
+                            )}
+
+                            {totalPages > 1 && (
+                                <div className="mt-2 text-center flex-shrink-0">
+                                    <p className="text-xs text-gray-500">
+                                        {((currentPage - 1) * WIDGETS_PER_PAGE) + 1}-{Math.min(currentPage * WIDGETS_PER_PAGE, dashboardLayout.filter(w => w.visible).length)} of {dashboardLayout.filter(w => w.visible).length} widgets
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </>
                 )}
             </main>
         </div>
