@@ -338,7 +338,11 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
       if (!acc[key]) {
         acc[key] = {
           train: booking.train,
-          coach: booking.coach,
+          coach: {
+          coachID: item.coachId,
+            name: item.coachName, // Use the coachName stored with each item
+            type: item.coachType
+          },
           items: []
         };
       }
@@ -352,7 +356,11 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
       if (!acc[key]) {
         acc[key] = {
           train: booking.returnTrain,
-          coach: booking.returnCoach,
+          coach: {
+            coachID: item.coachId,
+            name: item.coachName, // Use the coachName stored with each item
+            type: item.coachType
+          },
           items: []
         };
       }

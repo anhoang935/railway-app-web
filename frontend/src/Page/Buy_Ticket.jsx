@@ -558,19 +558,27 @@ const Buy_Ticket = () => {
 
   // Handle seat/bed selection
   const handleSelectItem = (row, col, isReturn = false) => {
-    const key = `${row}-${col}`;
+    const coach = isReturn ? selectedReturnCoach : selectedCoach;
+    const train = isReturn ? selectedReturnTrain : selectedTrain;
+    if(!coach || !train) return;
+    //const key = `${row}-${col}`;
     
-
+    const key = `${train.id}-${coach.coachID}-${row}-${col}`;
     if (isReturn) {
-      const coach = selectedReturnCoach; // Use return coach
-      const train = selectedReturnTrain; // Use return train
-      if (!coach || !train) return;
+      // const coach = selectedReturnCoach; // Use return coach
+      // const train = selectedReturnTrain; // Use return train
+      // if (!coach || !train) return;
 
       const distance = calculateDistance(parseInt(formData.to), parseInt(formData.from));
       const itemPrice = calculatePriceByDistance(distance, coach.id);
 
       setSelectedReturnItems(prev => {
-        const exists = prev.find(item => item.key === key);
+        const exists = prev.find(item => 
+          item.trainId === train.id && 
+          item.coachId === coach.coachID && 
+          item.row === row && 
+          item.col === col
+        );
         if (exists) {
           return prev.filter(item => item.key !== key);
         } else {
@@ -581,19 +589,26 @@ const Buy_Ticket = () => {
             col, 
             price: itemPrice,
             coachId: coach.coachID,
-            trainId: train.id
+            trainId: train.id,
+            coachName: `#${coach.coachID} - ${coach.name}`,
+            coachType: coach.type
           }];
         }
       });
     } else {
-      const coach = selectedCoach; // Use outbound coach
-      const train = selectedTrain; // Use outbound train
-      if (!coach || !train) return;
+      // const coach = selectedCoach; // Use outbound coach
+      // const train = selectedTrain; // Use outbound train
+      // if (!coach || !train) return;
 
       const distance = calculateDistance(parseInt(formData.from), parseInt(formData.to));
       const itemPrice = calculatePriceByDistance(distance, coach.id);
       setSelectedItems(prev => {
-        const exists = prev.find(item => item.key === key);
+        const exists = prev.find(item => 
+          item.trainId === train.id && 
+          item.coachId === coach.coachID && 
+          item.row === row && 
+          item.col === col
+        );
         if (exists) {
           return prev.filter(item => item.key !== key);
         } else {
@@ -604,7 +619,9 @@ const Buy_Ticket = () => {
             col, 
             price: itemPrice,
             coachId: coach.coachID,
-            trainId: train.id
+            trainId: train.id,
+            coachName: `#${coach.coachID} - ${coach.name}`, // Store full coach name
+            coachType: coach.type
           }];
         }
       });
@@ -642,7 +659,12 @@ const Buy_Ticket = () => {
       for (let r = 0; r < rows; r++) {
         const key = `${r}-${c}`;
         const seatNumber = c * rows + r + 1;
-        const selected = relevantItems.some(item => item.key === key);
+        const selected = relevantItems.some(item => 
+          item.trainId === (isReturn ? selectedReturnTrain : selectedTrain).id &&
+          item.coachId === coach.coachID &&
+          item.row === r &&
+          item.col === c
+        );
         const hovered = hoveredItem === key;
 
         if (r === 2 && rows >= 4) {
@@ -718,7 +740,12 @@ const Buy_Ticket = () => {
           const actualCol = cabinIdx * 2 + col;
           const key = `${row}-${actualCol}`;
           const bedNumber = isMobile ? actualCol * rows + row + 1 : actualCol * rows + row + 1;
-          const selected = relevantItems.some(item => item.key === key);
+          const selected = relevantItems.some(item => 
+            item.trainId === (isReturn ? selectedReturnTrain : selectedTrain).id &&
+            item.coachId === coach.coachID &&
+            item.row === row &&
+            item.col === actualCol
+          );
           const hovered = hoveredItem === key;
           const tierNumber = rows - row;
 
@@ -808,40 +835,55 @@ const Buy_Ticket = () => {
         </div>
         
         {/* Outbound Journey Items */}
-        {selectedItems.length > 0 && selectedTrain && selectedCoach && (
+        {selectedItems.length > 0 && selectedTrain && (
           <div className="mb-4">
-            <div className="bg-blue-50 p-2 rounded mb-2">
-              <p className="text-sm font-medium text-blue-700">Train {selectedTrain.id}</p>
-              <p className="text-xs text-blue-600">Coach #{selectedCoach.coachID} - {selectedCoach.name}</p>
-            </div>
-            <div className="divide-y">
-              {selectedItems
-                .filter(item => item.trainId === selectedTrain.id && item.coachId === selectedCoach.coachID)
-                .map(item => {
-                  const itemNumber = item.col * selectedCoach.rows + item.row + 1;
-                  return (
-                    <div key={item.key} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                      <div>
-                        <span className="text-sm font-medium">
-                          {selectedCoach.type === 'seat' ? 'Seat' : 'Bed'} #{itemNumber}
-                        </span>
-                        <span className="text-xs text-gray-500 ml-2">
-                          (Row {item.row + 1}, Column {item.col + 1})
-                        </span>
+            {Object.entries(
+              selectedItems.reduce((acc, item) => {
+                const key = `${item.trainId}-${item.coachId}`;
+                if (!acc[key]) {
+                  acc[key] = {
+                    items: [],
+                    coachName: item.coachName,
+                    trainId: item.trainId
+                  };
+                }
+                acc[key].items.push(item);
+                return acc;
+              }, {})
+            ).map(([key, group]) => (
+              <div key={key} className="mb-4">
+                <div className="bg-blue-50 p-2 rounded mb-2">
+                  <p className="text-sm font-medium text-blue-700">Train {group.trainId}</p>
+                  <p className="text-xs text-blue-600">{group.coachName}</p>
+                </div>
+                <div className="divide-y">
+                  {group.items.map(item => {
+                    const itemNumber = item.col * selectedCoach.rows + item.row + 1;
+                    return (
+                      <div key={item.key} className="flex justify-between items-center bg-gray-50 p-2 rounded">
+                        <div>
+                          <span className="text-sm font-medium">
+                            {selectedCoach.type === 'seat' ? 'Seat' : 'Bed'} #{itemNumber}
+                          </span>
+                          <span className="text-xs text-gray-500 ml-2">
+                            (Row {item.row + 1}, Column {item.col + 1})
+                          </span>
+                        </div>
+                        <span className="text-sm text-blue-600">{formatCurrency(item.price)}</span>
+                        <button
+                          onClick={() => removeSelectedItem(item.key)}
+                          className="text-red-500 hover:text-red-700"
+                          aria-label="Remove item"
+                        >
+                          <Trash />
+                        </button>
                       </div>
-                      <span className="text-sm text-blue-600">{formatCurrency(item.price)}</span>
-                      <button
-                        onClick={() => removeSelectedItem(item.key)}
-                        className="text-red-500 hover:text-red-700"
-                        aria-label="Remove item"
-                      >
-                        <Trash />
-                      </button>
-                    </div>
-                  );
-              })}
+                    );
+                })}
 
-            </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -928,13 +970,19 @@ const Buy_Ticket = () => {
   // Get station names using the same pattern
   const fromStationName = fromStation.stationName || fromStation.name;
   const toStationName = toStation.stationName || toStation.name;
-  
+  const modifiedCoach = {
+    ...selectedCoach,
+    name: `#${selectedCoach.coachID} - ${selectedCoach.name}`
+  };
+  const modifiedReturnCoach = selectedReturnCoach ? {
+    ...selectedReturnCoach,
+    name: `#${selectedReturnCoach.coachID} - ${selectedReturnCoach.name}`
+  } : null;
   const checkoutData = {
     train: selectedTrain,
-    coach: selectedCoach,
+    coach: modifiedCoach,
     from: formData.from,
     to: formData.to,
-    // Use the station names directly
     fromName: fromStationName,
     toName: toStationName,
     departureDate: formData.departureDate,
@@ -946,7 +994,7 @@ const Buy_Ticket = () => {
 
   if (formData.tripType === 'round-trip') {
     checkoutData.returnTrain = selectedReturnTrain;
-    checkoutData.returnCoach = selectedReturnCoach;
+    checkoutData.returnCoach = modifiedReturnCoach;
     checkoutData.returnDate = formData.returnDate;
     checkoutData.returnItems = selectedReturnItems;
   }
