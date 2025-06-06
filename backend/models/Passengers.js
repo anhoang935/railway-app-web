@@ -31,9 +31,9 @@ class Passenger {
         'INSERT INTO passenger (fullname, phone_number, email, status) VALUES (?, ?, ?, ?)',
         [fullname, phone_number, email, status]
       );
-  
+
       return {
-        passengerID: result.insertId, 
+        passengerID: result.insertId,
         fullname,
         phone_number,
         email,
@@ -53,11 +53,11 @@ class Passenger {
         'UPDATE passenger SET fullname = ?, phone_number = ?, email = ?, status = ? WHERE passengerID = ?',
         [fullname, phone_number, email, status, passengerID]
       );
-      
+
       if (result.affectedRows === 0) {
         return null;
       }
-      
+
       return { passengerID, fullname, phone_number, email, status };
     } catch (error) {
       throw error;
@@ -76,7 +76,7 @@ class Passenger {
       throw error;
     }
   }
-  
+
   // Get passenger bookings
   static async getBookings(passengerID) {
     try {
@@ -101,9 +101,11 @@ class Passenger {
           arrival_station.stationName AS arrivalStation,
           ticket.departureTime,
           ticket.departureDate,
-          ticket.seatNumber,
+          -- CONCAT(ticket.coachID, '-', ticket.seatNumber) AS seatNumber,
+          ticket.coachID AS seatNumber,
           ticket.ticketPrice,
-          coach_type.type AS coachType
+          coach_type.type AS coachType,
+          ticket.coachID
         FROM ticket
         LEFT JOIN train ON ticket.trainID = train.trainID
         LEFT JOIN station AS departure_station ON ticket.departure_stationID = departure_station.stationID
