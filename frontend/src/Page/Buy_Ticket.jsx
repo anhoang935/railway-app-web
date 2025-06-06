@@ -565,6 +565,9 @@ const Buy_Ticket = () => {
     //const key = `${row}-${col}`;
     
     const key = `${train.id}-${coach.coachID}-${row}-${col}`;
+
+    const itemNumber = col * coach.rows + row + 1;
+    const seatLabel = `${coach.type === 'seat' ? 'Seat' : 'Bed'} #${itemNumber} (Row ${row + 1}, Column ${col + 1})`;
     if (isReturn) {
       // const coach = selectedReturnCoach; // Use return coach
       // const train = selectedReturnTrain; // Use return train
@@ -588,6 +591,7 @@ const Buy_Ticket = () => {
             key, 
             row, 
             col, 
+            seatNumber: itemNumber,
             price: itemPrice,
             coachId: coach.coachID,
             trainId: train.id,
@@ -618,6 +622,7 @@ const Buy_Ticket = () => {
             key, 
             row, 
             col, 
+            seatNumber: itemNumber,
             price: itemPrice,
             coachId: coach.coachID,
             trainId: train.id,
