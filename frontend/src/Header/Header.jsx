@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row } from 'reactstrap';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, LogOut, User, Settings, CreditCard, History, Bell, ChevronDown, ShoppingCart } from 'lucide-react';
-import logo from '../images/TAB.gif';
+import logo from '../images/logo.png';
 import authService from '../data/Service/authService';
 import './header.css';
 // import '../ui/CustomButtons/settingsbutton.css';
