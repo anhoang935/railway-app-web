@@ -565,6 +565,16 @@ const Buy_Ticket = () => {
     //const key = `${row}-${col}`;
 
     const key = `${train.id}-${coach.coachID}-${row}-${col}`;
+
+    let itemNumber;
+      if (coach.type === 'seat') {
+      itemNumber = col * coach.rows + row + 1; 
+    } else {
+      itemNumber = col * 2 + row + 1; 
+    }
+
+    const seatLabel = `${coach.type === 'seat' ? 'Seat' : 'Bed'} #${itemNumber} (Row ${row + 1}, Column ${col + 1})`;
+
     if (isReturn) {
       // const coach = selectedReturnCoach; // Use return coach
       // const train = selectedReturnTrain; // Use return train
@@ -592,7 +602,9 @@ const Buy_Ticket = () => {
             coachId: coach.coachID,
             trainId: train.id,
             coachName: `#${coach.coachID} - ${coach.name}`,
-            coachType: coach.type
+            coachType: coach.type,
+            seatNumber: itemNumber,
+            seatLabel
           }];
         }
       });
@@ -622,7 +634,9 @@ const Buy_Ticket = () => {
             coachId: coach.coachID,
             trainId: train.id,
             coachName: `#${coach.coachID} - ${coach.name}`, // Store full coach name
-            coachType: coach.type
+            coachType: coach.type,
+            seatNumber: itemNumber,
+            seatLabel
           }];
         }
       });
