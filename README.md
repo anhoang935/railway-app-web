@@ -23,10 +23,10 @@
 <br />
 <div align="center">
   <a href="https://github.com/binhbb2204/railway-app-web">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
+    <img src="images/logo.png" alt="Logo" width="153.6" height="102.4">
   </a>
 
-  <h3 align="center">Trip & Adventure Booking Buddy</h3>
+  <h3 align="center">Trip Adventure Booking Buddy</h3>
 
   <p align="center">
     A Web Application Development project about the Railway Management System
