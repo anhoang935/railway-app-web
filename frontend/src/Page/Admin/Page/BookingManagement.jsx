@@ -12,6 +12,7 @@ function BookingManagement() {
     const [expandedRow, setExpandedRow] = useState(null);
     const [expandedContentLoading, setExpandedContentLoading] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
+    const [editingId, setEditingId] = useState(null); // Add editing state
     const [formData, setFormData] = useState({
         passengerName: '',
         userEmail: '',
@@ -67,10 +68,61 @@ function BookingManagement() {
         }
     };
 
-    const handleEdit = (id) => {
-        console.log('Edit booking', id);
-        // TODO: Implement edit functionality
-        setOperationError('Edit functionality not yet implemented');
+    const handleEdit = (booking) => {
+        setIsAdding(false);
+        setEditingId(booking.bookingID);
+        setFormData({
+            passengerName: booking.passengerName || '',
+            userEmail: booking.userEmail || '',
+            phoneNumber: booking.phoneNumber || '',
+            totalPrice: booking.totalPrice || '',
+            status: booking.status || 'pending'
+        });
+        setOperationError(null);
+    };
+
+    const handleUpdate = async () => {
+        try {
+            if (!validateForm()) return;
+
+            startLoading();
+
+            const bookingToUpdate = {
+                passengerName: formData.passengerName.trim(),
+                userEmail: formData.userEmail.trim(),
+                phoneNumber: formData.phoneNumber?.trim() || null,
+                totalPrice: parseFloat(formData.totalPrice),
+                status: formData.status
+            };
+
+            const updatedBooking = await bookingService.updateBooking(editingId, bookingToUpdate);
+
+            // Optimistic update
+            if (updatedBooking) {
+                setBookings(prevBookings =>
+                    prevBookings.map(booking =>
+                        booking.bookingID === editingId ? updatedBooking : booking
+                    )
+                );
+            } else {
+                await refetchBookings();
+            }
+
+            // Reset form and state
+            setEditingId(null);
+            setFormData({
+                passengerName: '',
+                userEmail: '',
+                phoneNumber: '',
+                totalPrice: '',
+                status: 'pending'
+            });
+
+            stopLoading();
+        } catch (error) {
+            setLoadingError('Failed to update booking: ' + (error.toString() || 'Unknown error'));
+            console.error(error);
+        }
     };
 
     const handleViewTickets = async (bookingID) => {
@@ -203,11 +255,13 @@ function BookingManagement() {
             status: 'pending'
         });
         setIsAdding(true);
+        setEditingId(null); // Clear editing state
         setOperationError(null);
     };
 
     const handleCancel = () => {
         setIsAdding(false);
+        setEditingId(null); // Clear editing state
         setOperationError(null);
     };
 
@@ -290,7 +344,7 @@ function BookingManagement() {
                 <div className="flex space-x-2">
                     <button
                         onClick={refetchBookings}
-                        disabled={isAdding || operationLoading}
+                        disabled={isAdding || editingId !== null || operationLoading}
                         className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Refresh bookings"
                     >
@@ -298,7 +352,7 @@ function BookingManagement() {
                     </button>
                     <button
                         onClick={handleAddNew}
-                        disabled={isAdding || operationLoading}
+                        disabled={isAdding || editingId !== null || operationLoading}
                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <Plus size={16} className="mr-2" />
@@ -483,46 +537,145 @@ function BookingManagement() {
                         {filteredBookings.length > 0 ? (
                             filteredBookings.map(booking => (
                                 <React.Fragment key={booking.bookingID}>
-                                    <tr className="hover:bg-gray-50">
+                                    <tr className={editingId === booking.bookingID ? 'bg-yellow-50' : 'hover:bg-gray-50'}>
                                         <td className="px-4 py-2 border-b border-gray-200 font-bold">{booking.bookingID}</td>
-                                        <td className="px-4 py-2 border-b border-gray-200">{booking.passengerName}</td>
+                                        <td className="px-4 py-2 border-b border-gray-200">
+                                            {editingId === booking.bookingID ? (
+                                                <input
+                                                    type="text"
+                                                    name="passengerName"
+                                                    value={formData.passengerName}
+                                                    onChange={handleInputChange}
+                                                    disabled={operationLoading}
+                                                    className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                                                    placeholder="Passenger Name*"
+                                                />
+                                            ) : (
+                                                booking.passengerName
+                                            )}
+                                        </td>
                                         <td className="px-4 py-2 border-b border-gray-200">{new Date(booking.bookingDate).toLocaleDateString()}</td>
                                         <td className="px-4 py-2 border-b border-gray-200">
-                                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(booking.totalPrice)}
+                                            {editingId === booking.bookingID ? (
+                                                <input
+                                                    type="number"
+                                                    name="totalPrice"
+                                                    value={formData.totalPrice}
+                                                    onChange={handleInputChange}
+                                                    disabled={operationLoading}
+                                                    className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                                                    placeholder="Price*"
+                                                    min="0"
+                                                    step="0.01"
+                                                />
+                                            ) : (
+                                                new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(booking.totalPrice)
+                                            )}
                                         </td>
-                                        <td className="px-4 py-2 border-b border-gray-200">{getStatusBadge(booking.status)}</td>
+                                        <td className="px-4 py-2 border-b border-gray-200">
+                                            {editingId === booking.bookingID ? (
+                                                <select
+                                                    name="status"
+                                                    value={formData.status}
+                                                    onChange={handleInputChange}
+                                                    disabled={operationLoading}
+                                                    className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                                                >
+                                                    <option value="pending">Pending</option>
+                                                    <option value="confirmed">Confirmed</option>
+                                                    <option value="cancelled">Cancelled</option>
+                                                    <option value="completed">Completed</option>
+                                                </select>
+                                            ) : (
+                                                getStatusBadge(booking.status)
+                                            )}
+                                        </td>
                                         <td className="px-4 py-2 border-b border-gray-200">
                                             <div className="flex justify-center space-x-2">
-                                                <button
-                                                    onClick={() => handleEdit(booking.bookingID)}
-                                                    disabled={isAdding || operationLoading}
-                                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    title="Edit booking"
-                                                >
-                                                    <Edit size={14} className="mr-1" /> Edit
-                                                </button>
-                                                <button
-                                                    onClick={() => handleViewTickets(booking.bookingID)}
-                                                    disabled={isAdding || operationLoading}
-                                                    className={`${expandedRow === booking.bookingID ? 'bg-orange-500 hover:bg-orange-700' : 'bg-purple-500 hover:bg-purple-700'} text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed`}
-                                                    title="View tickets"
-                                                >
-                                                    <Eye size={14} className="mr-1" />
-                                                    {expandedRow === booking.bookingID ?
-                                                        <ChevronUp size={14} /> :
-                                                        <ChevronDown size={14} />}
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(booking.bookingID)}
-                                                    disabled={isAdding || operationLoading}
-                                                    className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    title="Delete booking"
-                                                >
-                                                    <Trash2 size={14} className="mr-1" /> Delete
-                                                </button>
+                                                {editingId === booking.bookingID ? (
+                                                    <>
+                                                        <button
+                                                            onClick={handleUpdate}
+                                                            disabled={operationLoading}
+                                                            className="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
+                                                        >
+                                                            <FaSave className="mr-1" /> {operationLoading ? 'Saving...' : 'Save'}
+                                                        </button>
+                                                        <button
+                                                            onClick={handleCancel}
+                                                            disabled={operationLoading}
+                                                            className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50"
+                                                        >
+                                                            <FaTimes className="mr-1" /> Cancel
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleEdit(booking)}
+                                                            disabled={isAdding || editingId !== null || operationLoading}
+                                                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            title="Edit booking"
+                                                        >
+                                                            <Edit size={14} className="mr-1" /> Edit
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleViewTickets(booking.bookingID)}
+                                                            disabled={isAdding || editingId !== null || operationLoading}
+                                                            className={`${expandedRow === booking.bookingID ? 'bg-orange-500 hover:bg-orange-700' : 'bg-purple-500 hover:bg-purple-700'} text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed`}
+                                                            title="View tickets"
+                                                        >
+                                                            <Eye size={14} className="mr-1" />
+                                                            {expandedRow === booking.bookingID ?
+                                                                <ChevronUp size={14} /> :
+                                                                <ChevronDown size={14} />}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(booking.bookingID)}
+                                                            disabled={isAdding || editingId !== null || operationLoading}
+                                                            className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            title="Delete booking"
+                                                        >
+                                                            <Trash2 size={14} className="mr-1" /> Delete
+                                                        </button>
+                                                    </>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
+                                    {/* Additional edit form fields row - only show when editing this booking */}
+                                    {editingId === booking.bookingID && (
+                                        <tr className="bg-yellow-50">
+                                            <td colSpan="6" className="px-4 py-2 border-b border-gray-200">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">Email Address*</label>
+                                                        <input
+                                                            type="email"
+                                                            name="userEmail"
+                                                            value={formData.userEmail}
+                                                            onChange={handleInputChange}
+                                                            disabled={operationLoading}
+                                                            className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                                                            placeholder="user@example.com"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                                                        <input
+                                                            type="text"
+                                                            name="phoneNumber"
+                                                            value={formData.phoneNumber}
+                                                            onChange={handleInputChange}
+                                                            disabled={operationLoading}
+                                                            className="w-full px-2 py-1 border rounded focus:outline-none focus:border-blue-500"
+                                                            placeholder="Phone Number (Optional)"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
                                     {expandedRow === booking.bookingID && (
                                         <tr>
                                             <td colSpan="6" className="p-0 border-b-0">
