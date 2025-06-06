@@ -191,13 +191,17 @@ const Return_Ticket = () => {
                 <div>
                   <u>{new Date(ticket.bookingDateTime).toLocaleString('sv-SE', { hour12: false })}</u>
                 </div>
-                <div className='ticketContentElement'>
-                  <p>Expires at: </p>
-                  {/* <p className='ticketContentElementDetail' >{ticket.passengerName}</p> */}
-                </div>
-                <div>
-                  <u>{new Date(ticket.expireDateTime).toLocaleString('sv-SE', { hour12: false })}</u>
-                </div>
+                {ticket.status === 'pending' && (
+                  <>
+                    <div className='ticketContentElement'>
+                      <p>Expires at: </p>
+                      {/* <p className='ticketContentElementDetail' >{ticket.passengerName}</p> */}
+                    </div>
+                    <div>
+                      <u>{new Date(ticket.expireDateTime).toLocaleString('sv-SE', { hour12: false })}</u>
+                    </div>
+                  </>
+                )}
               </div>
               <div className='ticketContents2 ml-auto md:w-[50%]'>
                 <div className='ticketContentElement'>
@@ -234,14 +238,14 @@ const Return_Ticket = () => {
 
         </div>
         <div className="button-group flex pb-4 flex-row">
-          <div className="w-1/2 flex justify-center">
+          <div className="w-full flex justify-center">
             <button className="red-button" onClick={() => handleDeleteTicket(ticket.ticketId)}>Return Ticket</button>
           </div>
-          {ticket.status === 'pending' && (
+          {/* {ticket.status === 'pending' && (
             <div className="w-1/2 flex justify-center">
               <button className="green-button">Process Payment</button>
             </div>
-          )}
+          )} */}
         </div>
       </div>
 
