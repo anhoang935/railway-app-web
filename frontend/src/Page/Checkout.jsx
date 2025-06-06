@@ -61,9 +61,16 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
       
       const trainData1 = await trainService.getTrainByName(booking.train.id);
       let expireDateTime1 = null;
-      if(paymentStatus === 'pending'){
+      if (paymentStatus === 'pending') {
         const trainDeparture1 = new Date(`${booking.departureDate}T${booking.train.startTime}`);
-        expireDateTime1 = new Date(trainDeparture1.getTime() - 30 * 60 * 1000).toISOString();
+        const expireTime = new Date(trainDeparture1.getTime() - 30 * 60 * 1000);
+        const year = expireTime.getFullYear();
+        const month = String(expireTime.getMonth() + 1).padStart(2, '0');
+        const day = String(expireTime.getDate()).padStart(2, '0');
+        const hours = String(expireTime.getHours()).padStart(2, '0');
+        const minutes = String(expireTime.getMinutes()).padStart(2, '0');
+        const seconds = String(expireTime.getSeconds()).padStart(2, '0');
+        expireDateTime1 = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
       }
 
       // const ticketData1 = {
@@ -132,7 +139,14 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
         let expireDateTime2 = null;
         if (paymentStatus === 'pending') {
           const trainDeparture2 = new Date(`${booking.returnDate}T${booking.returnTrain.startTime}`);
-          expireDateTime2 = new Date(trainDeparture2.getTime() - 30 * 60 * 1000).toISOString();
+          const expireTime = new Date(trainDeparture2.getTime() - 30 * 60 * 1000);
+          const year = expireTime.getFullYear();
+          const month = String(expireTime.getMonth() + 1).padStart(2, '0');
+          const day = String(expireTime.getDate()).padStart(2, '0');
+          const hours = String(expireTime.getHours()).padStart(2, '0');
+          const minutes = String(expireTime.getMinutes()).padStart(2, '0');
+          const seconds = String(expireTime.getSeconds()).padStart(2, '0');
+          expireDateTime2 = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
         }
 
         for (const item of booking.returnItems) {
