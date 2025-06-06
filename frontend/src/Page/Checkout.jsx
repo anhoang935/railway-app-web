@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { CreditCard, User, Mail, Phone, MapPin, Calendar, Clock, Train, Bed, Users, CheckCircle, AlertCircle } from 'lucide-react';
 import ticketService from '../data/Service/ticketService.js';
 import passengerService from '../data/Service/passengerService.js';
@@ -12,7 +12,7 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [booking, setBooking] = useState(null);
-  const [paymentStatus, setPaymentStatu] = useState('paid');
+  const [paymentStatus, setPaymentStatus] = useState('paid');
   const [passengerInfo, setPassengerInfo] = useState({
     fullName: '',
     email: '',
@@ -173,6 +173,17 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
   // Add new state for payment selection
   const [paymentOption, setPaymentOption] = useState(null);
 
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Handle payment success when returning from TransactionBooking
+    if (location.state?.paymentSuccess) {
+      setPaymentStatus('paid');
+      handlePayment();
+    }
+  }, [location]);
+
   useEffect(() => {
     const storedData = localStorage.getItem('checkoutData');
     if (storedData) {
@@ -295,11 +306,16 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
         return;
       }
       if (paymentOption === 'pending') {
-        // Go to completion step
+        setPaymentStatus('pending');
         setCurrentStep(3);
-      } else {
-        // Redirect to payment gateway
-        window.location.href = '/payment';
+      } else if (paymentOption === 'online') {
+        // Replace window.location.href with navigate
+        navigate('/transaction', {
+          state: {
+            bookingData: booking,
+            passengerInfo: passengerInfo
+          }
+        });
       }
     }
   };

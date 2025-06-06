@@ -16,7 +16,7 @@ import EmailVerification from "../Page/Verification/EmailVerification"
 import ProtectedRoute from './ProtectedRoute';
 import authService from "../data/Service/authService";
 import MyBooking from '../Page/MyBooking/MyBooking';
-
+import TransactionBooking from '../Page/TransactionBooking'
 const AdminRoute = ({ children }) => {
   const userRole = localStorage.getItem('userRole');
   const isAuthenticated = authService.isAuthenticated();
@@ -54,6 +54,7 @@ const Routers = () => {
       <Route path='/checkout' element={<Checkout />} />
       <Route path="/verify-email" element={<EmailVerification />} />
       <Route path="/my-bookings" element={<MyBooking />} />
+      <Route path="/transaction" element={<TransactionBooking />} />
     </Routes>
   )
 }
