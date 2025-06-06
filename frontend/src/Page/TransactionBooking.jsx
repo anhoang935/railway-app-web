@@ -11,6 +11,8 @@ const TransactionBooking = () => {
   const [cardholderName, setCardholderName] = useState('');
   const [bookingData, setBookingData] = useState(null);
   const [passengerInfo, setPassengerInfo] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [isFormValid, setIsFormValid] = useState(false);
 
   useEffect(() => {
     if (location.state?.bookingData && location.state?.passengerInfo) {
@@ -74,13 +76,58 @@ const TransactionBooking = () => {
           bookingData,
           passengerInfo,
           returnToStep: 3,
-          paymentStatus: 'paid'
+          paymentOption: 'online',
+          paymentStatus: 'paid',
+          paymentInfo: {
+            cardNumber: cardNumber,
+            expiryDate: expiry,
+            cvv: cvc,
+            cardholderName: cardholderName
+          }
         }
       });
     } catch (error) {
       console.error('Payment failed:', error);
     }
   };
+
+  const validateForm = () => {
+    const newErrors = {};
+    if(!cardholderName.trim()){
+      newErrors.cardholderName = 'Cardholder name is required';
+    }
+
+    if(!cardNumber.trim()){
+      newErrors.cardNumber = 'Card number is required';
+    } 
+    else if(cardNumber.replace(/\s/g, '').length !== 16) {
+      newErrors.cardNumber = 'Card number must be 16 digits';
+    }
+
+    if (!expiry.trim()) {
+      newErrors.expiry = 'Expiry date is required';
+    } else if (!/^\d{2}\/\d{2}$/.test(expiry)) {
+      newErrors.expiry = 'Invalid expiry date format (MM/YY)';
+    }
+
+    if (!cvc.trim()) {
+      newErrors.cvc = 'CVC is required';
+    } else if (!/^\d{3,4}$/.test(cvc)) {
+      newErrors.cvc = 'CVC must be 3 or 4 digits';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }
+
+  useEffect(() => {
+    const isValid = cardholderName.trim() !== '' 
+      && cardNumber.replace(/\s/g, '').length === 16 
+      && expiry.match(/^\d{2}\/\d{2}$/)
+      && cvc.match(/^\d{3,4}$/);
+    setIsFormValid(isValid);
+
+  }, [cardholderName, cardNumber, expiry, cvc]);
 
   if (!bookingData || !passengerInfo) {
     return <div>Loading...</div>;
@@ -144,8 +191,14 @@ const TransactionBooking = () => {
                   placeholder="Cardholder Name"
                   value={cardholderName}
                   onChange={(e) => setCardholderName(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors bg-gray-50"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors ${
+                    errors.cardholderName ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-gray-50'
+                  }`}
+                  required
                 />
+                {errors.cardholderName && (
+                  <p className="text-red-500 text-sm mt-1">{errors.cardholderName}</p>
+                )}
               </div>
               <div>
                 <input
@@ -154,27 +207,49 @@ const TransactionBooking = () => {
                   value={cardNumber}
                   onChange={handleCardNumberChange}
                   maxLength="19"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors bg-gray-50"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors ${
+                    errors.cardNumber ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-gray-50'
+                  }`}
+                  required
                 />
+                {errors.cardNumber && (
+                  <p className="text-red-500 text-sm mt-1">{errors.cardNumber}</p>
+                )}
               </div>
               
               <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  placeholder="MM/YY"
-                  value={expiry}
-                  onChange={handleExpiryChange}
-                  maxLength="5"
-                  className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors bg-gray-50"
-                />
-                <input
-                  type="text"
-                  placeholder="CVC"
-                  value={cvc}
-                  onChange={(e) => setCvc(e.target.value.replace(/\D/g, '').substring(0, 4))}
-                  maxLength="4"
-                  className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors bg-gray-50"
-                />
+                <div>
+                  <input
+                    type="text"
+                    placeholder="MM/YY"
+                    value={expiry}
+                    onChange={handleExpiryChange}
+                    maxLength="5"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors ${
+                      errors.expiry ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-gray-50'
+                    }`}
+                    required
+                  />
+                  {errors.expiry && (
+                    <p className="text-red-500 text-sm mt-1">{errors.expiry}</p>
+                  )}
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    placeholder="CVC"
+                    value={cvc}
+                    onChange={(e) => setCvc(e.target.value.replace(/\D/g, '').substring(0, 4))}
+                    maxLength="4"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors ${
+                      errors.cvc ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-gray-50'
+                    }`}
+                    required
+                  />
+                  {errors.cvc && (
+                    <p className="text-red-500 text-sm mt-1">{errors.cvc}</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -198,8 +273,17 @@ const TransactionBooking = () => {
           {/* Pay Button */}
           <div className="p-6">
             <button 
-              onClick={handlePayment}
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium py-4 px-6 rounded-lg transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl"
+              onClick={() => {
+                if (validateForm()) {
+                  handlePayment();
+                }
+              }}
+              disabled={!isFormValid}
+              className={`w-full ${
+                isFormValid 
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800' 
+                  : 'bg-gray-400 cursor-not-allowed'
+              } text-white font-medium py-4 px-6 rounded-lg transition-all duration-200 flex items-center justify-center shadow-lg`}
             >
               <Lock className="w-5 h-5 mr-2" />
               Pay Securely

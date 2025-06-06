@@ -13,6 +13,7 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [booking, setBooking] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState('paid');
+  const [termsAgreed, setTermsAgreed] = useState(false);
   const [passengerInfo, setPassengerInfo] = useState({
     fullName: '',
     email: '',
@@ -179,8 +180,20 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
   useEffect(() => {
     // Handle payment success when returning from TransactionBooking
     if (location.state?.paymentSuccess) {
+      // Update all necessary states
       setPaymentStatus('paid');
-      handlePayment();
+      setCurrentStep(3);
+      setPaymentOption('online');
+      setPaymentInfo(location.state.paymentInfo);
+      setPaymentMethod('online');
+      
+      // Update booking and passenger info if needed
+      if (location.state.bookingData) {
+        setBooking(location.state.bookingData);
+      }
+      if (location.state.passengerInfo) {
+        setPassengerInfo(location.state.passengerInfo);
+      }
     }
   }, [location]);
 
@@ -211,6 +224,24 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
       setPaymentStatus('paid');
       setCurrentStep(3);
       handlePayment();
+    }
+  }, [location])
+
+  useEffect(() => {
+    if (location.state?.paymentInfo) {
+      setPaymentInfo(location.state.paymentInfo);
+      setPaymentOption('online'); // Ensure we know this is online payment
+      setPaymentMethod('online');
+    }
+    if (location.state?.returnToStep) {
+      setCurrentStep(location.state.returnToStep);
+      // If we have booking data in state, update it
+      if (location.state.bookingData) {
+        setBooking(location.state.bookingData);
+      }
+      if (location.state.passengerInfo) {
+        setPassengerInfo(location.state.passengerInfo);
+      }
     }
   }, [location])
 
@@ -348,22 +379,31 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
   };
 
   const processPayment = async () => {
+    if (!termsAgreed) {
+      setErrors(prev => ({
+        ...prev,
+        terms: 'You must agree to the Terms and Conditions to continue'
+      }));
+      return;
+    }
+
     setIsProcessing(true);
     
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    setIsProcessing(false);
-    setCurrentStep(4); // Success step
-    
-    // Call onComplete callback if provided
-    if (onComplete) {
-      onComplete({
-        bookingData: booking,
-        passengerInfo,
-        paymentInfo: paymentMethod === 'cash' ? { method: 'cash' } : paymentInfo,
-        bookingId: 'VN' + Date.now()
-      });
+    try {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      await handlePayment(); // Process the payment/booking
+      setCurrentStep(4); // Move to final confirmation step
+      if (onComplete) {
+        onComplete();
+      }
+    } catch (error) {
+      console.error('Payment failed:', error);
+      setErrors(prev => ({
+        ...prev,
+        payment: 'Payment processing failed. Please try again.'
+      }));
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -577,7 +617,10 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Pending Option */}
         <div 
-          onClick={() => setPaymentOption('pending')}
+          onClick={() => {
+            setPaymentOption('pending');
+            setPaymentMethod('pending'); 
+          }}
           className={`cursor-pointer transition-all duration-300 transform hover:scale-105
             ${paymentOption === 'pending' ? 'ring-2 ring-blue-500' : 'hover:shadow-lg'}
             rounded-xl overflow-hidden`}
@@ -607,7 +650,10 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
 
         {/* Online Payment Option */}
         <div 
-          onClick={() => setPaymentOption('online')}
+          onClick={() => {
+            setPaymentOption('online');
+            setPaymentMethod('online'); 
+          }}
           className={`cursor-pointer transition-all duration-300 transform hover:scale-105
             ${paymentOption === 'online' ? 'ring-2 ring-blue-500' : 'hover:shadow-lg'}
             rounded-xl overflow-hidden`}
@@ -669,17 +715,29 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
         <div className="bg-gray-50 rounded-lg p-6">
           <h3 className="font-semibold text-gray-800 mb-4">Payment Method</h3>
           <div className="text-sm">
-            {paymentMethod === 'card' ? (
-              <p><span className="font-medium">Card:</span> **** **** **** {paymentInfo.cardNumber.slice(-4)}</p>
-            ) : (
+            {paymentOption === 'online' ? (
+              <div className="space-y-1">
+                <p><span className="font-medium">Method:</span> Credit/Debit Card</p>
+                <p><span className="font-medium">Card:</span> **** **** **** {paymentInfo.cardNumber.replace(/\s/g, '').slice(-4)}</p>
+                <p><span className="font-medium">Cardholder:</span> {paymentInfo.cardholderName}</p>
+              </div>
+            ) : paymentOption === 'pending' ? (
               <p><span className="font-medium">Method:</span> Pay at Station</p>
+            ) : (
+              <p><span className="font-medium">Method:</span> Not selected</p>
             )}
           </div>
         </div>
 
         <div className="border-t pt-6">
           <label className="flex items-start gap-3 cursor-pointer">
-            <input type="checkbox" required className="mt-1 text-blue-600" />
+            <input 
+              type="checkbox" 
+              checked={termsAgreed}
+              onChange={(e) => setTermsAgreed(e.target.checked)}
+              required 
+              className="mt-1 text-blue-600" 
+            />
             <span className="text-sm text-gray-700">
               I agree to the <span className="text-blue-600 hover:underline">Terms and Conditions</span> and <span className="text-blue-600 hover:underline">Privacy Policy</span>
             </span>
@@ -810,8 +868,11 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
                       <button
                         type="button"
                         onClick={processPayment}
-                        className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={isProcessing}
+                        disabled={isProcessing || !termsAgreed}
+                        className={`px-8 py-3 text-white rounded-lg transition-colors font-medium
+                          ${termsAgreed 
+                            ? 'bg-blue-600 hover:bg-blue-700' 
+                            : 'bg-gray-400 cursor-not-allowed'}`}
                       >
                         {isProcessing ? (
                           <div className="flex items-center gap-2">
@@ -819,7 +880,7 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
                             Processing...
                           </div>
                         ) : (
-                          `Confirm & ${paymentMethod === 'card' ? 'Pay' : 'Book'}`
+                          `Confirm & ${paymentOption === 'online' ? 'Pay' : 'Book'}`
                         )}
                       </button>
                     )}
