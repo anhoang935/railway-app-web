@@ -53,6 +53,7 @@ const Buy_Ticket = () => {
   const [trainCoaches, setTrainCoaches] = useState([]);
   const [returnTrainCoaches, setReturnTrainCoaches] = useState([]);
   const [loadingCoaches, setLoadingCoaches] = useState(false);
+  const [bookedSeats, setBookedSeats] = useState([]);
   const [returnFormData, setReturnFormData] = useState({
     departureDate: '',
     departureTime: ''
@@ -541,20 +542,37 @@ const Buy_Ticket = () => {
     }
   };
 
-  const handleSelectCoach = (coach, isReturn = false) => {
+  const handleSelectCoach = async (coach, isReturn = false) => {
     if (isReturn) {
       if (!selectedReturnCoach || selectedReturnCoach.trainID !== coach.trainID) {
         setSelectedReturnItems([]);
       }
       setSelectedReturnCoach(coach);
-      setShowSelectionPanel(true);
+      // Fetch booked seats for return journey
+      await fetchBookedSeats(
+        selectedReturnTrain.id, 
+        coach.coachID, 
+        formData.returnDate
+      );
     } else {
       if (!selectedCoach || selectedCoach.trainID !== coach.trainID) {
         setSelectedItems([]);
       }
       setSelectedCoach(coach);
-      setShowSelectionPanel(true);
+      // Fetch booked seats for outbound journey
+      await fetchBookedSeats(
+        selectedTrain.id, 
+        coach.coachID, 
+        formData.departureDate
+      );
     }
+    setShowSelectionPanel(true);
+  };
+
+  const isItemBooked = (row, col, coach) => {
+    if (!coach) return false;
+    const seatNumber = String(col * coach.rows + row + 1);
+    return bookedSeats.includes(seatNumber);
   };
 
   // Handle seat/bed selection
@@ -672,7 +690,6 @@ const Buy_Ticket = () => {
           item.col === c
         );
         const hovered = hoveredItem === key;
-
         if (r === 2 && rows >= 4) {
           columnSeats.push(<div key={`aisle-${c}-${r}`} className="h-[20px] w-full"></div>);
         }
@@ -680,12 +697,13 @@ const Buy_Ticket = () => {
           ? calculateDistance(parseInt(formData.to), parseInt(formData.from))
           : calculateDistance(parseInt(formData.from), parseInt(formData.to));
         const seatPrice = calculatePriceByDistance(distance, coach.id);
+        const isBooked = isItemBooked(r, c, coach);
         columnSeats.push(
           <div key={key} onClick={() => handleSelectItem(r, c, isReturn)}>
             <Seat
               seatNumber={seatNumber}
               price={formatCurrency(seatPrice)}
-              isBooked={false}
+              isBooked={isItemBooked(r, c, coach)}
               isSelected={selected}
               isHovered={hovered}
               isReversed={isAfterSeparator}
@@ -759,6 +777,7 @@ const Buy_Ticket = () => {
             ? calculateDistance(parseInt(formData.to), parseInt(formData.from))
             : calculateDistance(parseInt(formData.from), parseInt(formData.to));
           const bedPrice = calculatePriceByDistance(distance, coach.id);
+          const isBooked = isItemBooked(row, actualCol, coach);
           columnBeds.push(
             <div key={key} className="bed-container">
               <div onClick={() => handleSelectItem(row, actualCol, isReturn)}>
@@ -766,7 +785,7 @@ const Buy_Ticket = () => {
                   bedNumber={bedNumber}
                   tierNumber={tierNumber}
                   price={formatCurrency(bedPrice)}
-                  isBooked={false}
+                  isBooked={isItemBooked(row, actualCol, coach)}
                   isSelected={selected}
                   isHovered={hovered}
                   onMouseEnter={() => setHoveredItem(key)}
@@ -821,6 +840,21 @@ const Buy_Ticket = () => {
     
     return timeStr; 
   };
+
+  const fetchBookedSeats = async (trainName, coachID, departureDate) => {
+    try {
+      const response = await buyTicketService.getBookedSeat(trainName, coachID, departureDate);
+      if(response.success){
+        const bookedSeatNumbers = response.data.map(seat => String(seat.seatNumber));
+        setBookedSeats(bookedSeatNumbers);
+        console.log('Booked seats:', bookedSeatNumbers);
+      }
+    } catch (error) {
+      console.error('Failed to fetch booked seats:', error);
+      setBookedSeats([]);
+    }
+  }
+
 
   const today = new Date().toISOString().split('T')[0];
 

@@ -57,15 +57,15 @@ class Buy_Ticket{
         }
     }
 
-    static async getSeatBooked(trainName, coachID){
+    static async getSeatBooked(trainName, coachID, departureDate){
         try {
             const query = `
                 select seatNumber 
                 from defaultdb.ticket
                 join train on ticket.trainID = train.trainID
-                where trainName = ? and coachID = ?
+                where trainName = ? and coachID = ? and departureDate = ?
             `
-            const [results] = await pool.execute(query, [trainName, coachID]);
+            const [results] = await pool.execute(query, [trainName, coachID, departureDate]);
             return results;
         } catch (error) {
             throw new Error(`Error fetching booked seats: ${error.message}`);
