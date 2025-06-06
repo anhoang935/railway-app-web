@@ -72,7 +72,9 @@ const TransactionBooking = () => {
           paymentSuccess: true,
           paymentData,
           bookingData,
-          passengerInfo
+          passengerInfo,
+          returnToStep: 3,
+          paymentStatus: 'paid'
         }
       });
     } catch (error) {
@@ -91,7 +93,13 @@ const TransactionBooking = () => {
           {/* Header */}
           <div className="p-6 border-b border-gray-200">
             <button 
-              onClick={() => navigate('/checkout')}
+              onClick={() => navigate('/checkout', {
+                state: {
+                  returnToStep: 2,
+                  bookingData,
+                  passengerInfo
+                }
+              })}
               className="flex items-center text-blue-600 hover:text-blue-700 mb-4 text-sm font-medium"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />

@@ -193,6 +193,27 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
     setIsLoading(false);
   }, []);
 
+  useEffect(() => {
+    if (location.state?.returnToStep) {
+      setCurrentStep(location.state.returnToStep);
+      // If we have booking data in state, update it
+      if (location.state.bookingData) {
+        setBooking(location.state.bookingData);
+      }
+      if (location.state.passengerInfo) {
+        setPassengerInfo(location.state.passengerInfo);
+      }
+    }
+  }, [location]);
+
+  useEffect(() => {
+    if(location.state?.paymentStatus){
+      setPaymentStatus('paid');
+      setCurrentStep(3);
+      handlePayment();
+    }
+  }, [location])
+
   // Mock data for when bookingData is not provided
   const defaultBookingData = {
     train: { id: 'SE1', direction: 'Bắc-Nam', startTime: '12:00', endTime: '04:00', duration: 16 },
