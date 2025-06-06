@@ -28,28 +28,40 @@ const Header = () => {
     const [userRole, setUserRole] = useState(null);
     const [authLoading, setAuthLoading] = useState(true);
     const [isAdminUser, setIsAdminUser] = useState(false);
-    const [initialRender, setInitialRender] = useState(true); // Add this to track initial render
+    const [initialRender, setInitialRender] = useState(true);
     const navigate = useNavigate();
     const location = useLocation();
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
 
-    // Add the missing toggleMobileMenu function
+    // Mobile menu toggle function
     const toggleMobileMenu = () => {
         setMobileMenuOpen(!isMobileMenuOpen);
     };
 
-    // Close dropdown when clicking outside
+    // Close mobile menu when clicking on a link
+    const closeMobileMenu = () => {
+        setMobileMenuOpen(false);
+    };
+
+    // Close mobile menu when clicking outside or on dropdown
     useEffect(() => {
         function handleClickOutside(event) {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setDropdownOpen(false);
             }
+            
+            // Close mobile menu if clicking outside
+            if (isMobileMenuOpen && !event.target.closest('.mobile-menu') && !event.target.closest('.mobile-menu-toggle')) {
+                setMobileMenuOpen(false);
+            }
         }
 
         document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [dropdownRef]);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [dropdownOpen, isMobileMenuOpen]);
 
     // Immediate auth state initialization - run synchronously on mount
     useEffect(() => {
@@ -181,18 +193,17 @@ const Header = () => {
                             ))}
                         </ul>
 
-                        {/* Menu icon for mobile */}
+                        {/* Mobile Menu Toggle Button */}
                         <div className="mobile-menu-toggle" onClick={toggleMobileMenu}>
                             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                         </div>
 
-                        {/* Auth Buttons - only show when ready */}
-                        <div className={`auth-buttons ${isScrolled ? 'scrolled-button' : ''}`}>
+                        {/* Desktop Auth Buttons */}
+                        <div className={`auth-buttons ${isScrolled ? 'scrolled-buttons' : ''}`}>
                             {shouldShowAuthButtons && (
                                 <>
                                     {isAuthenticated ? (
                                         <>
-                                            {/* User dropdown */}
                                             <div className="user-dropdown-container" ref={dropdownRef}>
                                                 <button
                                                     className="user-dropdown-trigger"
@@ -209,11 +220,7 @@ const Header = () => {
                                                         <Link
                                                             to="/settings"
                                                             className="dropdown-item"
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                setDropdownOpen(false);
-                                                                navigate('/settings');
-                                                            }}
+                                                            onClick={() => setDropdownOpen(false)}
                                                         >
                                                             <Settings size={16} className="item-icon" />
                                                             <span>Settings</span>
@@ -235,13 +242,11 @@ const Header = () => {
                                                 )}
                                             </div>
 
-                                            {/* Use isAdminUser state instead of isAdmin() function */}
                                             {isAdminUser && (
                                                 <BlackButton text="Admin Panel" onClick={() => navigate('/admin')} />
                                             )}
                                         </>
                                     ) : (
-                                        // Show login/register when not authenticated
                                         <>
                                             <button className="btn btn-outline" onClick={handleLogin}>
                                                 Log In
@@ -256,41 +261,89 @@ const Header = () => {
                         </div>
 
                         {/* Mobile Menu */}
-                        <div className={`mobile-menu ${isMobileMenuOpen ? 'active' : ''}`}>
-                            <ul>
-                                {/* Navigation links */}
-                                <li><Link to="/home" onClick={toggleMobileMenu}>Home</Link></li>
-                                <li><Link to="/about" onClick={toggleMobileMenu}>About</Link></li>
-                                <li><Link to="/timetable" onClick={toggleMobileMenu}>Timetable</Link></li>
-                                <li><Link to="/buy-ticket" onClick={toggleMobileMenu}>Buy Ticket</Link></li>
-                                <li><Link to="/check-ticket" onClick={toggleMobileMenu}>Check Ticket</Link></li>
-                                <li><Link to="/return-ticket" onClick={toggleMobileMenu}>Return Ticket</Link></li>
+                        <div className={`mobile-menu ${isMobileMenuOpen ? 'open' : ''}`}>
+                            <div className="mobile-menu-content">
+                                <ul className="mobile-nav-links">
+                                    {/* Navigation links */}
+                                    {nav_links.map((item, index) => (
+                                        <li key={index}>
+                                            <NavLink
+                                                to={item.path}
+                                                className={({ isActive }) =>
+                                                    `mobile-nav-link ${isActive ? 'active-mobile-link' : ''}`}
+                                                onClick={closeMobileMenu}
+                                            >
+                                                {item.display}
+                                            </NavLink>
+                                        </li>
+                                    ))}
 
-                                {/* Auth-dependent links - only show when ready */}
-                                {shouldShowAuthButtons && (
-                                    <>
-                                        {isAuthenticated ? (
-                                            <>
-                                                <li><Link to="/settings" onClick={toggleMobileMenu}>Settings</Link></li>
-                                                <li><Link to="/my-bookings" onClick={toggleMobileMenu}>My Bookings</Link></li>
-                                                <li><Link to="/checkout" onClick={toggleMobileMenu}>Checkout</Link></li>
+                                    {/* Auth-dependent links */}
+                                    {shouldShowAuthButtons && (
+                                        <>
+                                            {isAuthenticated ? (
+                                                <>
+                                                    <li className="mobile-user-info">
+                                                        Welcome, {currentUser?.username || 'User'}!
+                                                    </li>
+                                                    <li>
+                                                        <Link to="/settings" className="mobile-nav-link" onClick={closeMobileMenu}>
+                                                            <Settings size={16} className="mobile-link-icon" />
+                                                            Settings
+                                                        </Link>
+                                                    </li>
+                                                    <li>
+                                                        <Link to="/my-bookings" className="mobile-nav-link" onClick={closeMobileMenu}>
+                                                            <CreditCard size={16} className="mobile-link-icon" />
+                                                            My Bookings
+                                                        </Link>
+                                                    </li>
+                                                    <li>
+                                                        <Link to="/checkout" className="mobile-nav-link" onClick={closeMobileMenu}>
+                                                            <ShoppingCart size={16} className="mobile-link-icon" />
+                                                            Checkout
+                                                        </Link>
+                                                    </li>
 
-                                                {/* Use isAdminUser state in mobile menu too */}
-                                                {isAdminUser && (
-                                                    <li><Link to="/admin" onClick={toggleMobileMenu}>Admin Panel</Link></li>
-                                                )}
+                                                    {isAdminUser && (
+                                                        <li>
+                                                            <Link to="/admin" className="mobile-nav-link admin-link" onClick={closeMobileMenu}>
+                                                                <Settings size={16} className="mobile-link-icon" />
+                                                                Admin Panel
+                                                            </Link>
+                                                        </li>
+                                                    )}
 
-                                                <li><button onClick={handleLogout}>Logout</button></li>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <li><Link to="/login" onClick={toggleMobileMenu}>Log In</Link></li>
-                                                <li><Link to="/register" onClick={toggleMobileMenu}>Sign Up</Link></li>
-                                            </>
-                                        )}
-                                    </>
-                                )}
-                            </ul>
+                                                    <li>
+                                                        <button className="mobile-nav-link logout-link" onClick={() => {
+                                                            handleLogout();
+                                                            closeMobileMenu();
+                                                        }}>
+                                                            <LogOut size={16} className="mobile-link-icon" />
+                                                            Logout
+                                                        </button>
+                                                    </li>
+                                                </>
+                                            ) : (
+                                                <li className="mobile-auth-buttons">
+                                                    <button className="btn btn-outline mobile-auth-btn" onClick={() => {
+                                                        handleLogin();
+                                                        closeMobileMenu();
+                                                    }}>
+                                                        Log In
+                                                    </button>
+                                                    <button className="btn btn-primary mobile-auth-btn" onClick={() => {
+                                                        handleRegister();
+                                                        closeMobileMenu();
+                                                    }}>
+                                                        Sign Up
+                                                    </button>
+                                                </li>
+                                            )}
+                                        </>
+                                    )}
+                                </ul>
+                            </div>
                         </div>
                     </nav>
                 </Row>
