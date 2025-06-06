@@ -278,7 +278,9 @@ function PassengerManagement() {
                                         </td>
                                         <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{ticket.departureTime}</td>
                                         <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{ticket.seatNumber}</td>
-                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{ticket.coachType}</td>
+                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                                            {ticket.coachType || 'Unknown Type'}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
