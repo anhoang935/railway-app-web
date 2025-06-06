@@ -56,6 +56,21 @@ class Buy_Ticket{
             throw new Error(`Error fetching coaches: ${error.message}`);
         }
     }
+
+    static async getSeatBooked(trainName, coachID){
+        try {
+            const query = `
+                select seatNumber 
+                from defaultdb.ticket
+                join train on ticket.trainID = train.trainID
+                where trainName = ? and coachID = ?
+            `
+            const [results] = await pool.execute(query, [trainName, coachID]);
+            return results;
+        } catch (error) {
+            throw new Error(`Error fetching booked seats: ${error.message}`);
+        }
+    }
 }
 
 export default Buy_Ticket;
