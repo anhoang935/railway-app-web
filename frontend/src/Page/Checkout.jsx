@@ -35,7 +35,7 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
     try {
       let userId = null;
       const user = authService.getCurrentUser();
-      if (user) {
+      if(user){
         userId = user.userId
       }
 
@@ -46,7 +46,7 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
         status: "Active"
       }
       const passengerResponse = await passengerService.createPassenger(passengerData);
-
+      
       const bookingData = {
         userID: userId,
         passengerID: passengerResponse.passengerID,
@@ -58,10 +58,10 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
         status: paymentStatus
       }
       const bookingResponse = await bookingService.createBooking(bookingData);
-
+      
       const trainData1 = await trainService.getTrainByName(booking.train.id);
       let expireDateTime1 = null;
-      if (paymentStatus === 'pending') {
+      if(paymentStatus === 'pending'){
         const trainDeparture1 = new Date(`${booking.departureDate}T${booking.train.startTime}`);
         expireDateTime1 = new Date(trainDeparture1.getTime() - 30 * 60 * 1000).toISOString();
       }
@@ -107,15 +107,12 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
       //   const ticketResponse2 = await ticketService.createTicket(ticketData2);        
       // }
       for (const item of booking.selectedItems) {
-        const coach = booking.trainCoaches.find(c => c.coachID === item.coachId);
-        const seatNumber = item.col * coach.rows + item.row + 1;
-
         const ticketData1 = {
           bookingId: bookingResponse.bookingID,
           passengerId: passengerResponse.passengerID,
           coachId: item.coachId,
           trainId: trainData1.trainID,
-          seatNumber: seatNumber, // Store as simple number
+          seatNumber: `${item.row}-${item.col}`,
           departureId: booking.from,
           arrivalId: booking.to,
           departureTime: booking.train.startTime,
@@ -189,7 +186,7 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
       setPaymentOption('online');
       setPaymentInfo(location.state.paymentInfo);
       setPaymentMethod('online');
-
+      
       // Update booking and passenger info if needed
       if (location.state.bookingData) {
         setBooking(location.state.bookingData);
@@ -223,7 +220,7 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
   }, [location]);
 
   useEffect(() => {
-    if (location.state?.paymentStatus) {
+    if(location.state?.paymentStatus){
       setPaymentStatus('paid');
       setCurrentStep(3);
       handlePayment();
@@ -291,7 +288,7 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
 
   const validateStep1 = () => {
     const newErrors = {};
-
+    
     if (!passengerInfo.fullName.trim()) newErrors.fullName = 'Full name is required';
     if (!passengerInfo.email.trim()) newErrors.email = 'Email is required';
     else if (!/\S+@\S+\.\S+/.test(passengerInfo.email)) newErrors.email = 'Email is invalid';
@@ -306,18 +303,18 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
 
   const validateStep2 = () => {
     if (paymentMethod === 'cash') return true;
-
+    
     const newErrors = {};
-
+    
     if (!paymentInfo.cardNumber.trim()) newErrors.cardNumber = 'Card number is required';
     else if (!/^[0-9]{16}$/.test(paymentInfo.cardNumber.replace(/\s/g, ''))) newErrors.cardNumber = 'Card number must be 16 digits';
-
+    
     if (!paymentInfo.expiryDate.trim()) newErrors.expiryDate = 'Expiry date is required';
     else if (!/^(0[1-9]|1[0-2])\/([0-9]{2})$/.test(paymentInfo.expiryDate)) newErrors.expiryDate = 'Format: MM/YY';
-
+    
     if (!paymentInfo.cvv.trim()) newErrors.cvv = 'CVV is required';
     else if (!/^[0-9]{3,4}$/.test(paymentInfo.cvv)) newErrors.cvv = 'CVV must be 3-4 digits';
-
+    
     if (!paymentInfo.cardholderName.trim()) newErrors.cardholderName = 'Cardholder name is required';
 
     setErrors(newErrors);
@@ -330,7 +327,7 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
     } else if (section === 'payment') {
       setPaymentInfo(prev => ({ ...prev, [field]: value }));
     }
-
+    
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -364,6 +361,7 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
         setPaymentStatus('pending');
         setCurrentStep(3);
       } else if (paymentOption === 'online') {
+        // Replace window.location.href with navigate
         navigate('/transaction', {
           state: {
             bookingData: booking,
@@ -419,7 +417,7 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
         acc[key] = {
           train: booking.train,
           coach: {
-            coachID: item.coachId,
+          coachID: item.coachId,
             name: item.coachName, // Use the coachName stored with each item
             type: item.coachType
           },
@@ -466,17 +464,9 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
                 <span className="text-gray-600">{group.coach.type === 'seat' ? 'Seats' : 'Beds'}:</span>
                 <span className="text-gray-800">
                   {group.items.map(item => 
-                    {
-                      if (group.coach.type === 'seat') {
-                        // For seats: maintain the current calculation
-                        const seatNumber = item.col * 4 + item.row + 1;
-                        return seatNumber;
-                      } else {
-                        const actualCol = item.col;
-                        const bedNumber = actualCol * 2 + item.row + 1;
-                        return bedNumber;
-                      }
-                    }
+                    group.coach.type === 'seat' 
+                      ? `${item.col * 4 + item.row + 1}`
+                      : `${item.row * 14 + item.col + 1}`
                   ).join(', ')}
                 </span>
               </div>
@@ -500,7 +490,7 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
           <Train className="w-5 h-5 text-blue-600" />
           <h3 className="text-lg font-semibold text-gray-800">Booking Summary</h3>
         </div>
-
+        
         <div className="space-y-6">
           {/* Outbound Journey */}
           {renderJourneySection(groupedItems, "Outbound Journey")}
@@ -540,8 +530,9 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
             type="text"
             value={passengerInfo.fullName}
             onChange={(e) => handleInputChange('passenger', 'fullName', e.target.value)}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${errors.fullName ? 'border-red-500 bg-red-50' : 'border-gray-300'
-              }`}
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+              errors.fullName ? 'border-red-500 bg-red-50' : 'border-gray-300'
+            }`}
             placeholder="Enter your full name"
           />
           {errors.fullName && <span className="text-red-500 text-sm">{errors.fullName}</span>}
@@ -553,8 +544,9 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
             type="email"
             value={passengerInfo.email}
             onChange={(e) => handleInputChange('passenger', 'email', e.target.value)}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${errors.email ? 'border-red-500 bg-red-50' : 'border-gray-300'
-              }`}
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+              errors.email ? 'border-red-500 bg-red-50' : 'border-gray-300'
+            }`}
             placeholder="your.email@example.com"
           />
           {errors.email && <span className="text-red-500 text-sm">{errors.email}</span>}
@@ -566,8 +558,9 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
             type="tel"
             value={passengerInfo.phone}
             onChange={(e) => handleInputChange('passenger', 'phone', e.target.value)}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${errors.phone ? 'border-red-500 bg-red-50' : 'border-gray-300'
-              }`}
+            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+              errors.phone ? 'border-red-500 bg-red-50' : 'border-gray-300'
+            }`}
             placeholder="0123456789"
           />
           {errors.phone && <span className="text-red-500 text-sm">{errors.phone}</span>}
@@ -623,10 +616,10 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Pending Option */}
-        <div
+        <div 
           onClick={() => {
             setPaymentOption('pending');
-            setPaymentMethod('pending');
+            setPaymentMethod('pending'); 
           }}
           className={`cursor-pointer transition-all duration-300 transform hover:scale-105
             ${paymentOption === 'pending' ? 'ring-2 ring-blue-500' : 'hover:shadow-lg'}
@@ -656,10 +649,10 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
         </div>
 
         {/* Online Payment Option */}
-        <div
+        <div 
           onClick={() => {
             setPaymentOption('online');
-            setPaymentMethod('online');
+            setPaymentMethod('online'); 
           }}
           className={`cursor-pointer transition-all duration-300 transform hover:scale-105
             ${paymentOption === 'online' ? 'ring-2 ring-blue-500' : 'hover:shadow-lg'}
@@ -692,7 +685,7 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
       {paymentOption && (
         <div className="mt-6 p-4 bg-blue-50 rounded-lg">
           <p className="text-blue-800 font-medium">
-            {paymentOption === 'pending'
+            {paymentOption === 'pending' 
               ? 'Your booking will be held for 24 hours. Please complete payment at the station.'
               : 'You will be redirected to our secure payment gateway.'}
           </p>
@@ -738,12 +731,12 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
 
         <div className="border-t pt-6">
           <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
+            <input 
+              type="checkbox" 
               checked={termsAgreed}
               onChange={(e) => setTermsAgreed(e.target.checked)}
-              required
-              className="mt-1 text-blue-600"
+              required 
+              className="mt-1 text-blue-600" 
             />
             <span className="text-sm text-gray-700">
               I agree to the <span className="text-blue-600 hover:underline">Terms and Conditions</span> and <span className="text-blue-600 hover:underline">Privacy Policy</span>
@@ -759,7 +752,7 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
       <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-6" />
       <h2 className="text-3xl font-bold text-gray-800 mb-4">Booking Confirmed!</h2>
       <p className="text-gray-600 mb-8">Your train ticket has been successfully booked.</p>
-
+      
       <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
         <p className="font-semibold text-gray-800 mb-2">Booking Reference: <span className="text-green-600">VN{Date.now()}</span></p>
         <p className="text-sm text-gray-600">A confirmation email has been sent to {passengerInfo.email}</p>
@@ -800,26 +793,29 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
               {steps.map((step, index) => (
                 <React.Fragment key={step.number}>
                   <div className="flex flex-col items-center">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${currentStep >= step.number
-                      ? currentStep > step.number
-                        ? 'bg-green-500 text-white'
-                        : 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-500'
-                      }`}>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
+                      currentStep >= step.number 
+                        ? currentStep > step.number 
+                          ? 'bg-green-500 text-white' 
+                          : 'bg-blue-600 text-white'
+                        : 'bg-gray-200 text-gray-500'
+                    }`}>
                       {currentStep > step.number ? (
                         <CheckCircle className="w-6 h-6" />
                       ) : (
                         <step.icon className="w-6 h-6" />
                       )}
                     </div>
-                    <div className={`text-sm mt-2 font-medium ${currentStep >= step.number ? 'text-blue-600' : 'text-gray-500'
-                      }`}>
+                    <div className={`text-sm mt-2 font-medium ${
+                      currentStep >= step.number ? 'text-blue-600' : 'text-gray-500'
+                    }`}>
                       {step.name}
                     </div>
                   </div>
                   {index < steps.length - 1 && (
-                    <div className={`h-px w-20 transition-colors ${currentStep > step.number ? 'bg-green-500' : 'bg-gray-200'
-                      }`} />
+                    <div className={`h-px w-20 transition-colors ${
+                      currentStep > step.number ? 'bg-green-500' : 'bg-gray-200'
+                    }`} />
                   )}
                 </React.Fragment>
               ))}
@@ -847,7 +843,7 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
                         Back
                       </button>
                     )}
-
+                    
                     {onBack && currentStep === 1 && (
                       <button
                         type="button"
@@ -874,8 +870,8 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
                         onClick={processPayment}
                         disabled={isProcessing || !termsAgreed}
                         className={`px-8 py-3 text-white rounded-lg transition-colors font-medium
-                          ${termsAgreed
-                            ? 'bg-blue-600 hover:bg-blue-700'
+                          ${termsAgreed 
+                            ? 'bg-blue-600 hover:bg-blue-700' 
                             : 'bg-gray-400 cursor-not-allowed'}`}
                       >
                         {isProcessing ? (

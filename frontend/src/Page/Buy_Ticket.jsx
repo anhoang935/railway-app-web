@@ -123,9 +123,9 @@ const Buy_Ticket = () => {
           capacity: type.capacity,
           type: type.type.toLowerCase().includes('bed') ? 'bed' : 'seat',
           // Configure rows and cols based on capacity
-          rows: type.type.toLowerCase().includes('bed') ?
+          rows: type.type.toLowerCase().includes('bed') ? 
             (type.type.includes('4') ? 2 : 3) : 4,
-          cols: Math.ceil(type.capacity / (type.type.toLowerCase().includes('bed') ?
+          cols: Math.ceil(type.capacity / (type.type.toLowerCase().includes('bed') ? 
             (type.type.includes('4') ? 2 : 3) : 4))
         }));
         setCoachTypes(transformedTypes);
@@ -141,18 +141,18 @@ const Buy_Ticket = () => {
     // Convert input values to numbers
     const start = Number(fromStationId);
     const end = Number(toStationId);
-
+    
     if (start === end) return 0;
 
     // Get indices to determine direction
     const fromIndex = stations.findIndex(s => Number(s.stationID) === start);
     const toIndex = stations.findIndex(s => Number(s.stationID) === end);
-
+    
     if (fromIndex === -1 || toIndex === -1) return 0;
 
     // Determine direction of travel
     const isForward = fromIndex < toIndex;
-
+    
     // Get all station IDs between start and end (inclusive)
     const stationRange = stations
       .slice(Math.min(fromIndex, toIndex), Math.max(fromIndex, toIndex) + 1)
@@ -160,17 +160,17 @@ const Buy_Ticket = () => {
 
     // Calculate total distance by summing up track segments
     let totalDistance = 0;
-
+    
     for (let i = 0; i < stationRange.length - 1; i++) {
       const currentStation = stationRange[i];
       const nextStation = stationRange[i + 1];
-
+      
       // Find track between these stations (in either direction)
-      const track = tracks.find(t =>
+      const track = tracks.find(t => 
         (t.station1ID === currentStation && t.station2ID === nextStation) ||
         (t.station2ID === currentStation && t.station1ID === nextStation)
       );
-
+      
       if (track) {
         totalDistance += track.distance;
       }
@@ -221,7 +221,7 @@ const Buy_Ticket = () => {
         departureDate,
         departureTime
       });
-
+      
       setAvailableTrains(outboundTrains);
 
       // Only search for return trains if:
@@ -262,8 +262,8 @@ const Buy_Ticket = () => {
 
     // Search trains
     const result = await buyTicketService.searchTrains(
-      fromStationName,
-      toStationName,
+      fromStationName, 
+      toStationName, 
       `${departureTime}:00`
     );
 
@@ -277,13 +277,13 @@ const Buy_Ticket = () => {
         // Get complete schedule
         const schedules = await timetableService.getSchedulesBetweenStations(1, 38);
         const schedule = schedules.find(s => s.trainName === train['Train Name']);
-
+        
         if (!schedule) return null;
 
         // Get journey points
         const allJourneys = await timetableService.getJourneysBySchedule(schedule.scheduleID);
         const journeys = [...allJourneys].sort((a, b) => parseInt(a.journeyID) - parseInt(b.journeyID));
-
+        
         // Find departure journey
         const departureJourney = journeys.find(j => parseInt(j.stationID) === parseInt(fromId));
         if (!departureJourney) return null;
@@ -305,23 +305,23 @@ const Buy_Ticket = () => {
         console.log(`\n=== Train ${train['Train Name']} Journey Details ===`);
         console.log(`Direction: ${calculateDirection(fromId, toId)}`);
         console.log('Full journey timeline:');
-
+        
         // Get stations in journey order (same logic as calculateJourneyDates)
         const fromIndex = journeys.findIndex(j => parseInt(j.stationID) === parseInt(fromId));
         const toIndex = journeys.findIndex(j => parseInt(j.stationID) === parseInt(toId));
         const isForward = fromIndex < toIndex;
-
-        const orderedJourneyStations = isForward
+        
+        const orderedJourneyStations = isForward 
           ? journeys.slice(fromIndex, toIndex + 1)
           : journeys.slice(toIndex, fromIndex + 1).reverse();
 
         // Display stations in correct order
         orderedJourneyStations.forEach(journey => {
           const stationInfo = journeyWithDates[journey.stationID];
-          const station = stations.find(s =>
+          const station = stations.find(s => 
             (s.id || s.stationID) === parseInt(journey.stationID)
           );
-
+          
           if (stationInfo) {
             console.log(
               `Station: ${station?.stationName || station?.name || journey.stationID}`,
@@ -370,20 +370,20 @@ const Buy_Ticket = () => {
   // Helper function to calculate dates for each station in journey
   const calculateJourneyDates = ({ journeys, fromId, toId, departureJourney, startDate }) => {
     const journeyWithDates = {};
-
+    
     // Find journey indices
     const fromIndex = journeys.findIndex(j => parseInt(j.stationID) === parseInt(fromId));
     const toIndex = journeys.findIndex(j => parseInt(j.stationID) === parseInt(toId));
-
+    
     if (fromIndex === -1 || toIndex === -1) {
       console.error('Station not found in journey:', { fromId, toId, fromIndex, toIndex });
       return journeyWithDates;
     }
 
     const isForward = fromIndex < toIndex;
-
+    
     // Get stations in the correct order for this journey
-    const relevantJourneys = isForward
+    const relevantJourneys = isForward 
       ? journeys.slice(fromIndex, toIndex + 1)
       : journeys.slice(toIndex, fromIndex + 1).reverse();
 
@@ -392,11 +392,11 @@ const Buy_Ticket = () => {
     let currentDate = new Date(startDate);
     let dayOffset = 0;
     let referenceTimeMinutes = timeToMinutes(relevantJourneys[0].departureTime || relevantJourneys[0].arrivalTime);
-
+    
     // Process each station in journey order
     relevantJourneys.forEach((journey, index) => {
       const currentTimeMinutes = timeToMinutes(journey.arrivalTime);
-
+      
       // Check if we need to increment the day
       if (index > 0) {
         // If current time is less than reference time, we've crossed midnight
@@ -432,16 +432,16 @@ const Buy_Ticket = () => {
   const calculateDuration = (startDateTime, endDateTime) => {
     const start = new Date(startDateTime);
     const end = new Date(endDateTime);
-
+    
     // Calculate duration in hours
     let duration = (end - start) / (1000 * 60 * 60);
-
+    
     // If both times are on the same day
     if (start.toDateString() === end.toDateString()) {
       // Simple time difference
       duration = duration < 0 ? duration + 24 : duration;
     }
-
+    
     // Round to nearest hour or half hour
     return Math.round(duration * 2) / 2;
   };
@@ -478,14 +478,14 @@ const Buy_Ticket = () => {
   const calculatePriceByDistance = (distance, coachTypeId) => {
     const coachType = coachTypes.find(type => type.id === coachTypeId);
     const basePrice = coachType ? coachType.price : 40000;
-    if (distance <= 0) return 0;
-    else if (distance <= 40) return basePrice;
-    else if (distance <= 50) return Math.round(basePrice * 1.075);
+    if(distance <= 0) return 0;
+    else if(distance <= 40) return basePrice;
+    else if(distance <= 50) return Math.round(basePrice * 1.075);
     else if (distance <= 60) return Math.round(basePrice * 1.2);
     else if (distance <= 80) return Math.round(basePrice * 1.4);
     else if (distance <= 100) return Math.round(basePrice * 2.675);
     else if (distance <= 120) return Math.round(basePrice * 3.075);
-    else {
+    else{
       const price = basePrice + (distance * 605);
       return Math.round(price / 1000) * 1000;
     }
@@ -494,9 +494,9 @@ const Buy_Ticket = () => {
     try {
       setLoadingCoaches(true);
       const response = await buyTicketService.getCoachesByTrainName(trainId);
-
+      
       console.log('API Response:', response); // Debug log
-
+      
       // Handle different response structures
       let coaches;
       if (response.data) {
@@ -504,7 +504,7 @@ const Buy_Ticket = () => {
       } else {
         coaches = Array.isArray(response) ? response : [];
       }
-
+      
       console.log('Processed coaches:', coaches); // Debug log
       coaches.sort((a, b) => a.coachID - b.coachID);
       const groupedCoaches = coaches.reduce((acc, coach, index) => {
@@ -521,7 +521,7 @@ const Buy_Ticket = () => {
         }
         return acc;
       }, []);
-
+      
       // Set the appropriate coaches state based on isReturn flag
       if (isReturn) {
         setReturnTrainCoaches(groupedCoaches);
@@ -561,20 +561,10 @@ const Buy_Ticket = () => {
   const handleSelectItem = (row, col, isReturn = false) => {
     const coach = isReturn ? selectedReturnCoach : selectedCoach;
     const train = isReturn ? selectedReturnTrain : selectedTrain;
-    if (!coach || !train) return;
+    if(!coach || !train) return;
     //const key = `${row}-${col}`;
-
+    
     const key = `${train.id}-${coach.coachID}-${row}-${col}`;
-
-    let itemNumber;
-      if (coach.type === 'seat') {
-      itemNumber = col * coach.rows + row + 1; 
-    } else {
-      itemNumber = col * 2 + row + 1; 
-    }
-
-    const seatLabel = `${coach.type === 'seat' ? 'Seat' : 'Bed'} #${itemNumber} (Row ${row + 1}, Column ${col + 1})`;
-
     if (isReturn) {
       // const coach = selectedReturnCoach; // Use return coach
       // const train = selectedReturnTrain; // Use return train
@@ -584,27 +574,25 @@ const Buy_Ticket = () => {
       const itemPrice = calculatePriceByDistance(distance, coach.id);
 
       setSelectedReturnItems(prev => {
-        const exists = prev.find(item =>
-          item.trainId === train.id &&
-          item.coachId === coach.coachID &&
-          item.row === row &&
+        const exists = prev.find(item => 
+          item.trainId === train.id && 
+          item.coachId === coach.coachID && 
+          item.row === row && 
           item.col === col
         );
         if (exists) {
           return prev.filter(item => item.key !== key);
         } else {
           setShowSelectionPanel(true);
-          return [...prev, {
-            key,
-            row,
-            col,
+          return [...prev, { 
+            key, 
+            row, 
+            col, 
             price: itemPrice,
             coachId: coach.coachID,
             trainId: train.id,
             coachName: `#${coach.coachID} - ${coach.name}`,
-            coachType: coach.type,
-            seatNumber: itemNumber,
-            seatLabel
+            coachType: coach.type
           }];
         }
       });
@@ -616,27 +604,25 @@ const Buy_Ticket = () => {
       const distance = calculateDistance(parseInt(formData.from), parseInt(formData.to));
       const itemPrice = calculatePriceByDistance(distance, coach.id);
       setSelectedItems(prev => {
-        const exists = prev.find(item =>
-          item.trainId === train.id &&
-          item.coachId === coach.coachID &&
-          item.row === row &&
+        const exists = prev.find(item => 
+          item.trainId === train.id && 
+          item.coachId === coach.coachID && 
+          item.row === row && 
           item.col === col
         );
         if (exists) {
           return prev.filter(item => item.key !== key);
         } else {
           setShowSelectionPanel(true);
-          return [...prev, {
-            key,
-            row,
-            col,
+          return [...prev, { 
+            key, 
+            row, 
+            col, 
             price: itemPrice,
             coachId: coach.coachID,
             trainId: train.id,
             coachName: `#${coach.coachID} - ${coach.name}`, // Store full coach name
-            coachType: coach.type,
-            seatNumber: itemNumber,
-            seatLabel
+            coachType: coach.type
           }];
         }
       });
@@ -654,8 +640,8 @@ const Buy_Ticket = () => {
   const renderSeatsOrBeds = (isReturn = false) => {
     const coach = isReturn ? selectedReturnCoach : selectedCoach;
     if (!coach) return null;
-    return coach.type === 'seat'
-      ? renderRegularCoach(coach, isReturn)
+    return coach.type === 'seat' 
+      ? renderRegularCoach(coach, isReturn) 
       : renderSleeperCoach(coach, isReturn);
   };
 
@@ -674,7 +660,7 @@ const Buy_Ticket = () => {
       for (let r = 0; r < rows; r++) {
         const key = `${r}-${c}`;
         const seatNumber = c * rows + r + 1;
-        const selected = relevantItems.some(item =>
+        const selected = relevantItems.some(item => 
           item.trainId === (isReturn ? selectedReturnTrain : selectedTrain).id &&
           item.coachId === coach.coachID &&
           item.row === r &&
@@ -685,7 +671,7 @@ const Buy_Ticket = () => {
         if (r === 2 && rows >= 4) {
           columnSeats.push(<div key={`aisle-${c}-${r}`} className="h-[20px] w-full"></div>);
         }
-        const distance = isReturn
+        const distance = isReturn 
           ? calculateDistance(parseInt(formData.to), parseInt(formData.from))
           : calculateDistance(parseInt(formData.from), parseInt(formData.to));
         const seatPrice = calculatePriceByDistance(distance, coach.id);
@@ -755,7 +741,7 @@ const Buy_Ticket = () => {
           const actualCol = cabinIdx * 2 + col;
           const key = `${row}-${actualCol}`;
           const bedNumber = isMobile ? actualCol * rows + row + 1 : actualCol * rows + row + 1;
-          const selected = relevantItems.some(item =>
+          const selected = relevantItems.some(item => 
             item.trainId === (isReturn ? selectedReturnTrain : selectedTrain).id &&
             item.coachId === coach.coachID &&
             item.row === row &&
@@ -764,7 +750,7 @@ const Buy_Ticket = () => {
           const hovered = hoveredItem === key;
           const tierNumber = rows - row;
 
-          const distance = isReturn
+          const distance = isReturn 
             ? calculateDistance(parseInt(formData.to), parseInt(formData.from))
             : calculateDistance(parseInt(formData.from), parseInt(formData.to));
           const bedPrice = calculatePriceByDistance(distance, coach.id);
@@ -820,15 +806,15 @@ const Buy_Ticket = () => {
 
   const formatTime = (timeStr) => {
     if (!timeStr) return '';
-
+  
     const timeParts = timeStr.split(':');
     if (timeParts.length >= 2) {
       const hours = timeParts[0].padStart(2, '0');
       const minutes = timeParts[1].padStart(2, '0');
       return `${hours}:${minutes}`;
     }
-
-    return timeStr;
+    
+    return timeStr; 
   };
 
   const today = new Date().toISOString().split('T')[0];
@@ -848,7 +834,7 @@ const Buy_Ticket = () => {
             ✕
           </button>
         </div>
-
+        
         {/* Outbound Journey Items */}
         {selectedItems.length > 0 && selectedTrain && (
           <div className="mb-4">
@@ -894,7 +880,7 @@ const Buy_Ticket = () => {
                         </button>
                       </div>
                     );
-                  })}
+                })}
 
                 </div>
               </div>
@@ -934,7 +920,7 @@ const Buy_Ticket = () => {
                       </button>
                     </div>
                   );
-                })}
+              })}
             </div>
           </div>
         )}
@@ -944,9 +930,9 @@ const Buy_Ticket = () => {
             <span>Total:</span>
             <span className="font-semibold">{formatCurrency(calculateTotalPrice())}</span>
           </div>
-          <button
-            onClick={handleProceedToCheckout}
-            className="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+          <button 
+          onClick={handleProceedToCheckout}
+          className="w-full mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
             Continue
           </button>
         </div>
@@ -969,6 +955,7 @@ const Buy_Ticket = () => {
 
   // Add this function to handle checkout navigation
   const handleProceedToCheckout = () => {
+
     if (selectedItems.length === 0 && selectedReturnItems.length === 0) {
       return;
     }
@@ -1043,7 +1030,7 @@ const Buy_Ticket = () => {
   return (
     <>
       {showCheckout ? (
-        <Checkout
+        <Checkout 
           bookingData={checkoutData}
           onBack={handleBackFromCheckout}
           onComplete={handleCheckoutComplete}
@@ -1146,7 +1133,7 @@ const Buy_Ticket = () => {
                       className="field-input"
                       required
                     />
-
+              
                   </div>
                 )}
                 {/* Departure Time */}
@@ -1193,8 +1180,9 @@ const Buy_Ticket = () => {
                     {availableTrains.map(train => (
                       <div
                         key={train.id}
-                        className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${selectedTrain?.id === train.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                          }`}
+                        className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
+                          selectedTrain?.id === train.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                        }`}
                         onClick={() => handleSelectTrain(train)}
                       >
                         <div className="flex justify-between items-center mb-2">
@@ -1207,10 +1195,10 @@ const Buy_Ticket = () => {
                           <div>
                             <div className="font-semibold text-lg">{formatTime(train.startTime)}</div>
                             <div className="text-gray-500">
-                              {train.journey && train.journey[formData.from] ?
-                                new Date(train.journey[formData.from].date).toLocaleDateString('vi-VN')
+                              {train.journey && train.journey[formData.from] ? 
+                                new Date(train.journey[formData.from].date).toLocaleDateString('vi-VN') 
                                 : new Date(train.departureDate).toLocaleDateString('vi-VN')} - {' '}
-                              {formData.from && stations.find(s =>
+                              {formData.from && stations.find(s => 
                                 (s.id || s.stationID) === parseInt(formData.from)
                               )?.stationName || 'Loading...'}
                             </div>
@@ -1226,13 +1214,13 @@ const Buy_Ticket = () => {
                               {train.journey && train.journey[formData.to] ?
                                 new Date(train.journey[formData.to].date).toLocaleDateString('vi-VN')
                                 : new Date(train.arrivalDate).toLocaleDateString('vi-VN')} - {' '}
-                              {formData.to && stations.find(s =>
+                              {formData.to && stations.find(s => 
                                 (s.id || s.stationID) === parseInt(formData.to)
                               )?.stationName || 'Loading...'}
                             </div>
                           </div>
                         </div>
-
+                        
                       </div>
                     ))}
                   </div>
@@ -1298,8 +1286,9 @@ const Buy_Ticket = () => {
                     {returnTrains.map(train => (
                       <div
                         key={train.id}
-                        className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${selectedReturnTrain?.id === train.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                          }`}
+                        className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
+                          selectedReturnTrain?.id === train.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                        }`}
                         onClick={() => handleSelectTrain(train, true)}
                       >
                         <div className="flex justify-between items-center mb-2">
@@ -1312,10 +1301,10 @@ const Buy_Ticket = () => {
                           <div>
                             <div className="font-semibold text-lg">{formatTime(train.startTime)}</div>
                             <div className="text-gray-500">
-                              {train.journey && train.journey[formData.to] ?
-                                new Date(train.journey[formData.to].date).toLocaleDateString('vi-VN')
+                              {train.journey && train.journey[formData.to] ? 
+                                new Date(train.journey[formData.to].date).toLocaleDateString('vi-VN') 
                                 : new Date(train.departureDate).toLocaleDateString('vi-VN')} - {' '}
-                              {formData.to && stations.find(s =>
+                              {formData.to && stations.find(s => 
                                 (s.id || s.stationID) === parseInt(formData.to)
                               )?.stationName || 'Loading...'}
                             </div>
@@ -1331,7 +1320,7 @@ const Buy_Ticket = () => {
                               {train.journey && train.journey[formData.from] ?
                                 new Date(train.journey[formData.from].date).toLocaleDateString('vi-VN')
                                 : new Date(train.arrivalDate).toLocaleDateString('vi-VN')} - {' '}
-                              {formData.from && stations.find(s =>
+                              {formData.from && stations.find(s => 
                                 (s.id || s.stationID) === parseInt(formData.from)
                               )?.stationName || 'Loading...'}
                             </div>
@@ -1360,8 +1349,9 @@ const Buy_Ticket = () => {
                     {returnTrainCoaches.map((coach, index) => (
                       <div
                         key={`${coach.coachID}-${index}`}
-                        className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${selectedReturnCoach?.coachID === coach.coachID ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                          }`}
+                        className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${
+                          selectedReturnCoach?.coachID === coach.coachID ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                        }`}
                         onClick={() => handleSelectCoach(coach, true)}
                       >
                         <h3 className="font-medium">Coach {coach.displayId}</h3>
@@ -1386,8 +1376,8 @@ const Buy_Ticket = () => {
               <h2 className="text-xl font-semibold mb-4">Choose Your Return Seat</h2>
               <div className="bg-gray-100 rounded-lg p-4">
                 <div className="seat-selection-container">
-                  {selectedReturnCoach.type === 'seat'
-                    ? renderRegularCoach(selectedReturnCoach, true)
+                  {selectedReturnCoach.type === 'seat' 
+                    ? renderRegularCoach(selectedReturnCoach, true) 
                     : renderSleeperCoach(selectedReturnCoach, true)}
                 </div>
               </div>
@@ -1398,12 +1388,12 @@ const Buy_Ticket = () => {
           {(selectedItems.length > 0 || selectedReturnItems.length > 0) && (
             <div className="p-6 border-t border-gray-200 bg-white shadow-lg mt-4">
               <h2 className="text-xl font-semibold mb-4">Booking Information</h2>
-
+              
               {/* Group outbound items by coach */}
               {Array.from(new Set(selectedItems.map(item => item.coachId))).map(coachId => {
                 const coach = trainCoaches.find(c => c.coachID === coachId);
                 const itemsForCoach = selectedItems.filter(item => item.coachId === coachId);
-
+                
                 return coach && itemsForCoach.length > 0 && (
                   <div key={`outbound-${coachId}`} className="mb-6 p-4 border border-gray-200 rounded-lg">
                     <h3 className="font-semibold text-lg mb-2">Outbound Journey - Coach {coachId}</h3>
@@ -1482,7 +1472,7 @@ const Buy_Ticket = () => {
               {Array.from(new Set(selectedReturnItems.map(item => item.coachId))).map(coachId => {
                 const coach = returnTrainCoaches.find(c => c.coachID === coachId);
                 const itemsForCoach = selectedReturnItems.filter(item => item.coachId === coachId);
-
+                
                 return coach && itemsForCoach.length > 0 && (
                   <div key={`return-${coachId}`} className="mb-6 p-4 border border-gray-200 rounded-lg">
                     <h3 className="font-semibold text-lg mb-2">Return Journey - Coach {coachId}</h3>
@@ -1570,7 +1560,7 @@ const Buy_Ticket = () => {
                     </span>
                   </p>
                 </div>
-                <button
+                <button 
                   onClick={handleProceedToCheckout}
                   className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors"
                 >
