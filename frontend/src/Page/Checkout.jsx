@@ -361,7 +361,6 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
         setPaymentStatus('pending');
         setCurrentStep(3);
       } else if (paymentOption === 'online') {
-        // Replace window.location.href with navigate
         navigate('/transaction', {
           state: {
             bookingData: booking,
@@ -467,7 +466,8 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
                     {
                       if (group.coach.type === 'seat') {
                         // For seats: maintain the current calculation
-                        return `${item.col * 4 + item.row + 1}`;
+                        const seatNumber = item.col * 4 + item.row + 1;
+                        return seatNumber;
                       } else {
                         const actualCol = item.col;
                         const bedNumber = actualCol * 2 + item.row + 1;
