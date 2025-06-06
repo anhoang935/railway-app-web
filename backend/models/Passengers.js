@@ -102,9 +102,11 @@ class Passenger {
           ticket.departureTime,
           ticket.departureDate,
           -- CONCAT(ticket.coachID, '-', ticket.seatNumber) AS seatNumber,
-          ticket.coachID AS seatNumber,
+          -- ticket.coachID AS seatNumber,
+          seatNumber,
           ticket.ticketPrice,
-          coach_type.type AS coachType,
+          -- coach_type.type AS coachType,
+          CONCAT(ticket.coachID, ' - ', coach_type.type) AS coachType,
           ticket.coachID
         FROM ticket
         LEFT JOIN train ON ticket.trainID = train.trainID
