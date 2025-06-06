@@ -41,3 +41,65 @@
 .scrollbar-hide::-webkit-scrollbar {
     display: none;  /* Safari and Chrome */
 }
+
+/* Hide admin panel when viewport width is mobile phone size */
+@media screen and (max-width: 500px) {
+    .admin-panel-container,
+    .flex.h-screen.overflow-hidden {
+        display: none !important;
+    }
+    
+    /* Show mobile message instead */
+    .mobile-admin-message {
+        display: flex !important;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        width: 100vw;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 9999;
+        background-color: #f3f4f6;
+        padding: 2rem;
+        text-align: center;
+    }
+    
+    .mobile-admin-message h2 {
+        font-size: 1.25rem;
+        font-weight: bold;
+        color: #374151;
+        margin-bottom: 1rem;
+    }
+    
+    .mobile-admin-message p {
+        color: #6b7280;
+        margin-bottom: 1.5rem;
+        line-height: 1.6;
+        font-size: 0.9rem;
+    }
+    
+    .mobile-admin-message .btn {
+        background-color: #3b82f6;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        text-decoration: none;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .mobile-admin-message .btn:hover {
+        background-color: #2563eb;
+    }
+}
+
+/* Hide mobile message on larger viewports */
+@media screen and (min-width: 481px) {
+    .mobile-admin-message {
+        display: none !important;
+    }
+}
