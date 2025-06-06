@@ -464,9 +464,16 @@ const Checkout = ({ bookingData, onBack, onComplete }) => {
                 <span className="text-gray-600">{group.coach.type === 'seat' ? 'Seats' : 'Beds'}:</span>
                 <span className="text-gray-800">
                   {group.items.map(item => 
-                    group.coach.type === 'seat' 
-                      ? `${item.col * 4 + item.row + 1}`
-                      : `${item.row * 14 + item.col + 1}`
+                    {
+                      if (group.coach.type === 'seat') {
+                        // For seats: maintain the current calculation
+                        return `${item.col * 4 + item.row + 1}`;
+                      } else {
+                        const actualCol = item.col;
+                        const bedNumber = actualCol * 2 + item.row + 1;
+                        return bedNumber;
+                      }
+                    }
                   ).join(', ')}
                 </span>
               </div>

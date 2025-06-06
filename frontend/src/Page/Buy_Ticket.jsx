@@ -512,7 +512,8 @@ const Buy_Ticket = () => {
         if (coachType) {
           return [...acc, {
             ...coachType,
-            coachID: index + 1,
+            displayId: index + 1,
+            coachID: coach.coachID,
             originalCoachID: coach.coachID,
             trainID: coach.trainID,
             name: coach.name || coachType.name
@@ -954,64 +955,64 @@ const Buy_Ticket = () => {
 
   // Add this function to handle checkout navigation
   const handleProceedToCheckout = () => {
-  if (selectedItems.length === 0 && selectedReturnItems.length === 0) {
-    return;
-  }
-  
-  // Find station details using the same pattern as searchJourneyTrains
-  const fromStation = stations.find(s => (s.id || s.stationID) === parseInt(formData.from));
-  const toStation = stations.find(s => (s.id || s.stationID) === parseInt(formData.to));
-  
-  if (!fromStation || !toStation) {
-    console.error('Station not found:', { from: formData.from, to: formData.to });
-    return;
-  }
+    if (selectedItems.length === 0 && selectedReturnItems.length === 0) {
+      return;
+    }
+    
+    // Find station details using the same pattern as searchJourneyTrains
+    const fromStation = stations.find(s => (s.id || s.stationID) === parseInt(formData.from));
+    const toStation = stations.find(s => (s.id || s.stationID) === parseInt(formData.to));
+    
+    if (!fromStation || !toStation) {
+      console.error('Station not found:', { from: formData.from, to: formData.to });
+      return;
+    }
 
-  // Get station names using the same pattern
-  const fromStationName = fromStation.stationName || fromStation.name;
-  const toStationName = toStation.stationName || toStation.name;
-  const modifiedCoach = {
-    ...selectedCoach,
-    name: `#${selectedCoach.coachID} - ${selectedCoach.name}`
+    // Get station names using the same pattern
+    const fromStationName = fromStation.stationName || fromStation.name;
+    const toStationName = toStation.stationName || toStation.name;
+    const modifiedCoach = {
+      ...selectedCoach,
+      name: `#${selectedCoach.coachID} - ${selectedCoach.name}`
+    };
+    const modifiedReturnCoach = selectedReturnCoach ? {
+      ...selectedReturnCoach,
+      name: `#${selectedReturnCoach.coachID} - ${selectedReturnCoach.name}`
+    } : null;
+    const checkoutData = {
+      train: selectedTrain,
+      coach: modifiedCoach,
+      from: formData.from,
+      to: formData.to,
+      fromName: fromStationName,
+      toName: toStationName,
+      departureDate: formData.departureDate,
+      tripType: formData.tripType,
+      selectedItems: selectedItems,
+      totalPrice: calculateTotalPrice(),
+      distance: calculateDistance(parseInt(formData.from), parseInt(formData.to))
+    };
+
+    if (formData.tripType === 'round-trip') {
+      checkoutData.returnTrain = selectedReturnTrain;
+      checkoutData.returnCoach = modifiedReturnCoach;
+      checkoutData.returnDate = formData.returnDate;
+      checkoutData.returnItems = selectedReturnItems;
+    }
+
+    // Debug log to verify data
+    console.log('Checkout Data:', {
+      ...checkoutData,
+      fromStation: fromStationName,
+      toStation: toStationName
+    });
+
+    // Store checkout data in localStorage
+    localStorage.setItem('checkoutData', JSON.stringify(checkoutData));
+
+    // Navigate to checkout page
+    navigate('/checkout');
   };
-  const modifiedReturnCoach = selectedReturnCoach ? {
-    ...selectedReturnCoach,
-    name: `#${selectedReturnCoach.coachID} - ${selectedReturnCoach.name}`
-  } : null;
-  const checkoutData = {
-    train: selectedTrain,
-    coach: modifiedCoach,
-    from: formData.from,
-    to: formData.to,
-    fromName: fromStationName,
-    toName: toStationName,
-    departureDate: formData.departureDate,
-    tripType: formData.tripType,
-    selectedItems: selectedItems,
-    totalPrice: calculateTotalPrice(),
-    distance: calculateDistance(parseInt(formData.from), parseInt(formData.to))
-  };
-
-  if (formData.tripType === 'round-trip') {
-    checkoutData.returnTrain = selectedReturnTrain;
-    checkoutData.returnCoach = modifiedReturnCoach;
-    checkoutData.returnDate = formData.returnDate;
-    checkoutData.returnItems = selectedReturnItems;
-  }
-
-  // Debug log to verify data
-  console.log('Checkout Data:', {
-    ...checkoutData,
-    fromStation: fromStationName,
-    toStation: toStationName
-  });
-
-  // Store checkout data in localStorage
-  localStorage.setItem('checkoutData', JSON.stringify(checkoutData));
-
-  // Navigate to checkout page
-  navigate('/checkout');
-};
 
   // Add handler for returning from checkout
   const handleBackFromCheckout = () => {
@@ -1242,12 +1243,12 @@ const Buy_Ticket = () => {
                       <div
                         key={`${coach.coachID}-${index}`}
                         className={`border rounded-lg p-4 cursor-pointer hover:shadow-md transition-all ${
-                          selectedCoach?.coachID === coach.coachID ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                          selectedCoach?.displayId === coach.displayId ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
                         }`}
                         onClick={() => handleSelectCoach(coach)}
                       >
-                        <h3 className="font-medium">Coach {coach.coachID}</h3>
-                        <div className="text-sm text-gray-600">{coach.name}</div>
+                        <h3 className="font-medium">Coach {coach.displayId}</h3>
+                        <div className="text-sm text-gray-600">#{coach.coachID} - {coach.name}</div>
                         <div className="mt-2 font-semibold text-blue-600">
                           {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(coach.price)}
                         </div>
@@ -1352,8 +1353,8 @@ const Buy_Ticket = () => {
                         }`}
                         onClick={() => handleSelectCoach(coach, true)}
                       >
-                        <h3 className="font-medium">Coach {coach.coachID}</h3>
-                        <div className="text-sm text-gray-600">{coach.name}</div>
+                        <h3 className="font-medium">Coach {coach.displayId}</h3>
+                        <div className="text-sm text-gray-600">#{coach.coachID} - {coach.name}</div>
                         <div className="mt-2 font-semibold text-blue-600">
                           {formatCurrency(coach.price)}
                         </div>
