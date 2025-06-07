@@ -4,7 +4,7 @@ const testimonials = [
     {
       id: 1,
       name: "Elon Musk",
-      location: "California, USA",
+      location: "Pretoria, South Africa",
       comment: "The best travel experience of my life! The personalized itinerary was perfect.",
       rating: 5,
       image: elon
