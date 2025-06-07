@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 
 import '../styles/check_ticket.css';
 import ticketService from '../data/Service/ticketService.js';
+import authService from '../data/Service/authService';
 
 const SimpleLoadingSpinner = () => (
   <div className="flex justify-center items-center py-20">
@@ -97,8 +98,15 @@ const Return_Ticket = () => {
 
   const handleFindUserTickets = async () => {
     try {
+
+      let userId = null;
+      const user = authService.getCurrentUser();
+      if(user){
+        userId = user.userId
+      }
+
       const filters = {
-        userId: undefined
+        userId: userId
       };
 
       const response = await ticketService.getFilteredTickets(filters);
