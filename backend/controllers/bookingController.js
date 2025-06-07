@@ -194,12 +194,12 @@ export const createBooking = async (req, res) => {
 
         const { userID, passengerID, bookingDate, totalPrice, status } = bookingData;
 
-        if (!userID || !passengerID || !totalPrice) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please provide userID, passengerID, and totalPrice'
-            });
-        }
+        // if (!userID || !passengerID || !totalPrice) {
+        //     return res.status(400).json({
+        //         success: false,
+        //         message: 'Please provide userID, passengerID, and totalPrice'
+        //     });
+        // }
 
         const newBooking = {
             userID,
