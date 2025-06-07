@@ -9,7 +9,7 @@ import '../styles/home.css'
 import testimonials from '../data/testimonials';
 import NewsLetter from '../ui/NewsLetter/NewsLetter';
 // import imgTrain from '../images/TestTrain.png';  
-import imgTrain from '../images/destination.png';
+import imgTrain from '../images/train4.jpeg';
 import TrainFooter from '../ui/AnimatedTrain/TrainFooter';
 //mb is margin-bottom, px is horizontal padding
 

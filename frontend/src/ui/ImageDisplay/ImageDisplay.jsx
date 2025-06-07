@@ -1,8 +1,8 @@
 import React from 'react';
 import { Container, Row, Col } from 'reactstrap'; // Ensure you import from 'reactstrap'
-import img01 from './../../images/tour-img01.jpg';
-import img02 from './../../images/Notre-Dame.png';
-import img03 from './../../images/hero-img02.jpg';
+import img01 from './../../images/train2.jpg';
+import img02 from './../../images/train1.png';
+import img03 from './../../images/train3.jpg';
 
 import './image-display.css'
 const ImageDisplay = () => (
