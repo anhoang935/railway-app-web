@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import '../styles/check_ticket.css';
 import axios from 'axios';
 import ticketService from '../data/Service/ticketService.js';
+import authService from '../data/Service/authService';
 
 // Simple loading component to replace LoadingSpinner
 const SimpleLoadingSpinner = () => (
@@ -90,8 +91,14 @@ const Check_Ticket = () => {
 
   const handleFindUserTickets = async () => {
     try {
+      let userId = null;
+      const user = authService.getCurrentUser();
+      if(user){
+        userId = user.userId
+      }
+
       const filters = {
-        userId: undefined
+        userId: userId
       };
 
       const response = await ticketService.getFilteredTickets(filters);
